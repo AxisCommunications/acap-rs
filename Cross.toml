@@ -1,0 +1,27 @@
+[build]
+pre-build = ["apt-get update && apt-get install -y clang && rm -rf /var/lib/apt/lists/*"]
+
+
+[target.aarch64-unknown-linux-gnu]
+image = "axisecp/acap-native-sdk:1.12-aarch64-ubuntu22.04"
+
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+    "PKG_CONFIG_SYSROOT_DIR_aarch64_unknown_linux_gnu=/opt/axis/acapsdk/sysroots/aarch64",
+    "PKG_CONFIG_PATH_aarch64_unknown_linux_gnu=/opt/axis/acapsdk/sysroots/aarch64/usr/lib/pkgconfig:/opt/axis/acapsdk/sysroots/aarch64/usr/share/pkgconfig",
+    "PKG_CONFIG_LIBDIR_aarch64_unknown_linux_gnu=/opt/axis/acapsdk/sysroots/aarch64/usr/lib/pkgconfig:/opt/axis/acapsdk/sysroots/aarch64/usr/share/pkgconfig",
+    "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc",
+    "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS=-C link-args=--sysroot=/opt/axis/acapsdk/sysroots/aarch64",
+]
+
+[target.thumbv7neon-unknown-linux-gnueabihf]
+image = "axisecp/acap-native-sdk:1.12-armv7hf-ubuntu22.04"
+
+[target.thumbv7neon-unknown-linux-gnueabihf.env]
+passthrough = [
+    "PKG_CONFIG_SYSROOT_DIR_thumbv7neon_unknown_linux_gnueabihf=/opt/axis/acapsdk/sysroots/armv7hf",
+    "PKG_CONFIG_PATH_thumbv7neon_unknown_linux_gnueabihf=/opt/axis/acapsdk/sysroots/armv7hf/usr/lib/pkgconfig:/opt/axis/acapsdk/sysroots/armv7hf/usr/share/pkgconfig",
+    "PKG_CONFIG_LIBDIR_thumbv7neon_unknown_linux_gnueabihf=/opt/axis/acapsdk/sysroots/armv7hf/usr/lib/pkgconfig:/opt/axis/acapsdk/sysroots/armv7hf/usr/share/pkgconfig",
+    "CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc",
+    "CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS=-C link-args=--sysroot=/opt/axis/acapsdk/sysroots/armv7hf",
+]
