@@ -35,5 +35,10 @@ Other important workflows are documented in the [Makefile](./Makefile) and can b
 This repository is aimed at developing the platform and is tailored to the needs of its contributors.
 Future work will focus on highlighting the essentials and making them more accessible to a wider audience.
 
+
+## License
+
+[Apache 2.0](LICENSE)
+
 [ACAP]: https://axiscommunications.github.io/acap-documentation/
 [Rust]: https://doc.rust-lang.org/
