@@ -1,4 +1,4 @@
-# ACAPRS
+# ACAP for Rust
 
 _Easy and safe [ACAP] apps using [Rust]_
 
@@ -14,6 +14,7 @@ Ensure global prerequisites are installed:
 * Docker
 * Rust e.g. [using rustup](https://www.rust-lang.org/tools/install)
 * Cross e.g. like `cargo install cross`
+* Python e.g. using [pyenv](https://github.com/pyenv/pyenv)
 
 Create, activate and populate the local development environment like
 
@@ -25,19 +26,14 @@ make sync_env
 Build the hello_world example and create `.eap` files in the `target/acap/` directory like
 
 ```sh
-PACKAGE=hello_world make build_eaps
+PACKAGE=hello_world make build
 ```
 
 Other important workflows are documented in the [Makefile](./Makefile) and can be listed with `make help`.
 
-## Audience
-
-This repository is aimed at developing the platform and is tailored to the needs of its contributors.
-Future work will focus on highlighting the essentials and making them more accessible to a wider audience.
-
 ## License
 
-[Apache 2.0](LICENSE)
+[MIT](LICENSE)
 
 [ACAP]: https://axiscommunications.github.io/acap-documentation/
 [Rust]: https://doc.rust-lang.org/
