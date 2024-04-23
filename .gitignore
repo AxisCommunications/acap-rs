@@ -1,3 +1,4 @@
 /.idea/
+/crates/*-sys/src/bindings.rs
 /target/
 /venv/

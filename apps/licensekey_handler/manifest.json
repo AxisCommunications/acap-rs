@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.2",
+  "acapPackageConf": {
+    "setup": {
+      "appName": "licensekey_handler",
+      "appId": "0",
+      "vendor": "Axis Communications",
+      "runMode": "never",
+      "version": "1.0.0"
+    },
+    "copyProtection": {
+      "method": "axis"
+    }
+  }
+}

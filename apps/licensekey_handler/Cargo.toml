@@ -1,0 +1,11 @@
+[package]
+name = "licensekey_handler"
+version = "1.0.0"
+edition.workspace = true
+
+[dependencies]
+log = { workspace = true }
+env_logger = { workspace = true }
+syslog = { workspace = true }
+
+licensekey = { workspace = true }
