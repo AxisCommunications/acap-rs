@@ -13,7 +13,6 @@ Ensure global prerequisites are installed:
 
 * Docker
 * Rust e.g. [using rustup](https://www.rust-lang.org/tools/install)
-* Cross e.g. like `cargo install cross`
 * Python e.g. using [pyenv](https://github.com/pyenv/pyenv)
 
 Create, activate and populate the local development environment like
