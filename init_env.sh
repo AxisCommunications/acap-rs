@@ -2,7 +2,7 @@
 
 if [[ ! -e venv ]] ; then
     echo "Creating venv"
-    python -m venv --prompt $(basename $(pwd)) venv
+    python3 -m venv --prompt $(basename $(pwd)) venv
     source venv/bin/activate
     PIP_CONSTRAINT=constraints.txt pip install pip setuptools
 else
