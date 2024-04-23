@@ -1,0 +1,11 @@
+[workspace]
+members = ["apps/*"]
+resolver = "2"
+
+[workspace.dependencies]
+env_logger = "0.11.2"
+log = "0.4.20"
+syslog = "6.1.0"
+
+[workspace.package]
+edition = "2021"
