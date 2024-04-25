@@ -33,12 +33,12 @@ This works with any of the [example applications](#example-applications).
 Other important workflows are documented in the [Makefile](./Makefile) and can be listed with `make help`.
 
 ## Example applications
+
 Below is the list of examples available in the repository.
 
-[`hello_world`](apps/hello_world/src/main.rs)
+* [`hello_world`](apps/hello_world/src/main.rs)
 : A simple "Hello, World!" application.
-
-[`licensekey_handler`](apps/licensekey_handler/src/main.rs)
+* [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
 : An example that illustrates how to check the licensekey status.
 
 ## License
