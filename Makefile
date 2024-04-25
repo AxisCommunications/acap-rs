@@ -9,6 +9,15 @@
 # this makefile does to keep things simple.
 PACKAGE ?= hello_world
 
+# The architecture that will be assumed when interacting with the device.
+ARCH ?= aarch64
+
+# The IP address of the device to interact with.
+DEVICE_IP ?= 192.168.0.90
+
+# The password to use when interacting with the device.
+PASS ?= pass
+
 # Other
 # -----
 
@@ -26,6 +35,10 @@ PACKAGE ?= hello_world
 FORCE:;
 .PHONY: FORCE
 
+DOCKER_RUN = docker run \
+--volume ${CURDIR}/target/$(ARCH)/$(PACKAGE)/:/opt/app \
+--user $(shell id -u):$(shell id -g) \
+axisecp/acap-native-sdk:1.12-$(ARCH)-ubuntu22.04
 
 ## Verbs
 ## =====
@@ -33,10 +46,50 @@ FORCE:;
 help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
-## Build `.eap` files all targets.
+## Build <PACKAGE> for all architectures
 build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
+
+## Copy bindings from the build directory to enable code completion
+copy_bindings: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+
+## Install <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
+install:
+	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(DEVICE_IP) $(PASS) install" \
+	| grep -v '^to start your application type$$' \
+	| grep -v '^  eap-install.sh start$$'
+
+## Remove <PACKAGE> from <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
+remove:
+	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(DEVICE_IP) $(PASS) remove"
+
+## Start <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
+start:
+	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(DEVICE_IP) $(PASS) start" \
+	| grep -v '^to stop your application type$$' \
+	| grep -v '^  eap-install.sh stop$$'
+
+## Stop <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
+stop:
+	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(DEVICE_IP) $(PASS) stop"
+
+## Build and run <PACKAGE> directly on <DEVICE_IP> assuming architecture <ARCH>
+##
+## Forwards the following environment variables to the remote process:
+##
+## * `RUST_LOG`
+## * `RUST_LOG_STYLE`
+##
+## Prerequisites:
+##
+## * The app is installed on the device.
+## * The app is stopped.
+## * The device has SSH enabled the ssh user root configured.
+run: target/$(ARCH)/$(PACKAGE)/$(PACKAGE)
+	scp $< root@$(DEVICE_IP):/usr/local/packages/$(PACKAGE)/$(PACKAGE)
+	ssh root@$(DEVICE_IP) \
+		"cd /usr/local/packages/$(PACKAGE) && su - acap-$(PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(PACKAGE)'"
 
 ## Install development dependencies
 sync_env:
@@ -144,12 +197,9 @@ crates/%-sys/src/bindings.rs: FORCE
 # Use the `_envoy` file as a target because
 # * `.DELETE_ON_ERROR` does not work for directories, and
 # * the name of the `.eap` file is annoying to predict.
+target/%/$(PACKAGE)/_envoy: ARCH=$*
 target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
-	docker run \
-		--volume ${CURDIR}/$(@D):/opt/app \
-		--user $(shell id -u):$(shell id -g) \
-		axisecp/acap-native-sdk:1.12-$*-ubuntu22.04 \
-		sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
+	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
 	touch $@
 
 target/%/$(PACKAGE)/manifest.json: apps/$(PACKAGE)/manifest.json
