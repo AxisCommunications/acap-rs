@@ -52,12 +52,31 @@ check_all: check_build check_docs check_format check_lint check_tests
 
 ## Check that all crates can be built
 check_build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
-	cargo build
+	cargo build \
+		--exclude licensekey \
+		--exclude licensekey-sys \
+		--exclude licensekey_handler \
+		--workspace
+	cross build \
+		--target aarch64-unknown-linux-gnu \
+		--workspace
+
 .PHONY: check_build
 
 ## Check that docs can be built
 check_docs:
-	RUSTDOCFLAGS="-Dwarnings" cargo doc --document-private-items --no-deps --workspace
+	RUSTDOCFLAGS="-Dwarnings" cargo doc \
+		--document-private-items \
+		--no-deps \
+		--exclude licensekey \
+		--exclude licensekey-sys \
+		--exclude licensekey_handler \
+		--workspace
+	RUSTDOCFLAGS="-Dwarnings" cross doc \
+		--document-private-items \
+		--no-deps \
+		--target aarch64-unknown-linux-gnu \
+		--workspace
 .PHONY: check_docs
 
 ## _
@@ -67,12 +86,27 @@ check_format:
 
 ## _
 check_lint:
-	RUSTFLAGS="-Dwarnings" cargo clippy --all-targets --no-deps --workspace
+	RUSTFLAGS="-Dwarnings" cargo clippy \
+		--all-targets \
+		--no-deps \
+		--exclude licensekey \
+		--exclude licensekey-sys \
+		--exclude licensekey_handler \
+		--workspace
+	RUSTFLAGS="-Dwarnings" cross clippy \
+		--all-targets \
+		--no-deps \
+		--target aarch64-unknown-linux-gnu \
+		--workspace
 .PHONY: check_lint
 
 ## _
 check_tests:
-	cargo test
+	cargo test \
+			--exclude licensekey \
+			--exclude licensekey-sys \
+			--exclude licensekey_handler \
+			--workspace
 .PHONY: check_tests
 
 ## Fixes
@@ -100,6 +134,9 @@ constraints.txt: requirements.txt
 		--strip-extras \
 		--output-file $@ \
 		$^
+
+crates/%-sys/src/bindings.rs: FORCE
+	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
 
 # Stage the files that will be packaged outside the source tree to avoid
 # * cluttering the source tree and `.gitignore` with build artifacts, and

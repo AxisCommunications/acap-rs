@@ -1,0 +1,9 @@
+[package]
+build = "build.rs"
+name = "licensekey-sys"
+version = "0.0.0"
+edition.workspace = true
+
+[build-dependencies]
+bindgen = { workspace = true }
+pkg-config = { workspace = true }

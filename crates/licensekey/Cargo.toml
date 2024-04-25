@@ -1,0 +1,10 @@
+[package]
+name = "licensekey"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+glib-sys = { workspace = true }
+libc = { workspace = true }
+licensekey-sys = { path = "../licensekey-sys" }
+thiserror = { workspace = true }
