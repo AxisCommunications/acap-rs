@@ -17,3 +17,4 @@ jobs:
         run: |
           make --always-make check_all
           PACKAGE=licensekey_handler make build
+          PACKAGE=reverse_proxy make build

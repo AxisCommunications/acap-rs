@@ -1,0 +1,13 @@
+[package]
+name = "reverse_proxy"
+version = "1.0.0"
+edition.workspace = true
+
+[dependencies]
+axum = { workspace = true, features = ["tokio"] }
+log = { workspace = true }
+env_logger = { workspace = true }
+syslog = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tower-http = { workspace = true, features = ["trace"] }
+serde = { workspace = true, features = ["derive"] }
