@@ -36,6 +36,8 @@ Other important workflows are documented in the [Makefile](./Makefile) and can b
 
 Below is the list of examples available in the repository.
 
+* [`consume_analytics_metadata`](apps/consume_analytics_metadata/src/main.rs)
+: An example that consume metadata.
 * [`hello_world`](apps/hello_world/src/main.rs)
 : A simple "Hello, World!" application.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)

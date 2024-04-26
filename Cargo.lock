@@ -131,6 +131,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "consume_analytics_metadata"
+version = "1.0.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "mdb",
+ "syslog",
+]
+
+[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -354,6 +364,23 @@ name = "match_cfg"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffbee8634e0d45d258acb448e7eaab3fce7a0a467395d4d9f228e3c1f01fb2e4"
+
+[[package]]
+name = "mdb"
+version = "0.0.0"
+dependencies = [
+ "libc",
+ "log",
+ "mdb-sys",
+]
+
+[[package]]
+name = "mdb-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen",
+ "pkg-config",
+]
 
 [[package]]
 name = "memchr"

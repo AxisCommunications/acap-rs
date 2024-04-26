@@ -16,6 +16,8 @@ syslog = "6.1.1"
 thiserror = "1.0.57"
 
 licensekey = { path = "crates/licensekey" }
+mdb = { path = "crates/mdb" }
+mdb-sys = { path = "crates/mdb-sys" }
 
 [workspace.package]
 edition = "2021"
