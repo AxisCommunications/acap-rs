@@ -51,8 +51,7 @@ build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
 
-## Copy bindings from the build directory to enable code completion
-copy_bindings: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+
 
 ## Install <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
 install:
@@ -100,7 +99,7 @@ sync_env:
 ## ------
 
 ## Run all other checks
-check_all: check_build check_docs check_format check_lint check_tests
+check_all: check_build check_docs check_format check_lint check_tests check_generated_files
 .PHONY: check_all
 
 ## Check that all crates can be built
@@ -118,13 +117,7 @@ check_build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 
 ## Check that docs can be built
 check_docs:
-	RUSTDOCFLAGS="-Dwarnings" cargo doc \
-		--document-private-items \
-		--no-deps \
-		--exclude licensekey \
-		--exclude licensekey-sys \
-		--exclude licensekey_handler \
-		--workspace
+	RUSTDOCFLAGS="-Dwarnings" cargo doc
 	RUSTDOCFLAGS="-Dwarnings" cross doc \
 		--document-private-items \
 		--no-deps \
@@ -136,6 +129,13 @@ check_docs:
 check_format:
 	cargo fmt --check
 .PHONY: check_format
+
+## Check that generated files are up to date
+check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+	git update-index -q --refresh
+	git --no-pager diff --exit-code HEAD -- $^
+.PHONY: check_generated_files
+
 
 ## _
 check_lint:
