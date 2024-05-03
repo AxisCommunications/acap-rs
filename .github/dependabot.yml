@@ -11,3 +11,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      default:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    versioning-strategy: lockfile-only
