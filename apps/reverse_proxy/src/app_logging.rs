@@ -1,6 +1,7 @@
 //! Utilities for managing logging in an application.
 
-use std::{env, io::IsTerminal};
+use std::env;
+use std::io::IsTerminal;
 
 use log::debug;
 
