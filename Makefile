@@ -213,4 +213,4 @@ target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENS
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
 target/%/release/$(PACKAGE): FORCE
 	cross -v build --release --target $* --package $(PACKAGE)
-	touch $@ # This is a hack to make the _envoy target above always build
+	touch $@ # This is a hack to make the `_envoy` target above always build
