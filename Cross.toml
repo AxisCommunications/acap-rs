@@ -23,5 +23,5 @@ passthrough = [
     "PKG_CONFIG_PATH_thumbv7neon_unknown_linux_gnueabihf=/opt/axis/acapsdk/sysroots/armv7hf/usr/lib/pkgconfig:/opt/axis/acapsdk/sysroots/armv7hf/usr/share/pkgconfig",
     "PKG_CONFIG_LIBDIR_thumbv7neon_unknown_linux_gnueabihf=/opt/axis/acapsdk/sysroots/armv7hf/usr/lib/pkgconfig:/opt/axis/acapsdk/sysroots/armv7hf/usr/share/pkgconfig",
     "CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc",
-    "CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS=-C link-args=--sysroot=/opt/axis/acapsdk/sysroots/armv7hf",
+    "CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS=-C link-args=--sysroot=/opt/axis/acapsdk/sysroots/armv7hf -C link_arg=-mfloat-abi=hard",
 ]
