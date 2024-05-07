@@ -36,6 +36,8 @@ Other important workflows are documented in the [Makefile](./Makefile) and can b
 
 Below is the list of examples available in the repository.
 
+* [`embedded_web_page`](apps/em)
+: An example that illustrates how to bundle an embedded web page.
 * [`hello_world`](apps/hello_world/src/main.rs)
 : A simple "Hello, World!" application.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
