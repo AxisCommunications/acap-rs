@@ -46,9 +46,9 @@ Below is the list of examples available in the repository.
 This is not the only initiative to facilitate building Rust applications for Axis devices.
 Below is a survey of other projects known to the author.
 
-### [cargo-acap](https://github.com/trunnion/cargo-acap)
+### cargo-acap
 
-A Rust binary crate that facilitates cross-compiling and bundling Rust programs for Axis devices.
+[cargo-acap] is a Rust binary crate that cross-compiles and packages Rust programs for Axis devices.
 Installing it and building eap files for virtually every architecture can be done like
 ```sh
 cargo install cargo-acap
@@ -77,6 +77,7 @@ Unreasonable complaints
   * compiling and running tests
   * installing the built `.eap` file
 
+[cargo-acap]: https://github.com/trunnion/cargo-acap
 [^1]: https://github.com/trunnion/cargo-acap/commit/6748c52ef1c13a6a12cc327a65a333c012c5725b
 
 ## License
