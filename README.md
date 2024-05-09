@@ -71,6 +71,7 @@ Reasonable complaints
   * Restricts how docker images can be built.
   * May cause bugs in crates that use conditional compilation[^1].
 * Does not support workspace projects
+* Does not support bundling target-specific files[^2].
 
 Unreasonable complaints
 * Does not facilitate any interaction with the device including
@@ -79,6 +80,7 @@ Unreasonable complaints
 
 [cargo-acap]: https://github.com/trunnion/cargo-acap
 [^1]: https://github.com/trunnion/cargo-acap/commit/6748c52ef1c13a6a12cc327a65a333c012c5725b
+[^2]: This has been discussed but not implemented https://github.com/trunnion/cargo-acap/pull/5
 
 ## License
 
