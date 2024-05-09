@@ -41,6 +41,44 @@ Below is the list of examples available in the repository.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
 : An example that illustrates how to check the licensekey status.
 
+## Related projects
+
+This is not the only initiative to facilitate building Rust applications for Axis devices.
+Below is a survey of other projects known to the author.
+
+### [cargo-acap](https://github.com/trunnion/cargo-acap)
+
+A Rust binary crate that facilitates cross-compiling and bundling Rust programs for Axis devices.
+Installing it and building eap files for virtually every architecture can be done like
+```sh
+cargo install cargo-acap
+cargo acap build
+```
+
+Praises
+* Depends only on Cargo et al and Docker.
+* Requires no ACAP specific boilerplate.
+* Supports old products, including ARTPEC-4 and ARTPEC-5.
+
+Reasonable complaints
+* Unaware of the ACAP manifest.
+  * Does not validate the ACAP manifest.
+  * Requires information to be duplicated in `Cargo.toml` if the ACAP manifest is to be used.
+* Requires Docker
+  * Cannot easily be used from within a Docker container.
+* The default docker image cannot be used to link the ACAP SDK APIs.
+* Assumes custom target triples with the vendor set to `axis`.
+  * Restricts how docker images can be built.
+  * May cause bugs in crates that use conditional compilation[^1].
+* Does not support workspace projects
+
+Unreasonable complaints
+* Does not facilitate any interaction with the device including
+  * compiling and running tests
+  * installing the built `.eap` file
+
+[^1]: https://github.com/trunnion/cargo-acap/commit/6748c52ef1c13a6a12cc327a65a333c012c5725b
+
 ## License
 
 [MIT](LICENSE)
