@@ -14,6 +14,7 @@ Ensure global prerequisites are installed:
 * Docker
 * Rust e.g. [using rustup](https://www.rust-lang.org/tools/install)
 * Python e.g. using [pyenv](https://github.com/pyenv/pyenv)
+* `scp`, `ssh`, and `sshpass` (needed only for `make run`)
 
 Create, activate and populate the local development environment like
 

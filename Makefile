@@ -87,12 +87,14 @@ stop:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 run: target/$(ARCH)/$(PACKAGE)/$(PACKAGE)
-	scp $< root@$(DEVICE_IP):/usr/local/packages/$(PACKAGE)/$(PACKAGE)
-	ssh root@$(DEVICE_IP) \
-		"cd /usr/local/packages/$(PACKAGE) && su - acap-$(PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(PACKAGE)'"
+	acap-ssh-utils $(DEVICE_IP) --password $(PASS) run \
+		--environment RUST_LOG=debug \
+		--environment RUST_LOG_STYLE=always \
+		$< $(PACKAGE)
 
 ## Install development dependencies
 sync_env:
+	cargo install --root venv --target-dir $(CURDIR)/target --path $(CURDIR)/crates/acap-ssh-utils
 	cargo install --root venv --target-dir $(CURDIR)/target cross
 	PIP_CONSTRAINT=constraints.txt pip install --requirement requirements.txt
 
@@ -111,6 +113,7 @@ check_build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 		--exclude licensekey_handler \
 		--workspace
 	cross build \
+		--exclude acap-ssh-utils \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
 
@@ -127,6 +130,7 @@ check_docs:
 		--workspace
 	RUSTDOCFLAGS="-Dwarnings" cross doc \
 		--document-private-items \
+		--exclude acap-ssh-utils \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
@@ -148,6 +152,7 @@ check_lint:
 		--workspace
 	RUSTFLAGS="-Dwarnings" cross clippy \
 		--all-targets \
+		--exclude acap-ssh-utils \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace

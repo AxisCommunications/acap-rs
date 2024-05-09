@@ -1,0 +1,209 @@
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader, Read},
+};
+
+use std::path::Path;
+
+use log::{debug, warn};
+
+use url::Host;
+
+fn sshpass(pass: &str, program: &str) -> std::process::Command {
+    let mut cmd = std::process::Command::new("sshpass");
+    // TODO: Consider not passing the password as an argument
+    cmd.arg(format!("-p{pass}"))
+        .arg(program)
+        // The ssh client will try keys until it finds one that works.
+        // If it tries to many keys that fail it will be disconnected by the server.
+        .args(["-o", "PubkeyAuthentication=no"]);
+    cmd
+}
+
+fn scp(src: &Path, user: &str, pass: &str, host: &Host, tgt: &str) -> std::process::Command {
+    let mut cmd = sshpass(pass, "scp");
+    cmd.arg("-p"); // Ensure temporary files become executable.
+    cmd.arg(src);
+    cmd.arg(format!("{user}@{host}:{tgt}"));
+    cmd
+}
+
+fn ssh(user: &str, pass: &str, host: &Host) -> std::process::Command {
+    let mut cmd = sshpass(pass, "ssh");
+    cmd.arg("-x"); // Makes no difference when I have tested but seems to be the right thing to do.
+    cmd.arg(format!("{user}@{host}"));
+    cmd
+}
+
+trait RunWith {
+    fn run_with_captured_stdout(self) -> anyhow::Result<String>;
+    fn run_with_logged_stdout(self) -> anyhow::Result<()>;
+    fn run_with_inherited_stdout(self) -> anyhow::Result<()>;
+}
+
+impl RunWith for std::process::Command {
+    fn run_with_captured_stdout(mut self) -> anyhow::Result<String> {
+        self.stdout(std::process::Stdio::piped());
+        debug!("Spawning child {self:#?}...");
+        let mut child = self.spawn()?;
+        let mut stdout = child.stdout.take().unwrap();
+        debug!("Waiting for child...");
+        let status = child.wait()?;
+        if !status.success() {
+            anyhow::bail!("Child failed: {status}");
+        }
+        let mut decoded = String::new();
+        stdout.read_to_string(&mut decoded)?;
+        Ok(decoded)
+    }
+
+    fn run_with_logged_stdout(mut self: std::process::Command) -> anyhow::Result<()> {
+        self.stdout(std::process::Stdio::piped());
+        debug!("Spawning child {self:#?}...");
+        let mut child = self.spawn()?;
+        let stdout = child.stdout.take().unwrap();
+
+        let lines = BufReader::new(stdout).lines();
+        for line in lines {
+            let line = line?;
+            if !line.is_empty() {
+                debug!("Child said {:?}.", line);
+            }
+        }
+
+        debug!("Waiting for child...");
+        let status = child.wait()?;
+        if !status.success() {
+            anyhow::bail!("Child failed: {status}");
+        }
+        Ok(())
+    }
+
+    fn run_with_inherited_stdout(mut self: std::process::Command) -> anyhow::Result<()> {
+        debug!("Running command {self:#?}...");
+        let status = self.status()?;
+        if !status.success() {
+            anyhow::bail!("Child failed: {status}");
+        }
+        Ok(())
+    }
+}
+struct RemoteTemporaryFile {
+    path: String,
+    ssh_rm: Option<std::process::Command>,
+}
+
+impl RemoteTemporaryFile {
+    fn try_new(user: &str, pass: &str, host: &Host) -> anyhow::Result<Self> {
+        let mut ssh_mktemp = ssh(user, pass, host);
+        ssh_mktemp.arg("mktemp");
+        let path = ssh_mktemp.run_with_captured_stdout()?.trim().to_string();
+        let mut ssh_rm = ssh(user, pass, host);
+        ssh_rm.arg("rm");
+        ssh_rm.arg(&path);
+        Ok(Self {
+            path,
+            ssh_rm: Some(ssh_rm),
+        })
+    }
+}
+impl Drop for RemoteTemporaryFile {
+    fn drop(&mut self) {
+        let ssh_rm = self.ssh_rm.take().unwrap();
+        let path = &self.path;
+        match ssh_rm.run_with_logged_stdout() {
+            Ok(()) => debug!("Successfully cleaned up temporary file {path}."),
+            Err(e) => warn!("Failed to clean up temporary file {path} because {e}."),
+        }
+    }
+}
+fn run_as_self(
+    prog: &Path,
+    user: &str,
+    pass: &str,
+    host: &Host,
+    env: HashMap<&str, &str>,
+) -> anyhow::Result<()> {
+    let temp_file = RemoteTemporaryFile::try_new(user, pass, host)?;
+
+    scp(prog, user, pass, host, &temp_file.path).run_with_logged_stdout()?;
+
+    let mut exec = std::process::Command::new(&temp_file.path);
+    exec.envs(env);
+
+    let mut ssh_exec = ssh(user, pass, host);
+    ssh_exec.arg(format!("{exec:?}"));
+    ssh_exec.run_with_inherited_stdout()?;
+
+    Ok(())
+}
+
+fn run_as_package(
+    prog: &Path,
+    user: &str,
+    pass: &str,
+    host: &Host,
+    package: &str,
+    env: HashMap<&str, &str>,
+) -> anyhow::Result<()> {
+    scp(
+        prog,
+        user,
+        pass,
+        host,
+        &format!("/usr/local/packages/{package}/{package}"),
+    )
+    .run_with_logged_stdout()?;
+
+    let mut cd = std::process::Command::new("cd");
+    cd.arg(format!("/usr/local/packages/{package}"));
+
+    let mut exec = std::process::Command::new(format!("./{package}"));
+    // TODO: Consider setting more environment variables
+    exec.env("G_SLICE", "always-malloc");
+    exec.envs(env);
+
+    let mut exec_as_package = std::process::Command::new("su");
+    exec_as_package.args(["--shell", "/bin/sh"]);
+    exec_as_package.args(["--command", &format!("{exec:?}")]);
+    exec_as_package.args([format!("acap-{package}")]);
+
+    // TODO: Consider giving user control over what happens with stdout when running concurrently.
+    // The escaping of quotation marks is ridiculous, but it's automatic and empirically verifiable.
+    let mut ssh_exec_as_package = ssh(user, pass, host);
+    ssh_exec_as_package.arg(format!("{cd:?} && {exec_as_package:?}"));
+    ssh_exec_as_package.run_with_inherited_stdout()?;
+
+    // TODO: Consider cleaning up by restoring the original file
+    // So far I'm not doing this because
+    // 1. I'm lazy,
+    // 2. I'm concerned about space,
+    // 3. I'm concerned about robustness.
+    Ok(())
+}
+
+/// Run executable on device, optionally emulating the context of an ACAP app.
+///
+/// `user` and `pass` are the credentials to use for the ssh connection.
+/// `host` is the device to connect to.
+/// `prog` is the path to the executable to run.
+/// `package` is the name of the ACAP app to emulate.
+/// `env` is a map of environment variables to override on the remote host.
+///
+/// The function assumes that the user has already
+/// - enabled SSH on the device, and
+/// - configured the SSH user with a password and the necessary permissions.
+pub fn run(
+    user: &str,
+    pass: &str,
+    host: &Host,
+    prog: &Path,
+    package: Option<&str>,
+    env: HashMap<&str, &str>,
+) -> anyhow::Result<()> {
+    if let Some(package) = package {
+        run_as_package(prog, user, pass, host, package, env)
+    } else {
+        run_as_self(prog, user, pass, host, env)
+    }
+}
