@@ -38,7 +38,7 @@ FORCE:;
 DOCKER_RUN = docker run \
 --volume ${CURDIR}/target/$(ARCH)/$(PACKAGE)/:/opt/app \
 --user $(shell id -u):$(shell id -g) \
-axisecp/acap-native-sdk:1.12-$(ARCH)-ubuntu22.04
+axisecp/acap-native-sdk:1.14-$(ARCH)-ubuntu22.04
 
 ## Verbs
 ## =====
@@ -105,9 +105,12 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 ## Check that all crates can be built
 check_build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	cargo build \
+		--exclude consume_analytics_metadata \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
+		--exclude mdb \
+		--exclude mdb-sys \
 		--workspace
 	cross build \
 		--target aarch64-unknown-linux-gnu \
@@ -142,9 +145,12 @@ check_lint:
 	RUSTFLAGS="-Dwarnings" cargo clippy \
 		--all-targets \
 		--no-deps \
+		--exclude consume_analytics_metadata \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
+		--exclude mdb \
+		--exclude mdb-sys \
 		--workspace
 	RUSTFLAGS="-Dwarnings" cross clippy \
 		--all-targets \
@@ -156,9 +162,12 @@ check_lint:
 ## _
 check_tests:
 	cargo test \
+			--exclude consume_analytics_metadata \
 			--exclude licensekey \
 			--exclude licensekey-sys \
 			--exclude licensekey_handler \
+			--exclude mdb \
+			--exclude mdb-sys \
 			--workspace
 .PHONY: check_tests
 
