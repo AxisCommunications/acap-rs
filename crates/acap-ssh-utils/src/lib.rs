@@ -1,12 +1,12 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader, Read, Write},
+    path::{Path, PathBuf},
+    process::Stdio,
 };
 
-use std::path::Path;
-
+use anyhow::bail;
 use log::{debug, warn};
-
 use url::Host;
 
 fn sshpass(pass: &str, program: &str) -> std::process::Command {
@@ -117,7 +117,18 @@ impl Drop for RemoteTemporaryFile {
         }
     }
 }
-fn run_as_self(
+/// Run executable on device
+///
+/// `user` and `pass` are the credentials to use for the ssh connection.
+/// `host` is the device to connect to.
+/// `prog` is the path to the executable to run.
+/// `env` is a map of environment variables to override on the remote host.
+///
+/// The function assumes that the user has already
+/// - enabled SSH on the device,
+/// - configured the SSH user with a password and the necessary permissions, and
+/// - stopped the app.
+pub fn run_as_self(
     prog: &Path,
     user: &str,
     pass: &str,
@@ -138,23 +149,24 @@ fn run_as_self(
     Ok(())
 }
 
-fn run_as_package(
-    prog: &Path,
+/// Run ACAP app on device in a realistic manner.
+///
+/// `user` and `pass` are the credentials to use for the ssh connection.
+/// `host` is the device to connect to.
+/// `package` is the name of the ACAP app to emulate.
+/// `env` is a map of environment variables to override on the remote host.
+///
+/// The function assumes that the user has already
+/// - enabled SSH on the device,
+/// - configured the SSH user with a password and the necessary permissions, and
+/// - stopped the app.
+pub fn run_as_package(
     user: &str,
     pass: &str,
     host: &Host,
     package: &str,
     env: HashMap<&str, &str>,
 ) -> anyhow::Result<()> {
-    scp(
-        prog,
-        user,
-        pass,
-        host,
-        &format!("/usr/local/packages/{package}/{package}"),
-    )
-    .run_with_logged_stdout()?;
-
     let mut cd = std::process::Command::new("cd");
     cd.arg(format!("/usr/local/packages/{package}"));
 
@@ -182,28 +194,81 @@ fn run_as_package(
     Ok(())
 }
 
-/// Run executable on device, optionally emulating the context of an ACAP app.
+/// Update ACAP app on device without installing it
 ///
-/// `user` and `pass` are the credentials to use for the ssh connection.
-/// `host` is the device to connect to.
-/// `prog` is the path to the executable to run.
-/// `package` is the name of the ACAP app to emulate.
-/// `env` is a map of environment variables to override on the remote host.
+/// - `current_dir` is the absolute dir assumed to prefix relative `paths`
+/// - `paths` is a mapping `dst -> src` specifying how to update the app.
+/// - `user` and `pass` are the credentials to use for the ssh connection.
+/// - `host` is the device to connect to.
+/// - `package` is the name of the ACAP app to patch.
+///
+/// When specifying `paths`
+/// - `dst` must be a relative path where the base is the package dir
+/// - `src` can be
+///     - an absolute path,
+///     - a relative path (the base is assumed to be `current_dir`), or
+///     - `None` (the path is assumed to be the same as `dst`, but with `current_dir` as base).
 ///
 /// The function assumes that the user has already
-/// - enabled SSH on the device, and
-/// - configured the SSH user with a password and the necessary permissions.
-pub fn run(
+/// - enabled SSH on the device,
+/// - configured the SSH user with a password and the necessary permissions, and
+/// - stopped the app.
+pub fn sync_package(
+    current_dir: &Path,
+    paths: HashMap<PathBuf, Option<PathBuf>>,
     user: &str,
     pass: &str,
     host: &Host,
-    prog: &Path,
-    package: Option<&str>,
-    env: HashMap<&str, &str>,
-) -> anyhow::Result<()> {
-    if let Some(package) = package {
-        run_as_package(prog, user, pass, host, package, env)
-    } else {
-        run_as_self(prog, user, pass, host, env)
+    package: &str,
+) -> anyhow::Result<HashMap<PathBuf, PathBuf>> {
+    let package_dir = PathBuf::from("/usr/local/packages").join(package);
+    let mut ar = tar::Builder::new(Vec::new());
+
+    let mut copied = HashMap::new();
+    for (to, from) in paths {
+        assert!(to.is_relative());
+        let from_abs = if let Some(from) = from {
+            if from.is_relative() {
+                current_dir.join(from)
+            } else {
+                from
+            }
+        } else {
+            current_dir.join(&to)
+        };
+
+        if from_abs.is_dir() {
+            debug!("Appending dir {from_abs:?}");
+            ar.append_dir_all(&to, &from_abs)?;
+        } else {
+            debug!("Appending reg {from_abs:?}");
+            ar.append_file(&to, &mut std::fs::File::open(&from_abs)?)?;
+        }
+        copied.insert(to, from_abs);
     }
+    // TODO: Copy only files that have a more recent `mtime` locally
+    let mut ssh_tar = ssh(user, pass, host);
+    ssh_tar.args(["tar", "-xvC", package_dir.to_str().unwrap()]);
+
+    ssh_tar.stdin(Stdio::piped());
+    ssh_tar.stdout(Stdio::piped());
+    debug!("Spawning {ssh_tar:#?}");
+    let mut child = ssh_tar.spawn()?;
+
+    child.stdin.take().unwrap().write_all(&ar.into_inner()?)?;
+
+    let stdout = child.stdout.take().unwrap();
+    for line in BufReader::new(stdout).lines() {
+        let line = line?;
+        if !line.is_empty() {
+            debug!("Child said {line:?}");
+        }
+    }
+
+    debug!("Waiting for child");
+    let status = child.wait()?;
+    if !status.success() {
+        bail!("Child failed {status}");
+    }
+    Ok(copied)
 }
