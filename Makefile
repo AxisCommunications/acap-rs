@@ -127,6 +127,10 @@ check_docs:
 
 ## _
 check_format:
+	find apps crates -name '*.rs' \
+	| xargs rustfmt --check \
+		--config imports_granularity=Crate \
+		--config group_imports=StdExternalCrate
 	cargo fmt --check
 .PHONY: check_format
 
@@ -167,6 +171,10 @@ check_tests:
 
 ## _
 fix_format:
+	find apps crates -name '*.rs' \
+	| xargs rustfmt \
+		--config imports_granularity=Crate \
+		--config group_imports=StdExternalCrate
 	cargo fmt
 .PHONY: fix_format
 

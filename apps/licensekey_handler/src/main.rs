@@ -1,8 +1,11 @@
 //! A simple example application demonstrating how the licensekey crate may be used
 
+use std::{
+    ffi::{CStr, CString},
+    os::unix::ffi::OsStrExt,
+};
+
 use log::{info, warn};
-use std::ffi::{CStr, CString};
-use std::os::unix::ffi::OsStrExt;
 
 mod app_logging;
 
