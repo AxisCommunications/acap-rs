@@ -16,6 +16,7 @@ syslog = "6.1.1"
 thiserror = "1.0.57"
 
 licensekey = { path = "crates/licensekey" }
+app-logging = { path = "crates/app-logging" }
 
 [workspace.package]
 edition = "2021"
