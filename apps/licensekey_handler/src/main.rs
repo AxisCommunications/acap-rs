@@ -4,8 +4,6 @@ use log::{info, warn};
 use std::ffi::{CStr, CString};
 use std::os::unix::ffi::OsStrExt;
 
-mod app_logging;
-
 const APP_ID: i32 = 0;
 const MAJOR_VERSION: i32 = 1;
 const MINOR_VERSION: i32 = 0;

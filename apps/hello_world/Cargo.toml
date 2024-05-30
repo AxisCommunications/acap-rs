@@ -5,5 +5,5 @@ edition.workspace = true
 
 [dependencies]
 log = { workspace = true }
-env_logger = { workspace = true }
-syslog = { workspace = true }
+
+app-logging = { workspace = true }
