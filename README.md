@@ -64,6 +64,7 @@ Reasonable complaints
 * Unaware of the ACAP manifest.
   * Does not validate the ACAP manifest.
   * Requires information to be duplicated in `Cargo.toml` if the ACAP manifest is to be used.
+  * Does not use dynamic user.
 * Requires Docker
   * Cannot easily be used from within a Docker container.
 * The default docker image cannot be used to link the ACAP SDK APIs.
