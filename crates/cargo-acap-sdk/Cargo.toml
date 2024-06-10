@@ -1,0 +1,18 @@
+[package]
+name = "cargo-acap-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.79"
+clap = { version = "4.5.1", features = ["derive"] }
+clap_complete = "4.5.2"
+env_logger = "0.11.1"
+libc = "0.2.152"
+log = "0.4.17"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+acap-ssh-utils = { path = "../acap-ssh-utils" }
+url = "2.5.0"
+home = "0.5.9"
+dirs = "5.0.1"

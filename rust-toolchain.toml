@@ -1,3 +1,4 @@
 [toolchain]
+# Keep `channel` in sync with Dockerfile
 channel = "1.75.0"
 components = ["cargo", "clippy", "rustfmt"]

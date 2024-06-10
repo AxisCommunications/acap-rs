@@ -19,8 +19,10 @@ RUN apt-get update \
  && apt-get install -y \
     build-essential \
     clang \
+    curl \
     g++-aarch64-linux-gnu \
     g++-arm-linux-gnueabihf \
+    inetutils-ping \
     pkg-config \
     python3-jsonschema \
     wget \
@@ -30,12 +32,21 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 
-COPY docker/install_rust.sh rust-toolchain.toml ./
-RUN ./install_rust.sh \
+# Keep `--default-toolchain` in sync with `rutst-toolchain.toml::toolchain.channel
+RUN wget "https://static.rust-lang.org/rustup/archive/1.26.0/x86_64-unknown-linux-gnu/rustup-init" \
+ && echo "0b2f6c8f85a3d02fde2efc0ced4657869d73fccfce59defb4e8d29233116e6db rustup-init" | sha256sum -c - \
+ && chmod +x rustup-init \
+ && ./rustup-init \
+      --default-host x86_64-unknown-linux-gnu \
+      --default-toolchain 1.75.0 \
+      --no-modify-path \
+      --profile minimal \
+      -y \
+ && rm rustup-init \
+ && chmod -R a+w $RUSTUP_HOME $CARGO_HOME \
  && rustup target add \
     aarch64-unknown-linux-gnu \
-    thumbv7neon-unknown-linux-gnueabihf \
- && rm install_rust.sh rust-toolchain.toml
+    thumbv7neon-unknown-linux-gnueabihf
 
 ENV \
     SYSROOT_AARCH64=/opt/axis/acapsdk/sysroots/aarch64 \

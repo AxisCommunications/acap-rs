@@ -93,5 +93,6 @@ fn main() -> anyhow::Result<()> {
             .iter()
             .map(|(k, v)| (k.as_str(), v.as_str()))
             .collect(),
+        &[],
     )
 }

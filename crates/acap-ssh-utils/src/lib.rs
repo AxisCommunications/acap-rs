@@ -134,6 +134,7 @@ pub fn run_as_self(
     pass: &str,
     host: &Host,
     env: HashMap<&str, &str>,
+    args: &[&str],
 ) -> anyhow::Result<()> {
     let temp_file = RemoteTemporaryFile::try_new(user, pass, host)?;
 
@@ -141,6 +142,7 @@ pub fn run_as_self(
 
     let mut exec = std::process::Command::new(&temp_file.path);
     exec.envs(env);
+    exec.args(args);
 
     let mut ssh_exec = ssh(user, pass, host);
     ssh_exec.arg(format!("{exec:?}"));
@@ -166,6 +168,7 @@ pub fn run_as_package(
     host: &Host,
     package: &str,
     env: HashMap<&str, &str>,
+    args: &[&str],
 ) -> anyhow::Result<()> {
     let mut cd = std::process::Command::new("cd");
     cd.arg(format!("/usr/local/packages/{package}"));
@@ -174,6 +177,7 @@ pub fn run_as_package(
     // TODO: Consider setting more environment variables
     exec.env("G_SLICE", "always-malloc");
     exec.envs(env);
+    exec.args(args);
 
     let mut exec_as_package = std::process::Command::new("su");
     exec_as_package.args(["--shell", "/bin/sh"]);
