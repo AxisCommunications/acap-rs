@@ -15,5 +15,5 @@ jobs:
         run: cargo install cross
       - name: Run checks
         run: |
-          make check_all
+          make --always-make check_all
           PACKAGE=licensekey_handler make build

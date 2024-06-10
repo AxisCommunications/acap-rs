@@ -78,6 +78,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25bdb32cbbdce2b519a9cd7df3a678443100e265d5e25ca763b7572a5104f5f3"
 
 [[package]]
+name = "app-logging"
+version = "0.0.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "syslog",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.69.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -280,9 +289,9 @@ dependencies = [
 
 [[package]]
 name = "glib-sys"
-version = "0.19.0"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "630f097773d7c7a0bb3258df4e8157b47dc98bbfa0e60ad9ab56174813feced4"
+checksum = "767d23ead9bbdfcbb1c2242c155c8128a7d13dde7bf69c176f809546135e2282"
 dependencies = [
  "libc",
  "system-deps",
@@ -310,9 +319,8 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 name = "hello_world"
 version = "1.0.0"
 dependencies = [
- "env_logger",
+ "app-logging",
  "log",
- "syslog",
 ]
 
 [[package]]
@@ -426,10 +434,9 @@ dependencies = [
 name = "licensekey_handler"
 version = "1.0.0"
 dependencies = [
- "env_logger",
+ "app-logging",
  "licensekey",
  "log",
- "syslog",
 ]
 
 [[package]]
@@ -644,9 +651,9 @@ dependencies = [
 
 [[package]]
 name = "syslog"
-version = "6.1.0"
+version = "6.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7434e95bcccce1215d30f4bf84fe8c00e8de1b9be4fb736d747ca53d36e7f96f"
+checksum = "dfc7e95b5b795122fafe6519e27629b5ab4232c73ebb2428f568e82b1a457ad3"
 dependencies = [
  "error-chain",
  "hostname",
@@ -670,9 +677,9 @@ dependencies = [
 
 [[package]]
 name = "tar"
-version = "0.4.40"
+version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b16afcea1f22891c49a00c751c7b63b2233284064f11a200fc624137c51e2ddb"
+checksum = "cb797dad5fb5b76fcf519e702f4a589483b5ef06567f160c392832c1f5e44909"
 dependencies = [
  "filetime",
  "libc",

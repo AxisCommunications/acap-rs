@@ -51,8 +51,7 @@ build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
 
-## Copy bindings from the build directory to enable code completion
-copy_bindings: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+
 
 ## Install <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
 install:
@@ -102,7 +101,7 @@ sync_env:
 ## ------
 
 ## Run all other checks
-check_all: check_build check_docs check_format check_lint check_tests
+check_all: check_build check_docs check_format check_lint check_tests check_generated_files
 .PHONY: check_all
 
 ## Check that all crates can be built
@@ -121,13 +120,7 @@ check_build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 
 ## Check that docs can be built
 check_docs:
-	RUSTDOCFLAGS="-Dwarnings" cargo doc \
-		--document-private-items \
-		--no-deps \
-		--exclude licensekey \
-		--exclude licensekey-sys \
-		--exclude licensekey_handler \
-		--workspace
+	RUSTDOCFLAGS="-Dwarnings" cargo doc
 	RUSTDOCFLAGS="-Dwarnings" cross doc \
 		--document-private-items \
 		--exclude acap-ssh-utils \
@@ -140,6 +133,13 @@ check_docs:
 check_format:
 	cargo fmt --check
 .PHONY: check_format
+
+## Check that generated files are up to date
+check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+	git update-index -q --refresh
+	git --no-pager diff --exit-code HEAD -- $^
+.PHONY: check_generated_files
+
 
 ## _
 check_lint:
@@ -202,9 +202,16 @@ crates/%-sys/src/bindings.rs: FORCE
 # Use the `_envoy` file as a target because
 # * `.DELETE_ON_ERROR` does not work for directories, and
 # * the name of the `.eap` file is annoying to predict.
+# When building for all targets using a single image we cannot rely on wildcard matching.
+target/aarch64/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
+target/armv7hf/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
 target/%/$(PACKAGE)/_envoy: ARCH=$*
 target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
+ifeq (0, $(shell test -e /.dockerenv; echo $$?))
+	. /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
+else
 	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
+endif
 	touch $@
 
 target/%/$(PACKAGE)/manifest.json: apps/$(PACKAGE)/manifest.json
@@ -227,4 +234,8 @@ target/armv7hf/$(PACKAGE)/$(PACKAGE): target/thumbv7neon-unknown-linux-gnueabihf
 
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
 target/%/release/$(PACKAGE): FORCE
+ifeq (0, $(shell test -e /.dockerenv; echo $$?))
+	cargo -v build --release --target $* --package $(PACKAGE)
+else
 	cross -v build --release --target $* --package $(PACKAGE)
+endif

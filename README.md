@@ -9,6 +9,25 @@ _Easy and safe [ACAP] apps using [Rust]_
 
 ## Quickstart guide
 
+Build the `hello_world` example and create `.eap` files in the `target/acap/` directory like
+
+```sh
+docker build --tag acap-rs .
+docker run \
+  --interactive \
+  --rm \
+  --tty \
+  --user $(id -u):$(id -g) \
+  --volume $(pwd):$(pwd) \
+  --workdir $(pwd) \
+  acap-rs \
+  make build PACKAGE=hello_world
+```
+
+This works with any of the [example applications](#example-applications).
+
+## Advanced setup
+
 Ensure global prerequisites are installed:
 
 * Docker
@@ -23,15 +42,7 @@ source ./init_env.sh
 make sync_env
 ```
 
-Build the `hello_world` example and create `.eap` files in the `target/acap/` directory like
-
-```sh
-PACKAGE=hello_world make build
-```
-
-This works with any of the [example applications](#example-applications).
-
-Other important workflows are documented in the [Makefile](./Makefile) and can be listed with `make help`.
+Important workflows are documented in the [Makefile](./Makefile) and can now be listed with `make help`.
 
 ## Example applications
 
