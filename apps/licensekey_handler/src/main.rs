@@ -1,8 +1,11 @@
 //! A simple example application demonstrating how the licensekey crate may be used
 
+use std::{
+    ffi::{CStr, CString},
+    os::unix::ffi::OsStrExt,
+};
+
 use log::{info, warn};
-use std::ffi::{CStr, CString};
-use std::os::unix::ffi::OsStrExt;
 
 const APP_ID: i32 = 0;
 const MAJOR_VERSION: i32 = 1;
