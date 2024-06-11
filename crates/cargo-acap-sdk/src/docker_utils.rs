@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use anyhow::bail;
-use libc::{getegid, geteuid};
 
 use crate::{cargo_utils, command_utils::RunWith};
 
@@ -26,6 +25,25 @@ pub struct DockerOptions {
     /// Set environment variables
     #[arg(long)]
     docker_env: Vec<String>,
+}
+
+#[cfg(windows)]
+fn uid() -> u32 {
+    1000
+}
+
+#[cfg(not(windows))]
+fn uid() -> u32 {
+    unsafe { libc::geteuid() }
+}
+
+#[cfg(windows)]
+fn gid() -> u32 {
+    1000
+}
+#[cfg(not(windows))]
+fn gid() -> u32 {
+    unsafe { libc::getegid() }
 }
 
 impl DockerOptions {
@@ -80,8 +98,8 @@ impl DockerOptions {
             docker.args(["--interactive", "--tty"]);
         }
 
-        let uid = unsafe { geteuid() };
-        let gid = unsafe { getegid() };
+        let uid = uid();
+        let gid = gid();
         docker.args(["--user", &format!("{uid}:{gid}")]);
 
         let current_dir = current_dir.display().to_string();
