@@ -7,26 +7,7 @@ _Easy and safe [ACAP] apps using [Rust]_
 > While we strive to maintain it, there's no guarantee of ongoing support, and it may become unmaintained in the future.
 > Your contributions are appreciated, and feel free to fork and continue the journey if needed.
 
-## Quickstart guide
-
-Build the `hello_world` example and create `.eap` files in the `target/acap/` directory like
-
-```sh
-docker build --tag acap-rs .
-docker run \
-  --interactive \
-  --rm \
-  --tty \
-  --user $(id -u):$(id -g) \
-  --volume $(pwd):$(pwd) \
-  --workdir $(pwd) \
-  acap-rs \
-  make build PACKAGE=hello_world
-```
-
-This works with any of the [example applications](#example-applications).
-
-## Advanced setup
+## Setup
 
 Ensure global prerequisites are installed:
 
