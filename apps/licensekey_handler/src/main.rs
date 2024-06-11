@@ -33,3 +33,9 @@ fn main() {
         std::thread::sleep(std::time::Duration::from_secs(300));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn tautology() {}
+}
