@@ -197,7 +197,26 @@ crates/%-sys/src/bindings.rs: FORCE
 # Use the `_envoy` file as a target because
 # * `.DELETE_ON_ERROR` does not work for directories, and
 # * the name of the `.eap` file is annoying to predict.
+# When building for all targets using a single image we cannot rely on wildcard matching.
+target/aarch64/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
+target/armv7hf/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
 target/%/$(PACKAGE)/_envoy: ARCH=$*
+target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
+ifeq (0, $(shell test -e /.dockerenv; echo $$?))
+	. /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
+else
+	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
+endif
+	touch $@
+
+target/%/$(PACKAGE)/manifest.json: apps/$(PACKAGE)/manifest.json
+	mkdir -p $(dir $@)
+	cp $< $@
+
+target/%/$(PACKAGE)/LICENSE: apps/$(PACKAGE)/LICENSE
+	mkdir -p $(dir $@)
+	cp $< $@
+
 # The target triple and the name of the docker image do not match, so
 # at some point we need to map one to the other. It might as well be here.
 target/aarch64/$(PACKAGE)/_envoy: target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
@@ -212,5 +231,9 @@ target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENS
 
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
 target/%/release/$(PACKAGE): FORCE
+ifeq (0, $(shell test -e /.dockerenv; echo $$?))
+	cargo -v build --release --target $* --package $(PACKAGE)
+else
 	cross -v build --release --target $* --package $(PACKAGE)
+endif
 	touch $@ # This is a hack to make the `_envoy` target above always build
