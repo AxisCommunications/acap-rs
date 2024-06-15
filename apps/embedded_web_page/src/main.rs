@@ -4,6 +4,10 @@
 //! hence the empty main function.
 fn main() {}
 
+// TODO: Figure out how to resolve paths on host
+// It is not particularly interesting for this app, but once the reverse proxy example is added it
+// becomes feasible to serve the embedded web page also when testing on host.
+#[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
     use std::{env, path::PathBuf};
