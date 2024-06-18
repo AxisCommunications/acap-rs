@@ -89,7 +89,7 @@ run: target/$(ARCH)/$(PACKAGE)/$(PACKAGE)
 	acap-ssh-utils $(DEVICE_IP) --password $(PASS) patch-and-run \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
-		$(PACKAGE) $(PACKAGE):$<
+		$(PACKAGE) $<:$(PACKAGE)
 
 ## Install development dependencies
 sync_env:

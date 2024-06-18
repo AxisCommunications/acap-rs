@@ -39,9 +39,11 @@ enum Command {
 struct PatchAndRun {
     /// Name of app to patch and run as.
     package: String,
-    /// Paths to upload before uploading
+    /// Paths to upload before running.
+    ///
+    /// Specified like `[<src>:]<dst>`.
     #[arg(value_parser = parse_path_pair)]
-    paths: Vec<(String, Option<String>)>,
+    paths: Vec<(Option<String>, String)>,
     /// Environment variables to override on the remote host.
     ///
     /// Can be specified multiple times.
@@ -50,11 +52,11 @@ struct PatchAndRun {
     environment: Vec<(String, String)>,
 }
 
-fn parse_path_pair(s: &str) -> anyhow::Result<(String, Option<String>)> {
-    if let Some((dst, src)) = s.split_once(':') {
-        Ok((dst.to_string(), Some(src.to_string())))
+fn parse_path_pair(s: &str) -> anyhow::Result<(Option<String>, String)> {
+    if let Some((src, dst)) = s.split_once(':') {
+        Ok((Some(src.to_string()), dst.to_string()))
     } else {
-        Ok((s.to_string(), None))
+        Ok((None, s.to_string()))
     }
 }
 
@@ -77,7 +79,7 @@ fn main() -> anyhow::Result<()> {
         &std::env::current_dir().unwrap_or_default(),
         paths
             .into_iter()
-            .map(|(k, v)| (PathBuf::from(k), v.map(PathBuf::from)))
+            .map(|(src, dst)| (PathBuf::from(dst), src.map(PathBuf::from)))
             .collect(),
         &cli.username,
         &cli.password,
