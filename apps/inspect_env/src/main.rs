@@ -1,7 +1,8 @@
 //! A simple app that inspects the environment it runs in
 
+use std::{collections::HashMap, env, io::IsTerminal};
+
 use log::info;
-use std::{collections::HashMap, env};
 
 fn main() {
     app_logging::init_logger();
@@ -10,13 +11,15 @@ fn main() {
     info!("current_dir: {:?}", env::current_dir());
     info!("current_exe: {:?}", env::current_exe());
     info!("temp_dir: {:?}", env::temp_dir());
+    info!("stdin is terminal: {}", std::io::stdin().is_terminal());
+    info!("stdout is terminal: {}", std::io::stdout().is_terminal());
+    info!("stderr is terminal: {}", std::io::stderr().is_terminal());
 }
 
 #[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
-    use std::env;
-    use std::path::PathBuf;
+    use std::{env, path::PathBuf};
 
     // None of these are officially guaranteed by the ACAP framework,
     // but they seem to work in practice.
