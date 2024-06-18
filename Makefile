@@ -86,10 +86,10 @@ stop:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 run: target/$(ARCH)/$(PACKAGE)/$(PACKAGE)
-	acap-ssh-utils $(DEVICE_IP) --password $(PASS) run \
+	acap-ssh-utils $(DEVICE_IP) --password $(PASS) patch-and-run \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
-		$< $(PACKAGE)
+		$(PACKAGE) $(PACKAGE):$<
 
 ## Install development dependencies
 sync_env:
