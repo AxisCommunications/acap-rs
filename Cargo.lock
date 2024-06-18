@@ -370,6 +370,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "inspect_env"
+version = "1.0.0"
+dependencies = [
+ "app-logging",
+ "log",
+]
+
+[[package]]
 name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
