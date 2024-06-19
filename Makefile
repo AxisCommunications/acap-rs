@@ -40,6 +40,7 @@ DOCKER_RUN = docker run \
 --user $(shell id -u):$(shell id -g) \
 axisecp/acap-native-sdk:1.12-$(ARCH)-ubuntu22.04
 
+
 ## Verbs
 ## =====
 
@@ -50,8 +51,6 @@ help:
 build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
-
-
 
 ## Install <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
 install:
@@ -125,7 +124,7 @@ check_docs:
 		--workspace
 .PHONY: check_docs
 
-## _
+## Check that the code is formatted correctly
 check_format:
 	cargo fmt --check
 .PHONY: check_format
@@ -136,8 +135,7 @@ check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/)
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
 
-
-## _
+## Check that the code is free of lints
 check_lint:
 	RUSTFLAGS="-Dwarnings" cargo clippy \
 		--all-targets \
@@ -165,12 +163,12 @@ check_tests:
 ## Fixes
 ## -----
 
-## _
+## Attempt to fix formatting automatically
 fix_format:
 	cargo fmt
 .PHONY: fix_format
 
-## _
+## Attempt to fix lints automatically
 fix_lint:
 	cargo clippy --fix
 .PHONY: fix_lint
