@@ -7,7 +7,7 @@ const TOPIC: &CStr = c"com.axis.analytics_scene_description.v0.beta";
 const SOURCE: &CStr = c"1";
 
 fn main() {
-    app_logging::init_logger();
+    acap_logging::init_logger();
 
     let connection = Connection::try_new(Some(Box::new(|e| {
         error!("Not connected because {e:?}");

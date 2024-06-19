@@ -1,9 +1,0 @@
-[package]
-name = "app-logging"
-version = "0.0.0"
-edition.workspace = true
-
-[dependencies]
-log = { workspace = true }
-env_logger = { workspace = true }
-syslog = { workspace = true }
