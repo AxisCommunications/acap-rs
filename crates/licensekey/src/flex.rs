@@ -123,9 +123,11 @@ pub fn licensekey_get_state_string(state_code: c_int) -> Option<CString> {
 #[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use licensekey_sys::LicenseKeyState;
     use std::ffi::CString;
+
+    use licensekey_sys::LicenseKeyState;
+
+    use super::*;
 
     #[test]
     fn licensekey_verify_does_not_panic() {

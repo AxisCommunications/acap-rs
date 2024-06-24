@@ -40,6 +40,7 @@ DOCKER_RUN = docker run \
 --user $(shell id -u):$(shell id -g) \
 axisecp/acap-native-sdk:1.12-$(ARCH)-ubuntu22.04
 
+
 ## Verbs
 ## =====
 
@@ -50,8 +51,6 @@ help:
 build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
-
-
 
 ## Install <PACKAGE> on <DEVICE_IP> using password <PASS> and assuming architecture <ARCH>
 install:
@@ -125,7 +124,7 @@ check_docs:
 		--workspace
 .PHONY: check_docs
 
-## _
+## Check that the code is formatted correctly
 check_format:
 	cargo fmt --check
 .PHONY: check_format
@@ -136,8 +135,7 @@ check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/)
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
 
-
-## _
+## Check that the code is free of lints
 check_lint:
 	RUSTFLAGS="-Dwarnings" cargo clippy \
 		--all-targets \
@@ -165,12 +163,12 @@ check_tests:
 ## Fixes
 ## -----
 
-## _
+## Attempt to fix formatting automatically
 fix_format:
 	cargo fmt
 .PHONY: fix_format
 
-## _
+## Attempt to fix lints automatically
 fix_lint:
 	cargo clippy --fix
 .PHONY: fix_lint
@@ -197,9 +195,16 @@ crates/%-sys/src/bindings.rs: FORCE
 # Use the `_envoy` file as a target because
 # * `.DELETE_ON_ERROR` does not work for directories, and
 # * the name of the `.eap` file is annoying to predict.
+# When building for all targets using a single image we cannot rely on wildcard matching.
+target/aarch64/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
+target/armv7hf/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
 target/%/$(PACKAGE)/_envoy: ARCH=$*
 target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
+ifeq (0, $(shell test -e /.dockerenv; echo $$?))
+	. /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
+else
 	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
+endif
 	touch $@
 
 target/%/$(PACKAGE)/manifest.json: apps/$(PACKAGE)/manifest.json
@@ -212,14 +217,21 @@ target/%/$(PACKAGE)/LICENSE: apps/$(PACKAGE)/LICENSE
 
 # The target triple and the name of the docker image do not match, so
 # at some point we need to map one to the other. It might as well be here.
-target/aarch64/$(PACKAGE)/$(PACKAGE): target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
-	mkdir -p $(dir $@)
-	cp $< $@
-
-target/armv7hf/$(PACKAGE)/$(PACKAGE): target/thumbv7neon-unknown-linux-gnueabihf/release/$(PACKAGE)
-	mkdir -p $(dir $@)
-	cp $< $@
+target/aarch64/$(PACKAGE)/_envoy: target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
+target/armv7hf/$(PACKAGE)/_envoy: target/thumbv7neon-unknown-linux-gnueabihf/release/$(PACKAGE)
+target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENSE $(wildcard apps/$(PACKAGE)/otherfiles/*)
+	# Make sure we don't include any obsolete files in the `.eap`
+	if [ -d $(@D) ]; then rm -r $(@D); fi
+	mkdir -p $(@D)
+	cp -r $^ $(@D)
+	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
+	touch $@
 
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
 target/%/release/$(PACKAGE): FORCE
+ifeq (0, $(shell test -e /.dockerenv; echo $$?))
+	cargo -v build --release --target $* --package $(PACKAGE)
+else
 	cross -v build --release --target $* --package $(PACKAGE)
+endif
+	touch $@ # This is a hack to make the `_envoy` target above always build
