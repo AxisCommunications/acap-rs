@@ -199,13 +199,23 @@ crates/%-sys/src/bindings.rs: FORCE
 target/aarch64/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
 target/armv7hf/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
 target/%/$(PACKAGE)/_envoy: ARCH=$*
-target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
+target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/lib target/%/$(PACKAGE)/html target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
 ifeq (0, $(shell test -e /.dockerenv; echo $$?))
 	. /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
 else
 	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
 endif
 	touch $@
+
+target/%/$(PACKAGE)/html: FORCE
+	mkdir -p $(dir $@)
+	if [ -d $@ ]; then rm -r $@; fi
+	if [ -d apps/$(PACKAGE)/html ]; then cp -r apps/$(PACKAGE)/html $@; fi
+
+target/%/$(PACKAGE)/lib: FORCE
+	mkdir -p $(dir $@)
+	if [ -d $@ ]; then rm -r $@; fi
+	if [ -d apps/$(PACKAGE)/lib ]; then cp -r apps/$(PACKAGE)/lib $@; fi
 
 target/%/$(PACKAGE)/manifest.json: apps/$(PACKAGE)/manifest.json
 	mkdir -p $(dir $@)
@@ -217,17 +227,13 @@ target/%/$(PACKAGE)/LICENSE: apps/$(PACKAGE)/LICENSE
 
 # The target triple and the name of the docker image do not match, so
 # at some point we need to map one to the other. It might as well be here.
-target/aarch64/$(PACKAGE)/_envoy: target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
-target/armv7hf/$(PACKAGE)/_envoy: target/thumbv7neon-unknown-linux-gnueabihf/release/$(PACKAGE)
-target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENSE
-	# Make sure we don't include any obsolete files in the `.eap`
-	if [ -d $(@D) ]; then rm -r $(@D); fi
-	mkdir -p $(@D)
-	if [ -d  apps/$(PACKAGE)/html ]; then cp -r apps/$(PACKAGE)/html $(@D); fi
-	if [ -d  apps/$(PACKAGE)/lib ]; then cp -r apps/$(PACKAGE)/lib $(@D); fi
-	cp -r $^ $(@D)
-	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
-	touch $@
+target/aarch64/$(PACKAGE)/$(PACKAGE): target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
+	mkdir -p $(dir $@)
+	cp $< $@
+
+target/armv7hf/$(PACKAGE)/$(PACKAGE): target/thumbv7neon-unknown-linux-gnueabihf/release/$(PACKAGE)
+	mkdir -p $(dir $@)
+	cp $< $@
 
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
 target/%/release/$(PACKAGE): FORCE
