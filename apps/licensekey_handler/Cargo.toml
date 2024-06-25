@@ -6,5 +6,5 @@ edition.workspace = true
 [dependencies]
 log = { workspace = true }
 
-licensekey = { workspace = true }
 app-logging = { workspace = true }
+licensekey = { workspace = true }
