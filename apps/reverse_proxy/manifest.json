@@ -8,6 +8,12 @@
             "version": "1.0.0"
         },
         "configuration": {
+            "httpConfig": [
+                {
+                    "access": "viewer",
+                    "type": "directory"
+                }
+            ],
             "reverseProxy": [
                 {
                     "apiPath": "api/admin",

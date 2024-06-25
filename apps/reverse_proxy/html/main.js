@@ -1,42 +1,32 @@
-function update_auth() {
-    const url = '/local/reverse_proxy/api/admin/whoami';
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.text();
-        })
-        .then(data => {
-            document.getElementById('authentication').innerText = 'Authenticated as ' + data;
-        })
-        .catch(error => {
-            document.getElementById('authentication').innerText = 'Error: ' + error;
-        });
+async function update_auth() {
+    const requested_policy = document.getElementById('requested_policy').value
+    const url = `/local/reverse_proxy/api/${requested_policy}/whoami`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error('Network response was not ok ' + response.statusText);
+    }
+    const confirmed_policy = await response.text();
+    document.getElementById('confirmed_policy').innerText = `Confirmed policy: ${confirmed_policy}.`;
 }
 
 function update_time() {
-    const url =
-        (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
-        window.location.host +
-        '/local/reverse_proxy/api/admin/ws';
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.host;
+    const url = `${protocol}://${host}/local/reverse_proxy/api/anonymous/ws`;
     const socket = new WebSocket(url);
 
     socket.onmessage = function (event) {
         const timestamp = event.data;
-        document.getElementById('timestamp').innerText = 'The time is now ' + timestamp;
+        document.getElementById('timestamp').innerText = `The time is now ${timestamp}.`;
     };
 
     socket.onerror = function (error) {
-        document.getElementById('timestamp').innerText = 'WebSocket error: ' + error;
+        console.log(error)
     };
 
     socket.onclose = function () {
-        document.getElementById('timestamp').innerText = 'WebSocket connection closed';
+        console.log("WebSocket closed")
     };
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    update_auth()
-    update_time()
-});
+document.addEventListener('DOMContentLoaded', update_time);
