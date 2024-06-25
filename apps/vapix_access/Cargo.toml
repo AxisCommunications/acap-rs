@@ -1,0 +1,11 @@
+[package]
+name = "vapix_access"
+version = "1.0.0"
+edition.workspace = true
+
+[dependencies]
+log = { workspace = true }
+reqwest = { version = "0.12.4", default-features = false }
+tokio = { version = "1.38.0", features = ["rt", "rt-multi-thread", "macros"] }
+
+app-logging = { workspace = true }
