@@ -20,6 +20,7 @@ tokio =  "1.36.0"
 tower-http = "0.5.2"
 
 licensekey = { path = "crates/licensekey" }
+licensekey-sys = { path = "crates/licensekey-sys" }
 app-logging = { path = "crates/app-logging" }
 
 [workspace.package]
