@@ -28,6 +28,9 @@ PASS ?= pass
 # the target is up to date.
 .DELETE_ON_ERROR: ;
 
+# Don't remove intermediate files.
+.SECONDARY:
+
 # Prevent pesky default rules from creating unexpected dependency graphs.
 .SUFFIXES: ;
 
