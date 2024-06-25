@@ -219,10 +219,12 @@ target/%/$(PACKAGE)/LICENSE: apps/$(PACKAGE)/LICENSE
 # at some point we need to map one to the other. It might as well be here.
 target/aarch64/$(PACKAGE)/_envoy: target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
 target/armv7hf/$(PACKAGE)/_envoy: target/thumbv7neon-unknown-linux-gnueabihf/release/$(PACKAGE)
-target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENSE $(wildcard apps/$(PACKAGE)/otherfiles/*)
+target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENSE
 	# Make sure we don't include any obsolete files in the `.eap`
 	if [ -d $(@D) ]; then rm -r $(@D); fi
 	mkdir -p $(@D)
+	if [ -d  apps/$(PACKAGE)/html ]; then cp -r apps/$(PACKAGE)/html $(@D); fi
+	if [ -d  apps/$(PACKAGE)/lib ]; then cp -r apps/$(PACKAGE)/lib $(@D); fi
 	cp -r $^ $(@D)
 	$(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
 	touch $@
