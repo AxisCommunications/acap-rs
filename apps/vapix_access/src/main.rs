@@ -2,7 +2,6 @@
 
 use std::{
     collections::HashMap,
-    env,
     io::Read,
     process::{Command, Stdio},
     time::Instant,
