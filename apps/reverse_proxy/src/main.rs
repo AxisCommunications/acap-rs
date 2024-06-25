@@ -18,7 +18,7 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -27,19 +27,19 @@ const APP_NAME: &str = "reverse_proxy";
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-enum Scope {
+enum AccessPolicy {
     Admin,
     Operator,
     Viewer,
     Anonymous,
 }
 
-async fn whoami(Path(scope): Path<Scope>) -> impl IntoResponse {
-    match scope {
-        Scope::Admin => "admin",
-        Scope::Operator => "operator",
-        Scope::Viewer => "viewer",
-        Scope::Anonymous => "anonymous",
+async fn whoami(Path(policy): Path<AccessPolicy>) -> impl IntoResponse {
+    match policy {
+        AccessPolicy::Admin => "admin",
+        AccessPolicy::Operator => "operator",
+        AccessPolicy::Viewer => "viewer",
+        AccessPolicy::Anonymous => "anonymous",
     }
 }
 
@@ -85,8 +85,11 @@ async fn discard_inbound(mut stream: SplitStream<WebSocket>) {
 
 fn new_app() -> Router {
     let app = Router::new()
-        .route(&format!("/local/{APP_NAME}/api/:scope/whoami"), get(whoami))
-        .route(&format!("/local/{APP_NAME}/api/:scope/ws"), get(ws));
+        .route(
+            &format!("/local/{APP_NAME}/api/:policy/whoami"),
+            get(whoami),
+        )
+        .route(&format!("/local/{APP_NAME}/api/:policy/ws"), get(ws));
 
     // No Axis devices are x86_64, so as long as this continues to be the case this will not be
     // erroneously included. However, even though the SDK only supports x86_64 hosts, this app
