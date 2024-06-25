@@ -8,7 +8,7 @@ function update_auth() {
             return response.text();
         })
         .then(data => {
-            document.getElementById('authentication').innerText = `Authenticated as ${data}`;
+            document.getElementById('authentication').innerText = 'Authenticated as ' + data;
         })
         .catch(error => {
             document.getElementById('authentication').innerText = 'Error: ' + error;
@@ -17,14 +17,14 @@ function update_auth() {
 
 function update_time() {
     const url =
-        (window.location.protocol === "https:" ? "wss://" : "ws://") +
+        (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
         window.location.host +
-        "/local/reverse_proxy/api/admin/ws";
+        '/local/reverse_proxy/api/admin/ws';
     const socket = new WebSocket(url);
 
     socket.onmessage = function (event) {
         const timestamp = event.data;
-        document.getElementById('timestamp').innerText = `The time is now ${timestamp}.`;
+        document.getElementById('timestamp').innerText = 'The time is now ' + timestamp;
     };
 
     socket.onerror = function (error) {
