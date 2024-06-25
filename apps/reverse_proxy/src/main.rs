@@ -101,7 +101,7 @@ fn new_app() -> Router {
         use tower_http::services::ServeDir;
         app.nest_service(
             &format!("/local/{APP_NAME}"),
-            ServeDir::new(format!("apps/{APP_NAME}/otherfiles/html")),
+            ServeDir::new(format!("apps/{APP_NAME}/html")),
         )
     };
 
