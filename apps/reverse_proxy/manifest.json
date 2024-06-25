@@ -23,8 +23,14 @@
                     "apiPath": "api/viewer",
                     "target": "http://localhost:2001",
                     "access": "viewer"
+                },
+                {
+                    "apiPath": "api/anonymous",
+                    "target": "http://localhost:2001",
+                    "access": "anonymous"
                 }
-            ]
+            ],
+            "settingPage": "index.html"
         }
     }
 }
