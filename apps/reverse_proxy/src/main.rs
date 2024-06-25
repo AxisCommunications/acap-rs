@@ -111,7 +111,8 @@ fn new_app() -> Router {
 async fn main() {
     app_logging::init_logger();
     let app = new_app();
-    debug!("Serving using TCP");
+    // Unwrap is OK because if we cannot start the web server then there is nothing useful the app
+    // can do, so exiting is appropriate.
     let listener = tokio::net::TcpListener::bind("127.0.0.1:2001")
         .await
         .unwrap();
