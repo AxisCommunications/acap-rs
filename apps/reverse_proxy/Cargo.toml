@@ -10,7 +10,7 @@ env_logger = { workspace = true }
 futures = "0.3.30"
 syslog = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tower-http = { workspace = true, features = ["trace"] }
+tower-http = { workspace = true, features = ["fs", "trace"] }
 serde = { workspace = true, features = ["derive"] }
 
 app-logging = { workspace = true }

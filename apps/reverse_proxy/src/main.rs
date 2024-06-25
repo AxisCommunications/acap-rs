@@ -75,12 +75,27 @@ async fn discard_inbound(mut stream: SplitStream<WebSocket>) {
 }
 
 fn new_app() -> Router {
-    Router::new()
+    let app = Router::new()
         .route(&format!("/local/{APP_NAME}/api/:scope/whoami"), get(whoami))
-        .route(&format!("/local/{APP_NAME}/api/:scope/ws"), get(ws))
-        .layer(
-            TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().include_headers(true)),
+        .route(&format!("/local/{APP_NAME}/api/:scope/ws"), get(ws));
+
+    // No Axis devices are x86_64, so as long as this continues to be the case this will not be
+    // erroneously included. However, even though the SDK only supports x86_64 hosts, this app
+    // does not depend on the C APIs and could be built without the SDK. If that is done one a
+    // host other than x86_64 this will be erroneously excluded.
+    // TODO: Find a more robust configuration
+    #[cfg(target_arch = "x86_64")]
+    let app = {
+        use tower_http::services::ServeDir;
+        app.nest_service(
+            &format!("/local/{APP_NAME}"),
+            ServeDir::new(format!("apps/{APP_NAME}/otherfiles/html")),
         )
+    };
+
+    app.layer(
+        TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().include_headers(true)),
+    )
 }
 
 #[tokio::main]
