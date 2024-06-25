@@ -1,17 +1,26 @@
 //! An example of how to run a webserver
 
-use axum::extract::ws::{Message, WebSocket};
-use axum::extract::WebSocketUpgrade;
-use axum::response::IntoResponse;
-use axum::{extract::Path, routing::get, Router};
-use futures::stream::{SplitSink, SplitStream};
-use futures::{SinkExt, StreamExt};
+use std::{
+    convert::Infallible,
+    time::{Duration, SystemTime},
+};
+
+use axum::{
+    extract::{
+        ws::{Message, WebSocket},
+        Path, WebSocketUpgrade,
+    },
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
+use futures::{
+    stream::{SplitSink, SplitStream},
+    SinkExt, StreamExt,
+};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
-use std::time::{Duration, SystemTime};
 use tokio::time::sleep;
-
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 const APP_NAME: &str = "reverse_proxy";
