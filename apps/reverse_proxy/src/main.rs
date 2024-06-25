@@ -5,7 +5,6 @@ use log::debug;
 use serde::Deserialize;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-mod app_logging;
 
 const ACAP_NAME: &str = "reverse_proxy";
 
