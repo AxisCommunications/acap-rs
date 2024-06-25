@@ -11,10 +11,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install dependencies
-        run: cargo install cross
-      - name: Run checks
+      - name: Install dev container dependencies
+        run: npm install -g @devcontainers/cli@0.65.0
+      - name: Run checks in dev container
         run: |
-          make --always-make check_all
-          PACKAGE=licensekey_handler make build
-          PACKAGE=embedded_web_page make build
+          devcontainer up --workspace-folder .
+          devcontainer exec --workspace-folder . make --always-make check_all
+          devcontainer exec --workspace-folder . make build PACKAGE=licensekey_handler
+          devcontainer exec --workspace-folder . make build PACKAGE=embedded_web_page
+      - name: Install host dependencies
+        run: cargo install cross
+      - name: Run checks on host
+        run: |
+          make check_all
