@@ -22,7 +22,7 @@ async fn list_parameters() -> HashMap<String, String> {
             "--method",
             "com.axis.HTTPConf1.VAPIXServiceAccounts1.GetCredentials",
         ])
-        .arg("testuser")
+        .arg("default")
         .stdout(Stdio::piped())
         .spawn()
         .unwrap();
