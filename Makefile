@@ -46,7 +46,8 @@ ACAP_BUILD = . /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build 
 CROSS := cargo
 
 # It doesn't matter which SDK is sourced for installing, but using a wildcard would fail since there are multiple in the container.
-EAP_INSTALL = . /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux && eap-install.sh $(DEVICE_IP) $(PASS) install
+EAP_INSTALL = cd $(CURDIR)/target/$(ARCH)/$(PACKAGE)/ \
+&& . /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux && eap-install.sh $(DEVICE_IP) $(PASS) $@
 
 # Use a containerized environment when running on host.
 else
@@ -61,7 +62,7 @@ ACAP_BUILD = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && aca
 
 CROSS := cross
 
-EAP_INSTALL = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(DEVICE_IP) $(PASS) install"
+EAP_INSTALL = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(DEVICE_IP) $(PASS) $@"
 
 endif
 
