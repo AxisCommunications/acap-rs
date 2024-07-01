@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Reverse Proxy</title>
+</head>
+<body>
+<div id="timestamp"></div>
+<label for="requested_policy">Requested policy:</label>
+<select id="requested_policy">
+    <option value="admin">Admin</option>
+    <option value="operator">Operator</option>
+    <option value="viewer">Viewer</option>
+    <option value="anonymous">Anonymous</option>
+</select>
+<button onclick="update_auth()">Test</button>
+<div id="confirmed_policy"></div>
+<script src="main.js"></script>
+</body>
+</html>
