@@ -12,7 +12,16 @@ To simply get started with a new app, please see [acap-rs-app-template](https://
 
 ## Quickstart guide
 
-Build the `hello_world` example and create `.eap` files in the `target/acap/` directory like
+The quickest way to build the `hello_world` example is to launch the dev container and run `make build PACKAGE=hello_world`.
+Once it completes there should be two `.eap` files in `target/acap`:
+
+```console
+$ ls -1 target/acap
+hello_world_1_0_0_aarch64.eap
+hello_world_1_0_0_armv7hf.eap
+```
+
+If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the app can be built using only `docker`:
 
 ```sh
 docker build --tag acap-rs .
