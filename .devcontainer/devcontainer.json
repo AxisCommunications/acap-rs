@@ -1,5 +1,5 @@
 {
-    "name": "acap-rs-app-template",
+    "name": "acap-rs",
     "build": {
         "dockerfile": "../Dockerfile",
         "context": ".."
