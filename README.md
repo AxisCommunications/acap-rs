@@ -7,9 +7,21 @@ _Easy and safe [ACAP] apps using [Rust]_
 > While we strive to maintain it, there's no guarantee of ongoing support, and it may become unmaintained in the future.
 > Your contributions are appreciated, and feel free to fork and continue the journey if needed.
 
+This repo is home to a mixture of developer tools, example apps, and library crates.
+To simply get started with a new app, please see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
+
 ## Quickstart guide
 
-Build the `hello_world` example and create `.eap` files in the `target/acap/` directory like
+The quickest way to build the `hello_world` example is to launch the dev container and run `make build PACKAGE=hello_world`.
+Once it completes there should be two `.eap` files in `target/acap`:
+
+```console
+$ ls -1 target/acap
+hello_world_1_0_0_aarch64.eap
+hello_world_1_0_0_armv7hf.eap
+```
+
+If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the app can be built using only `docker`:
 
 ```sh
 docker build --tag acap-rs .
@@ -33,6 +45,7 @@ Ensure global prerequisites are installed:
 * Docker
 * Rust e.g. [using rustup](https://www.rust-lang.org/tools/install)
 * Python e.g. using [pyenv](https://github.com/pyenv/pyenv)
+  * When using the system python on some versions of Debian and Ubuntu, it is necessary to `apt install python3-venv`.
 
 Create, activate and populate the local development environment like
 
