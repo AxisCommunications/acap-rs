@@ -18,7 +18,6 @@ Once it completes there should be two `.eap` files in `target/acap`:
 ```console
 $ ls -1 target/acap
 hello_world_1_0_0_aarch64.eap
-hello_world_1_0_0_armv7hf.eap
 ```
 
 If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the app can be built using only `docker`:

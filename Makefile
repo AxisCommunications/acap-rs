@@ -73,8 +73,8 @@ endif
 help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
-## Build <PACKAGE> for all architectures
-build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
+## Build <PACKAGE> for <ARCH>
+build: target/$(ARCH)/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
 
