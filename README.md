@@ -7,6 +7,9 @@ _Easy and safe [ACAP] apps using [Rust]_
 > While we strive to maintain it, there's no guarantee of ongoing support, and it may become unmaintained in the future.
 > Your contributions are appreciated, and feel free to fork and continue the journey if needed.
 
+This repo is home to a mixture of developer tools, example apps, and library crates.
+To simply get started with a new app, please see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
+
 ## Quickstart guide
 
 The quickest way to build the `hello_world` example is to launch the dev container and run `make build PACKAGE=hello_world`.
