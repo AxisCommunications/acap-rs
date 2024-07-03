@@ -16,6 +16,9 @@ use url::Host;
 
 use crate::acap::Manifest;
 
+// TODO: Investigate if a Rust library can be used to replace `sshpass`, `ssh`, `scp`.
+// This would make password handling easier and reduce the number of system dependencies that users
+// have to install.
 fn sshpass(pass: &str, program: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("sshpass");
     // TODO: Consider not passing the password as an argument
