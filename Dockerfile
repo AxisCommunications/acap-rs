@@ -2,7 +2,7 @@ ARG REPO=axisecp
 ARG SDK=acap-native-sdk
 ARG UBUNTU_VERSION=22.04
 ARG VERSION=1.14
-ARG BASE_IMAGE=debian:bookworm-20240423-slim
+ARG BASE_IMAGE=debian:bookworm-20240423
 
 FROM ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64
 FROM ${REPO}/${SDK}:${VERSION}-armv7hf-ubuntu${UBUNTU_VERSION} AS sdk-armv7hf
@@ -21,7 +21,9 @@ RUN apt-get update \
     clang \
     g++-aarch64-linux-gnu \
     g++-arm-linux-gnueabihf \
+    libglib2.0-dev \
     pkg-config \
+    iputils-ping \
     python3-jsonschema \
     wget \
  && rm -rf /var/lib/apt/lists/*
