@@ -65,14 +65,14 @@ trait RunWith {
 
 impl RunWith for std::process::Command {
     fn run_with_captured_stdout(mut self) -> anyhow::Result<String> {
-        self.stdout(std::process::Stdio::piped());
+        self.stdout(Stdio::piped());
         debug!("Spawning child {self:#?}...");
         let mut child = spawn(self)?;
         let mut stdout = child.stdout.take().unwrap();
         debug!("Waiting for child...");
         let status = child.wait()?;
         if !status.success() {
-            anyhow::bail!("Child failed: {status}");
+            bail!("Child failed: {status}");
         }
         let mut decoded = String::new();
         stdout.read_to_string(&mut decoded)?;
@@ -80,7 +80,7 @@ impl RunWith for std::process::Command {
     }
 
     fn run_with_logged_stdout(mut self: std::process::Command) -> anyhow::Result<()> {
-        self.stdout(std::process::Stdio::piped());
+        self.stdout(Stdio::piped());
         debug!("Spawning child {self:#?}...");
         let mut child = spawn(self)?;
         let stdout = child.stdout.take().unwrap();
@@ -96,7 +96,7 @@ impl RunWith for std::process::Command {
         debug!("Waiting for child...");
         let status = child.wait()?;
         if !status.success() {
-            anyhow::bail!("Child failed: {status}");
+            bail!("Child failed: {status}");
         }
         Ok(())
     }
@@ -105,7 +105,7 @@ impl RunWith for std::process::Command {
         debug!("Running command {self:#?}...");
         let status = self.status()?;
         if !status.success() {
-            anyhow::bail!("Child failed: {status}");
+            bail!("Child failed: {status}");
         }
         Ok(())
     }

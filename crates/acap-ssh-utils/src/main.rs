@@ -129,7 +129,7 @@ fn parse_env_pair(s: &str) -> anyhow::Result<(String, String)> {
 }
 
 fn main() -> anyhow::Result<()> {
-    let log_file = if std::env::var_os("RUST_LOG").is_none() {
+    let log_file = if env::var_os("RUST_LOG").is_none() {
         let dir = dirs::runtime_dir().unwrap_or(env::temp_dir());
         let path = dir.join("cargo-acap-sdk.log");
         let target = env_logger::Target::Pipe(Box::new(File::create(&path)?));
