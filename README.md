@@ -12,7 +12,7 @@ To simply get started with a new app, please see [acap-rs-app-template](https://
 
 ## Quickstart guide
 
-The quickest way to build the `hello_world` example is to launch the dev container and run `make build PACKAGE=hello_world`.
+The quickest way to build the `hello_world` example is to launch the dev container and run `make build AXIS_PACKAGE=hello_world`.
 Once it completes there should be two `.eap` files in `target/acap`:
 
 ```console
@@ -32,7 +32,7 @@ docker run \
   --volume $(pwd):$(pwd) \
   --workdir $(pwd) \
   acap-rs \
-  make build PACKAGE=hello_world
+  make build AXIS_PACKAGE=hello_world
 ```
 
 This works with any of the [example applications](#example-applications).
