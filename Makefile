@@ -7,7 +7,7 @@
 # Name of package containing the app to be built.
 # Rust does not enforce that the path to the package matches the package name, but
 # this makefile does to keep things simple.
-AXIS_PACKAGE ?= hello_world
+PACKAGE ?= hello_world
 
 # The architecture that will be assumed when interacting with the device.
 AXIS_DEVICE_ARCH ?= aarch64
@@ -36,7 +36,7 @@ FORCE:;
 .PHONY: FORCE
 
 DOCKER_RUN = docker run \
---volume ${CURDIR}/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/:/opt/app \
+--volume ${CURDIR}/target/$(AXIS_DEVICE_ARCH)/$(PACKAGE)/:/opt/app \
 --user $(shell id -u):$(shell id -g) \
 axisecp/acap-native-sdk:1.12-$(AXIS_DEVICE_ARCH)-ubuntu22.04
 
@@ -46,34 +46,34 @@ axisecp/acap-native-sdk:1.12-$(AXIS_DEVICE_ARCH)-ubuntu22.04
 help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
-## Build <AXIS_PACKAGE> for all architectures
-build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE)/_envoy
+## Build <PACKAGE> for all architectures
+build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	mkdir -p target/acap
 	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
 
 
 
-## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Install <PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
 	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) install" \
 	| grep -v '^to start your application type$$' \
 	| grep -v '^  eap-install.sh start$$'
 
-## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Remove <PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 remove:
 	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) remove"
 
-## Start <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Start <PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 start:
 	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) start" \
 	| grep -v '^to stop your application type$$' \
 	| grep -v '^  eap-install.sh stop$$'
 
-## Stop <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Stop <PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 stop:
 	@ $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) stop"
 
-## Build and run <AXIS_PACKAGE> directly on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
+## Build and run <PACKAGE> directly on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 ##
 ## Forwards the following environment variables to the remote process:
 ##
@@ -85,10 +85,10 @@ stop:
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-run: target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
-	scp $< root@$(AXIS_DEVICE_IP):/usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
+run: target/$(AXIS_DEVICE_ARCH)/$(PACKAGE)/$(PACKAGE)
+	scp $< root@$(AXIS_DEVICE_IP):/usr/local/packages/$(PACKAGE)/$(PACKAGE)
 	ssh root@$(AXIS_DEVICE_IP) \
-		"cd /usr/local/packages/$(AXIS_PACKAGE) && su - acap-$(AXIS_PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(AXIS_PACKAGE)'"
+		"cd /usr/local/packages/$(PACKAGE) && su - acap-$(PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(PACKAGE)'"
 
 ## Install development dependencies
 sync_env:
@@ -103,7 +103,7 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 .PHONY: check_all
 
 ## Check that all crates can be built
-check_build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE)/_envoy
+check_build: target/aarch64/$(PACKAGE)/_envoy target/armv7hf/$(PACKAGE)/_envoy
 	cargo build \
 		--exclude licensekey \
 		--exclude licensekey-sys \
@@ -198,10 +198,10 @@ crates/%-sys/src/bindings.rs: FORCE
 # * `.DELETE_ON_ERROR` does not work for directories, and
 # * the name of the `.eap` file is annoying to predict.
 # When building for all targets using a single image we cannot rely on wildcard matching.
-target/aarch64/$(AXIS_PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
-target/armv7hf/$(AXIS_PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
-target/%/$(AXIS_PACKAGE)/_envoy: AXIS_DEVICE_ARCH=$*
-target/%/$(AXIS_PACKAGE)/_envoy: target/%/$(AXIS_PACKAGE)/$(AXIS_PACKAGE) target/%/$(AXIS_PACKAGE)/manifest.json target/%/$(AXIS_PACKAGE)/LICENSE
+target/aarch64/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
+target/armv7hf/$(PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
+target/%/$(PACKAGE)/_envoy: AXIS_DEVICE_ARCH=$*
+target/%/$(PACKAGE)/_envoy: target/%/$(PACKAGE)/$(PACKAGE) target/%/$(PACKAGE)/manifest.json target/%/$(PACKAGE)/LICENSE
 ifeq (0, $(shell test -e /.dockerenv; echo $$?))
 	. /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
 else
@@ -209,19 +209,19 @@ else
 endif
 	touch $@
 
-target/%/$(AXIS_PACKAGE)/manifest.json: apps/$(AXIS_PACKAGE)/manifest.json
+target/%/$(PACKAGE)/manifest.json: apps/$(PACKAGE)/manifest.json
 	mkdir -p $(dir $@)
 	cp $< $@
 
-target/%/$(AXIS_PACKAGE)/LICENSE: apps/$(AXIS_PACKAGE)/LICENSE
+target/%/$(PACKAGE)/LICENSE: apps/$(PACKAGE)/LICENSE
 	mkdir -p $(dir $@)
 	cp $< $@
 
 # The target triple and the name of the docker image do not match, so
 # at some point we need to map one to the other. It might as well be here.
-target/aarch64/$(AXIS_PACKAGE)/_envoy: target/aarch64-unknown-linux-gnu/release/$(AXIS_PACKAGE)
-target/armv7hf/$(AXIS_PACKAGE)/_envoy: target/thumbv7neon-unknown-linux-gnueabihf/release/$(AXIS_PACKAGE)
-target/%/$(AXIS_PACKAGE)/_envoy: apps/$(AXIS_PACKAGE)/manifest.json apps/$(AXIS_PACKAGE)/LICENSE $(wildcard apps/$(AXIS_PACKAGE)/otherfiles/*)
+target/aarch64/$(PACKAGE)/_envoy: target/aarch64-unknown-linux-gnu/release/$(PACKAGE)
+target/armv7hf/$(PACKAGE)/_envoy: target/thumbv7neon-unknown-linux-gnueabihf/release/$(PACKAGE)
+target/%/$(PACKAGE)/_envoy: apps/$(PACKAGE)/manifest.json apps/$(PACKAGE)/LICENSE $(wildcard apps/$(PACKAGE)/otherfiles/*)
 	# Make sure we don't include any obsolete files in the `.eap`
 	if [ -d $(@D) ]; then rm -r $(@D); fi
 	mkdir -p $(@D)
@@ -230,10 +230,10 @@ target/%/$(AXIS_PACKAGE)/_envoy: apps/$(AXIS_PACKAGE)/manifest.json apps/$(AXIS_
 	touch $@
 
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
-target/%/release/$(AXIS_PACKAGE): FORCE
+target/%/release/$(PACKAGE): FORCE
 ifeq (0, $(shell test -e /.dockerenv; echo $$?))
-	cargo -v build --release --target $* --package $(AXIS_PACKAGE)
+	cargo -v build --release --target $* --package $(PACKAGE)
 else
-	cross -v build --release --target $* --package $(AXIS_PACKAGE)
+	cross -v build --release --target $* --package $(PACKAGE)
 endif
 	touch $@ # This is a hack to make the `_envoy` target above always build

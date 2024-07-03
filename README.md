@@ -21,7 +21,7 @@ docker run \
   --volume $(pwd):$(pwd) \
   --workdir $(pwd) \
   acap-rs \
-  make build AXIS_PACKAGE=hello_world
+  make build PACKAGE=hello_world
 ```
 
 This works with any of the [example applications](#example-applications).
