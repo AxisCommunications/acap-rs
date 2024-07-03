@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use acap_ssh_utils::{run_as_package, sync_package};
+use acap_ssh_utils::{patch_package, run_other, run_package};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use url::Host;
@@ -16,8 +16,16 @@ use url::Host;
 #[derive(Clone, Debug, Parser)]
 #[clap(verbatim_doc_comment)]
 struct Cli {
+    #[command(flatten)]
+    netloc: Netloc,
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Clone, Debug, Parser)]
+struct Netloc {
     /// Hostname or IP address of the device.
-    #[arg(value_parser = url::Host::parse)]
+    #[arg(long, value_parser = url::Host::parse)]
     host: Host,
     /// The username to use for the ssh connection.
     #[clap(short, long, default_value = "root")]
@@ -25,25 +33,38 @@ struct Cli {
     /// The password to use for the ssh connection.
     #[clap(short, long)]
     password: String,
-    #[command(subcommand)]
-    command: Command,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 enum Command {
+    // TODO: Reconsider these names.
     /// Patch app on device and run it attached to the terminal.
-    PatchAndRun(PatchAndRun),
+    Patch(Patch),
+    RunApp(RunApp),
+    RunOther(RunOther),
 }
 
 #[derive(Clone, Debug, Parser)]
-struct PatchAndRun {
-    /// Name of app to patch and run as.
+struct Patch {
+    /// `.eap` file to upload.
+    package: PathBuf,
+}
+
+impl Patch {
+    fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
+        patch_package(
+            &self.package,
+            &netloc.username,
+            &netloc.password,
+            &netloc.host,
+        )
+    }
+}
+
+#[derive(Clone, Debug, Parser)]
+struct RunApp {
+    /// Name of package to run.
     package: String,
-    /// Paths to upload before running.
-    ///
-    /// Specified like `[<src>:]<dst>`.
-    #[arg(value_parser = parse_path_pair)]
-    paths: Vec<(Option<String>, String)>,
     /// Environment variables to override on the remote host.
     ///
     /// Can be specified multiple times.
@@ -52,11 +73,45 @@ struct PatchAndRun {
     environment: Vec<(String, String)>,
 }
 
-fn parse_path_pair(s: &str) -> anyhow::Result<(Option<String>, String)> {
-    if let Some((src, dst)) = s.split_once(':') {
-        Ok((Some(src.to_string()), dst.to_string()))
-    } else {
-        Ok((None, s.to_string()))
+impl RunApp {
+    fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
+        run_package(
+            &netloc.username,
+            &netloc.password,
+            &netloc.host,
+            &self.package,
+            self.environment
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect(),
+        )
+    }
+}
+
+#[derive(Clone, Debug, Parser)]
+struct RunOther {
+    /// Location of executable to run.
+    package: PathBuf,
+    /// Environment variables to override on the remote host.
+    ///
+    /// Can be specified multiple times.
+    #[clap(short, long)]
+    #[arg(value_parser = parse_env_pair)]
+    environment: Vec<(String, String)>,
+}
+
+impl RunOther {
+    fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
+        run_other(
+            &self.package,
+            &netloc.username,
+            &netloc.password,
+            &netloc.host,
+            self.environment
+                .iter()
+                .map(|(k, v)| (k.as_str(), v.as_str()))
+                .collect(),
+        )
     }
 }
 
@@ -69,31 +124,10 @@ fn parse_env_pair(s: &str) -> anyhow::Result<(String, String)> {
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     let cli = Cli::parse();
-    let Command::PatchAndRun(PatchAndRun {
-        paths,
-        package,
-        environment,
-    }) = cli.command;
-
-    sync_package(
-        &std::env::current_dir().unwrap_or_default(),
-        paths
-            .into_iter()
-            .map(|(src, dst)| (PathBuf::from(dst), src.map(PathBuf::from)))
-            .collect(),
-        &cli.username,
-        &cli.password,
-        &cli.host,
-        &package,
-    )?;
-    run_as_package(
-        &cli.username,
-        &cli.password,
-        &cli.host,
-        &package,
-        environment
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect(),
-    )
+    let netloc = cli.netloc;
+    match cli.command {
+        Command::Patch(cmd) => cmd.exec(netloc),
+        Command::RunApp(cmd) => cmd.exec(netloc),
+        Command::RunOther(cmd) => cmd.exec(netloc),
+    }
 }

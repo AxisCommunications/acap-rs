@@ -1,13 +1,20 @@
+mod acap;
+
 use std::{
     collections::HashMap,
+    fs::File,
     io::{BufRead, BufReader, Read, Write},
     path::{Path, PathBuf},
     process::Stdio,
 };
 
 use anyhow::bail;
+use flate2::read::GzDecoder;
 use log::{debug, warn};
+use tar::Archive;
 use url::Host;
+
+use crate::acap::Manifest;
 
 fn sshpass(pass: &str, program: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("sshpass");
@@ -128,7 +135,7 @@ impl Drop for RemoteTemporaryFile {
 /// - enabled SSH on the device,
 /// - configured the SSH user with a password and the necessary permissions, and
 /// - stopped the app.
-pub fn run_as_self(
+pub fn run_other(
     prog: &Path,
     user: &str,
     pass: &str,
@@ -158,9 +165,10 @@ pub fn run_as_self(
 ///
 /// The function assumes that the user has already
 /// - enabled SSH on the device,
-/// - configured the SSH user with a password and the necessary permissions, and
-/// - stopped the app.
-pub fn run_as_package(
+/// - configured the SSH user with a password and the necessary permissions,
+/// - installed the app, and
+/// - stopped the app, if it was running.
+pub fn run_package(
     user: &str,
     pass: &str,
     host: &Host,
@@ -175,78 +183,66 @@ pub fn run_as_package(
     exec.env("G_SLICE", "always-malloc");
     exec.envs(env);
 
-    let mut exec_as_package = std::process::Command::new("su");
-    exec_as_package.args(["--shell", "/bin/sh"]);
-    exec_as_package.args(["--command", &format!("{exec:?}")]);
-    exec_as_package.args([format!("acap-{package}")]);
+    let package_user = format!("acap-{package}");
+    let exec_as_package = if user == package_user {
+        let mut sh = std::process::Command::new("sh");
+        sh.args(["-c", &format!("{exec:?}")]);
+        sh
+    }else {
+        let mut su = std::process::Command::new("su");
+        su.args(["--shell", "/bin/sh"]);
+        su.args(["--command", &format!("{exec:?}")]);
+        su.args([package_user]);
+        su
+    };
 
     // TODO: Consider giving user control over what happens with stdout when running concurrently.
     // The escaping of quotation marks is ridiculous, but it's automatic and empirically verifiable.
     let mut ssh_exec_as_package = ssh(user, pass, host);
     ssh_exec_as_package.arg(format!("{cd:?} && {exec_as_package:?}"));
     ssh_exec_as_package.run_with_inherited_stdout()?;
-
-    // TODO: Consider cleaning up by restoring the original file
-    // So far I'm not doing this because
-    // 1. I'm lazy,
-    // 2. I'm concerned about space,
-    // 3. I'm concerned about robustness.
     Ok(())
 }
 
 /// Update ACAP app on device without installing it
 ///
-/// - `current_dir` is the absolute dir assumed to prefix relative `paths`
-/// - `paths` is a mapping `dst -> src` specifying how to update the app.
+/// - `package` the location of the `.eap` to upload.
 /// - `user` and `pass` are the credentials to use for the ssh connection.
 /// - `host` is the device to connect to.
-/// - `package` is the name of the ACAP app to patch.
-///
-/// When specifying `paths`
-/// - `dst` must be a relative path where the base is the package dir
-/// - `src` can be
-///     - an absolute path,
-///     - a relative path (the base is assumed to be `current_dir`), or
-///     - `None` (the path is assumed to be the same as `dst`, but with `current_dir` as base).
 ///
 /// The function assumes that the user has already
 /// - enabled SSH on the device,
-/// - configured the SSH user with a password and the necessary permissions, and
-/// - stopped the app.
-pub fn sync_package(
-    current_dir: &Path,
-    paths: HashMap<PathBuf, Option<PathBuf>>,
-    user: &str,
-    pass: &str,
-    host: &Host,
-    package: &str,
-) -> anyhow::Result<HashMap<PathBuf, PathBuf>> {
-    let package_dir = PathBuf::from("/usr/local/packages").join(package);
-    let mut ar = tar::Builder::new(Vec::new());
+/// - configured the SSH user with a password and the necessary permissions,
+/// - installed the app, and
+/// - stopped the app, if it was running.
+pub fn patch_package(package: &Path, user: &str, pass: &str, host: &Host) -> anyhow::Result<()> {
+    // Not all files can be replaced, so we upload only the ones that can.
+    // This archive will hold the files that will be uploded.
+    let mut partial = tar::Builder::new(Vec::new());
 
-    let mut copied = HashMap::new();
-    for (to, from) in paths {
-        assert!(to.is_relative());
-        let from_abs = if let Some(from) = from {
-            if from.is_relative() {
-                current_dir.join(from)
-            } else {
-                from
-            }
-        } else {
-            current_dir.join(&to)
-        };
-
-        if from_abs.is_dir() {
-            debug!("Appending dir {from_abs:?}");
-            ar.append_dir_all(&to, &from_abs)?;
-        } else {
-            debug!("Appending reg {from_abs:?}");
-            ar.append_file(&to, &mut std::fs::File::open(&from_abs)?)?;
+    let mut full = Archive::new(GzDecoder::new(File::open(package)?));
+    let mut app_name: Option<String> = None;
+    for entry in full.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?;
+        if path == Path::new("manifest.json") {
+            let mut manifest = String::new();
+            entry.read_to_string(&mut manifest)?;
+            let manifest: Manifest = serde_json::from_str(&manifest)?;
+            app_name = Some(manifest.acap_package_conf.setup.app_name)
+        } else if path != Path::new("package.conf") {
+            debug!("Adding {path:?} to new archive.");
+            let mut buf = Vec::new();
+            _ = entry.read_to_end(&mut buf)?;
+            partial.append(entry.header(), &*buf)?;
         }
-        copied.insert(to, from_abs);
     }
-    // TODO: Copy only files that have a more recent `mtime` locally
+    let Some(app_name) = app_name else {
+        bail!("Could not find a manifest with the app name");
+    };
+    let package_dir = PathBuf::from("/usr/local/packages").join(app_name);
+    // TODO: Copy only files that have been updated, e.g. as as decided by comparing the `mtime`.
+    // TODO: Remove files that are no longer relevant.
     let mut ssh_tar = ssh(user, pass, host);
     ssh_tar.args(["tar", "-xvC", package_dir.to_str().unwrap()]);
 
@@ -255,7 +251,11 @@ pub fn sync_package(
     debug!("Spawning {ssh_tar:#?}");
     let mut child = ssh_tar.spawn()?;
 
-    child.stdin.take().unwrap().write_all(&ar.into_inner()?)?;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(&partial.into_inner()?)?;
 
     let stdout = child.stdout.take().unwrap();
     for line in BufReader::new(stdout).lines() {
@@ -270,5 +270,5 @@ pub fn sync_package(
     if !status.success() {
         bail!("Child failed {status}");
     }
-    Ok(copied)
+    Ok(())
 }
