@@ -67,6 +67,47 @@ Below is the list of examples available in the repository.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
 : An example that illustrates how to check the licensekey status.
 
+## Binary crates
+
+```console
+$ acap-ssh-utils help
+Utilities for interacting with Axis devices over SSH.
+
+The commands assume that the user has already
+- installed `scp`, `ssh` and `sshpass`,
+- added the device to the `known_hosts` file,
+- enabled SSH on the device,
+- configured the SSH user with a password and the necessary permissions, and
+- installed any apps that will be impersonated.
+
+Usage: acap-ssh-utils --host <HOST> --user <USER> --pass <PASS> <COMMAND>
+
+Commands:
+  patch      Patch app on device
+  run-app    Run app on device, sending output to the terminal
+  run-other  Run any executable on device, sending output to the terminal
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+      --host <HOST>
+          Hostname or IP address of the device
+
+          [env: AXIS_DEVICE_IP=]
+
+  -u, --user <USER>
+          The username to use for the ssh connection
+
+          [env: AXIS_DEVICE_USER=]
+
+  -p, --pass <PASS>
+          The password to use for the ssh connection
+
+          [env: AXIS_DEVICE_PASS=]
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+
 ## License
 
 [MIT](LICENSE)

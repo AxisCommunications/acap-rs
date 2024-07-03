@@ -49,10 +49,11 @@ struct Netloc {
 
 #[derive(Clone, Debug, Subcommand)]
 enum Command {
-    // TODO: Reconsider these names.
-    /// Patch app on device and run it attached to the terminal.
+    /// Patch app on device.
     Patch(Patch),
+    /// Run app on device, sending output to the terminal.
     RunApp(RunApp),
+    /// Run any executable on device, sending output to the terminal.
     RunOther(RunOther),
 }
 
