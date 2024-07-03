@@ -1,0 +1,14 @@
+{
+    "name": "acap-rs",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {},
+    },
+    "remoteUser": "${localEnv:USER}",
+    "containerEnv": {
+        "CARGO_HOME": "/home/${localEnv:USER}/.cargo"
+    }
+}
