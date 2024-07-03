@@ -8,7 +8,7 @@ use std::{
     process::Stdio,
 };
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 use flate2::read::GzDecoder;
 use log::{debug, warn};
 use tar::Archive;
@@ -44,6 +44,18 @@ fn ssh(user: &str, pass: &str, host: &Host) -> std::process::Command {
     cmd.arg(format!("{user}@{host}"));
     cmd
 }
+fn spawn(mut cmd: std::process::Command) -> anyhow::Result<std::process::Child> {
+    match cmd.spawn() {
+        Ok(t) => Ok(t),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            let program = cmd.get_program().to_string_lossy().to_string();
+            Err(e).context(format!(
+                "{program} not found, perhaps it must be installed."
+            ))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
 
 trait RunWith {
     fn run_with_captured_stdout(self) -> anyhow::Result<String>;
@@ -55,7 +67,7 @@ impl RunWith for std::process::Command {
     fn run_with_captured_stdout(mut self) -> anyhow::Result<String> {
         self.stdout(std::process::Stdio::piped());
         debug!("Spawning child {self:#?}...");
-        let mut child = self.spawn()?;
+        let mut child = spawn(self)?;
         let mut stdout = child.stdout.take().unwrap();
         debug!("Waiting for child...");
         let status = child.wait()?;
@@ -70,7 +82,7 @@ impl RunWith for std::process::Command {
     fn run_with_logged_stdout(mut self: std::process::Command) -> anyhow::Result<()> {
         self.stdout(std::process::Stdio::piped());
         debug!("Spawning child {self:#?}...");
-        let mut child = self.spawn()?;
+        let mut child = spawn(self)?;
         let stdout = child.stdout.take().unwrap();
 
         let lines = BufReader::new(stdout).lines();
@@ -252,7 +264,7 @@ pub fn patch_package(package: &Path, user: &str, pass: &str, host: &Host) -> any
     ssh_tar.stdin(Stdio::piped());
     ssh_tar.stdout(Stdio::piped());
     debug!("Spawning {ssh_tar:#?}");
-    let mut child = ssh_tar.spawn()?;
+    let mut child = spawn(ssh_tar)?;
 
     child
         .stdin

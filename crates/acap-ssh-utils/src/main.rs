@@ -1,8 +1,9 @@
-use std::path::PathBuf;
+use std::{env, fs::File, path::PathBuf};
 
 use acap_ssh_utils::{patch_package, run_other, run_package};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use log::debug;
 use url::Host;
 
 /// Utilities for interacting with Axis devices over SSH.
@@ -20,6 +21,17 @@ struct Cli {
     netloc: Netloc,
     #[command(subcommand)]
     command: Command,
+}
+
+impl Cli {
+    fn exec(self) -> anyhow::Result<()> {
+        let Self { netloc, command } = self;
+        match command {
+            Command::Patch(cmd) => cmd.exec(netloc),
+            Command::RunApp(cmd) => cmd.exec(netloc),
+            Command::RunOther(cmd) => cmd.exec(netloc),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Parser)]
@@ -117,12 +129,28 @@ fn parse_env_pair(s: &str) -> anyhow::Result<(String, String)> {
 }
 
 fn main() -> anyhow::Result<()> {
-    env_logger::init();
-    let cli = Cli::parse();
-    let netloc = cli.netloc;
-    match cli.command {
-        Command::Patch(cmd) => cmd.exec(netloc),
-        Command::RunApp(cmd) => cmd.exec(netloc),
-        Command::RunOther(cmd) => cmd.exec(netloc),
+    let log_file = if std::env::var_os("RUST_LOG").is_none() {
+        let dir = dirs::runtime_dir().unwrap_or(env::temp_dir());
+        let path = dir.join("cargo-acap-sdk.log");
+        let target = env_logger::Target::Pipe(Box::new(File::create(&path)?));
+        let mut builder = env_logger::Builder::from_env(env_logger::Env::default());
+        builder.target(target).filter_level(log::LevelFilter::Debug);
+        builder.init();
+        Some(path)
+    } else {
+        env_logger::init();
+        None
+    };
+    debug!("Logging initialized");
+
+    match Cli::parse().exec() {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            if let Some(log_file) = log_file {
+                Err(e.context(format!("A detailed log has been saved to {log_file:?}")))
+            } else {
+                Err(e)
+            }
+        }
     }
 }

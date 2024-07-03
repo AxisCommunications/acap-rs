@@ -7,6 +7,7 @@ edition.workspace = true
 # TODO: Remove anyhow usage from library
 anyhow = { version = "1.0.79" }
 clap = { version = "4.5.1", features = ["derive", "env"] }
+dirs = "5.0.1"
 env_logger = { version = "0.11.1" }
 flate2 = "1.0.30"
 log = { version = "0.4.21" }
