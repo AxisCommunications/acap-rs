@@ -25,6 +25,7 @@ RUN apt-get update \
     pkg-config \
     iputils-ping \
     python3-jsonschema \
+    sshpass \
     wget \
  && rm -rf /var/lib/apt/lists/*
 

@@ -10,5 +10,8 @@
     "remoteUser": "${localEnv:USER}",
     "containerEnv": {
         "CARGO_HOME": "/home/${localEnv:USER}/.cargo"
+    },
+    "postCreateCommand": {
+        "symlinkGhCli": "cargo install --path crates/acap-ssh-utils --root /usr/local/cargo"
     }
 }
