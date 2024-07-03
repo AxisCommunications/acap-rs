@@ -188,7 +188,7 @@ pub fn run_package(
         let mut sh = std::process::Command::new("sh");
         sh.args(["-c", &format!("{exec:?}")]);
         sh
-    }else {
+    } else {
         let mut su = std::process::Command::new("su");
         su.args(["--shell", "/bin/sh"]);
         su.args(["--command", &format!("{exec:?}")]);

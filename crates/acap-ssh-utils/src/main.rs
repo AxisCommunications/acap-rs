@@ -28,11 +28,11 @@ struct Netloc {
     #[arg(long, value_parser = url::Host::parse)]
     host: Host,
     /// The username to use for the ssh connection.
-    #[clap(short, long, default_value = "root")]
-    username: String,
+    #[clap(short, long)]
+    user: String,
     /// The password to use for the ssh connection.
     #[clap(short, long)]
-    password: String,
+    pass: String,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -52,12 +52,7 @@ struct Patch {
 
 impl Patch {
     fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
-        patch_package(
-            &self.package,
-            &netloc.username,
-            &netloc.password,
-            &netloc.host,
-        )
+        patch_package(&self.package, &netloc.user, &netloc.pass, &netloc.host)
     }
 }
 
@@ -76,8 +71,8 @@ struct RunApp {
 impl RunApp {
     fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
         run_package(
-            &netloc.username,
-            &netloc.password,
+            &netloc.user,
+            &netloc.pass,
             &netloc.host,
             &self.package,
             self.environment
@@ -104,8 +99,8 @@ impl RunOther {
     fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
         run_other(
             &self.package,
-            &netloc.username,
-            &netloc.password,
+            &netloc.user,
+            &netloc.pass,
             &netloc.host,
             self.environment
                 .iter()
