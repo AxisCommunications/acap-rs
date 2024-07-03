@@ -25,13 +25,13 @@ struct Cli {
 #[derive(Clone, Debug, Parser)]
 struct Netloc {
     /// Hostname or IP address of the device.
-    #[arg(long, value_parser = url::Host::parse)]
+    #[arg(long, value_parser = url::Host::parse, env="AXIS_DEVICE_IP")]
     host: Host,
     /// The username to use for the ssh connection.
-    #[clap(short, long)]
+    #[clap(short, long, env = "AXIS_DEVICE_USER")]
     user: String,
     /// The password to use for the ssh connection.
-    #[clap(short, long)]
+    #[clap(short, long, env = "AXIS_DEVICE_PASS")]
     pass: String,
 }
 
