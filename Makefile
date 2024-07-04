@@ -7,16 +7,19 @@
 # Name of package containing the app to be built.
 # Rust does not enforce that the path to the package matches the package name, but
 # this makefile does to keep things simple.
-AXIS_PACKAGE ?= hello_world
+export AXIS_PACKAGE ?= hello_world
 
 # The architecture that will be assumed when interacting with the device.
-AXIS_DEVICE_ARCH ?= aarch64
+export AXIS_DEVICE_ARCH ?= aarch64
 
 # The IP address of the device to interact with.
-AXIS_DEVICE_IP ?= 192.168.0.90
+export AXIS_DEVICE_IP ?= 192.168.0.90
+
+# The username to use when interacting with the device.
+export AXIS_DEVICE_USER ?= root
 
 # The password to use when interacting with the device.
-AXIS_DEVICE_PASS ?= pass
+export AXIS_DEVICE_PASS ?= pass
 
 # Other
 # -----
@@ -111,8 +114,8 @@ stop:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 run: target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/_envoy
-	acap-ssh-utils --host $(AXIS_DEVICE_IP) --user root --pass $(AXIS_DEVICE_PASS) patch $(<D)/*.eap
-	acap-ssh-utils --host $(AXIS_DEVICE_IP) --user root --pass $(AXIS_DEVICE_PASS) run-app \
+	acap-ssh-utils patch $(<D)/*.eap
+	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
 		$(AXIS_PACKAGE)
