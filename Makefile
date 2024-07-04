@@ -38,33 +38,11 @@ AXIS_DEVICE_PASS ?= pass
 FORCE:;
 .PHONY: FORCE
 
-# Use the current environment when already in a container.
-ifeq (0, $(shell test -e /.dockerenv; echo $$?))
-
 ACAP_BUILD = . /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
-
-CROSS := cargo
 
 # It doesn't matter which SDK is sourced for installing, but using a wildcard would fail since there are multiple in the container.
 EAP_INSTALL = cd $(CURDIR)/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/ \
 && . /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) $@
-
-# Use a containerized environment when running on host.
-else
-
-# Bare minimum to make the output from the container available on host with correct permissions.
-DOCKER_RUN = docker run \
---volume ${CURDIR}/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/:/opt/app \
---user $(shell id -u):$(shell id -g) \
-axisecp/acap-native-sdk:1.15-$(AXIS_DEVICE_ARCH)-ubuntu22.04
-
-ACAP_BUILD = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
-
-CROSS := cross
-
-EAP_INSTALL = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) $@"
-
-endif
 
 
 ## Verbs
@@ -115,12 +93,6 @@ run: target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
 	ssh root@$(AXIS_DEVICE_IP) \
 		"cd /usr/local/packages/$(AXIS_PACKAGE) && su - acap-$(AXIS_PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(AXIS_PACKAGE)'"
 
-## Install development dependencies
-sync_env: venv/bin/npm
-	cargo install --root venv --target-dir $(CURDIR)/target cross
-	PIP_CONSTRAINT=constraints.txt pip install --requirement requirements.txt
-	npm install -g @devcontainers/cli@0.65.0
-
 ## Checks
 ## ------
 
@@ -138,7 +110,7 @@ check_build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE
 		--exclude mdb \
 		--exclude mdb-sys \
 		--workspace
-	$(CROSS) build \
+	cargo build \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
 
@@ -147,7 +119,7 @@ check_build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE
 ## Check that docs can be built
 check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
-	RUSTDOCFLAGS="-Dwarnings" $(CROSS) doc \
+	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
@@ -177,7 +149,7 @@ check_lint:
 		--exclude mdb \
 		--exclude mdb-sys \
 		--workspace
-	RUSTFLAGS="-Dwarnings" $(CROSS) clippy \
+	RUSTFLAGS="-Dwarnings" cargo clippy \
 		--all-targets \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
@@ -213,7 +185,7 @@ fix_lint:
 ## Nouns
 ## =====
 
-constraints.txt: requirements.txt
+.devhost/constraints.txt: .devhost/requirements.txt
 	pip-compile \
 		--allow-unsafe \
 		--no-header \
@@ -269,14 +241,5 @@ target/armv7hf/$(AXIS_PACKAGE)/$(AXIS_PACKAGE): target/thumbv7neon-unknown-linux
 
 # Always rebuild the executable because configuring accurate cache invalidation is annoying.
 target/%/release/$(AXIS_PACKAGE): FORCE
-	$(CROSS) -v build --release --target $* --package $(AXIS_PACKAGE)
+	cargo -v build --release --target $* --package $(AXIS_PACKAGE)
 	touch $@ # This is a hack to make the `_envoy` target above always build
-
-
-venv/bin/npm: venv/downloads/node-v18.16.1-linux-x64.tar.gz
-	tar -xf "$<" --strip-components 1 -C venv
-
-venv/downloads/node-v18.16.1-linux-x64.tar.gz:
-	mkdir -p $(@D)
-	curl -L -o "$@" "https://nodejs.org/dist/v18.16.1/node-v18.16.1-linux-x64.tar.gz"
-	echo "59582f51570d0857de6333620323bdeee5ae36107318f86ce5eca24747cabf5b  $@" | sha256sum -c -

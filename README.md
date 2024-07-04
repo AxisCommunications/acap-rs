@@ -23,7 +23,7 @@ hello_world_1_0_0_aarch64.eap
 If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the app can be built using only `docker`:
 
 ```sh
-docker build --tag acap-rs .
+docker build --file .devcontainer/Dockerfile --tag acap-rs .
 docker run \
   --interactive \
   --rm \
@@ -37,23 +37,11 @@ docker run \
 
 This works with any of the [example applications](#example-applications).
 
-## Advanced setup
-
-Ensure global prerequisites are installed:
-
-* Docker
-* Rust e.g. [using rustup](https://www.rust-lang.org/tools/install)
-* Python e.g. using [pyenv](https://github.com/pyenv/pyenv)
-  * When using the system python on some versions of Debian and Ubuntu, it is necessary to `apt install python3-venv`.
-
-Create, activate and populate the local development environment like
-
-```sh
-source ./init_env.sh
-make sync_env
-```
-
 Important workflows are documented in the [Makefile](./Makefile) and can now be listed with `make help`.
+
+## Advanced setup
+Development environments outside containers are more difficult to reproduce and maintain.
+Should it nonetheless be of interest, one procedure is documented in [this workflow](.github/workflows/on-host-workflow.yml).
 
 ## Example applications
 
