@@ -1,0 +1,14 @@
+{
+    "schemaVersion": "1.2",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "embedded_web_page",
+            "vendor": "Axis Communications",
+            "runMode": "never",
+            "version": "1.0.0"
+        },
+        "configuration": {
+            "settingPage": "index.html"
+        }
+    }
+}

@@ -1,7 +1,6 @@
-//! Utilities for managing logging in an application.
+//! Utilities for managing app-logging in an application.
 
-use std::env;
-use std::io::IsTerminal;
+use std::{env, io::IsTerminal};
 
 use log::debug;
 
@@ -12,7 +11,7 @@ fn init_syslog() {
     log::set_max_level(log::LevelFilter::Debug);
 }
 
-/// Set up logging as appropriate for the environment, then run the provided function.
+/// Set up app-logging as appropriate for the environment, then run the provided function.
 ///
 /// If stdout is a terminal, write to stderr.
 /// Otherwise, write to the system logger.
