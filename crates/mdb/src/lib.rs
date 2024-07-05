@@ -190,7 +190,7 @@ impl SubscriberConfig {
     }
 
     unsafe extern "C" fn on_metadata(
-        metadata: *const mdb_sys::mdb_metadata_t,
+        metadata: *const mdb_sys::mdb_message_t,
         user_data: *mut c_void,
     ) {
         suppress_unwind!(|| {
@@ -304,17 +304,17 @@ unsafe impl<'a> Send for Subscriber<'a> {}
 // the C API.
 
 pub struct Metadata {
-    ptr: *const mdb_sys::mdb_metadata_t,
+    ptr: *const mdb_sys::mdb_message_t,
 }
 
 impl Metadata {
-    unsafe fn from_raw(ptr: *const mdb_sys::mdb_metadata_t) -> Self {
+    unsafe fn from_raw(ptr: *const mdb_sys::mdb_message_t) -> Self {
         // TODO: Can we encode that this is never owned?
         Self { ptr }
     }
     pub fn payload(&self) -> &[u8] {
         unsafe {
-            let payload = *mdb_sys::mdb_metadata_get_payload(self.ptr);
+            let payload = *mdb_sys::mdb_message_get_payload(self.ptr);
             from_raw_parts(payload.data, payload.size)
         }
     }
@@ -323,7 +323,7 @@ impl Metadata {
     pub fn timestamp_bytes(&self) -> &[u8] {
         unsafe {
             from_raw_parts(
-                mdb_sys::mdb_metadata_get_timestamp(self.ptr) as *const u8,
+                mdb_sys::mdb_message_get_timestamp(self.ptr) as *const u8,
                 mem::size_of::<mdb_sys::timespec>(),
             )
         }

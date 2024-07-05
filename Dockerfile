@@ -1,7 +1,7 @@
 ARG REPO=axisecp
 ARG SDK=acap-native-sdk
 ARG UBUNTU_VERSION=22.04
-ARG VERSION=1.14
+ARG VERSION=1.15
 ARG BASE_IMAGE=debian:bookworm-20240423
 
 FROM ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64

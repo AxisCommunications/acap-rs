@@ -56,7 +56,7 @@ else
 DOCKER_RUN = docker run \
 --volume ${CURDIR}/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/:/opt/app \
 --user $(shell id -u):$(shell id -g) \
-axisecp/acap-native-sdk:1.14-$(AXIS_DEVICE_ARCH)-ubuntu22.04
+axisecp/acap-native-sdk:1.15-$(AXIS_DEVICE_ARCH)-ubuntu22.04
 
 ACAP_BUILD = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
 
