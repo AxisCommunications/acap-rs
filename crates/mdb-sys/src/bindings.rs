@@ -48,24 +48,22 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct mdb_metadata {
+pub struct mdb_message {
     _unused: [u8; 0],
 }
-pub type mdb_metadata_t = mdb_metadata;
+pub type mdb_message_t = mdb_message;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct mdb_metadata_payload {
+pub struct mdb_message_payload {
     pub size: usize,
     pub data: *mut u8,
 }
-pub type mdb_metadata_payload_t = mdb_metadata_payload;
+pub type mdb_message_payload_t = mdb_message_payload;
 extern "C" {
-    pub fn mdb_metadata_get_payload(
-        metadata: *const mdb_metadata_t,
-    ) -> *const mdb_metadata_payload_t;
+    pub fn mdb_message_get_payload(message: *const mdb_message_t) -> *const mdb_message_payload_t;
 }
 extern "C" {
-    pub fn mdb_metadata_get_timestamp(metadata: *const mdb_metadata_t) -> *const timespec;
+    pub fn mdb_message_get_timestamp(message: *const mdb_message_t) -> *const timespec;
 }
 pub type mdb_on_done_t = ::std::option::Option<
     unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut ::std::os::raw::c_void),
@@ -76,14 +74,14 @@ pub struct mdb_subscriber_config {
     _unused: [u8; 0],
 }
 pub type mdb_subscriber_config_t = mdb_subscriber_config;
-pub type mdb_subscriber_on_metadata_t = ::std::option::Option<
-    unsafe extern "C" fn(metadata: *const mdb_metadata_t, user_data: *mut ::std::os::raw::c_void),
+pub type mdb_subscriber_on_message_t = ::std::option::Option<
+    unsafe extern "C" fn(message: *const mdb_message_t, user_data: *mut ::std::os::raw::c_void),
 >;
 extern "C" {
     pub fn mdb_subscriber_config_create(
         topic: *const ::std::os::raw::c_char,
         source: *const ::std::os::raw::c_char,
-        on_metadata: mdb_subscriber_on_metadata_t,
+        on_message: mdb_subscriber_on_message_t,
         user_data: *mut ::std::os::raw::c_void,
         error: *mut *mut mdb_error_t,
     ) -> *mut mdb_subscriber_config_t;
