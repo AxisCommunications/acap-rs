@@ -1,7 +1,10 @@
-use std::ffi::CStr;
-use std::fmt::{Debug, Display, Formatter};
-use std::slice::from_raw_parts;
-use std::{any, mem};
+use std::{
+    any,
+    ffi::CStr,
+    fmt::{Debug, Display, Formatter},
+    mem,
+    slice::from_raw_parts,
+};
 
 use libc::{c_char, c_void};
 use log::{debug, error};
@@ -18,7 +21,7 @@ macro_rules! suppress_unwind {
     };
 }
 
-type OnMetadata = dyn FnMut(&Metadata) + Send + 'static;
+type OnMessage = dyn FnMut(&Message) + Send + 'static;
 type OnError = dyn FnMut(&Error) + Send + 'static;
 type OnDone = dyn FnMut(Option<&Error>) + Send + 'static;
 
@@ -150,34 +153,30 @@ unsafe impl Sync for Connection {}
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
-    on_metadata: *mut Box<OnMetadata>,
+    on_message: *mut Box<OnMessage>,
 }
 
 impl SubscriberConfig {
-    pub fn try_new(
-        topic: &CStr,
-        source: &CStr,
-        on_metadata: Box<OnMetadata>,
-    ) -> Result<Self, Error> {
+    pub fn try_new(topic: &CStr, source: &CStr, on_message: Box<OnMessage>) -> Result<Self, Error> {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
-            let on_metadata = Box::into_raw(Box::new(on_metadata));
+            let on_message = Box::into_raw(Box::new(on_message));
 
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_config_create(
                 topic.as_ptr(),
                 source.as_ptr(),
-                Some(Self::on_metadata),
-                on_metadata as *mut c_void,
+                Some(Self::on_message),
+                on_message as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
                 (false, false) => {
                     panic!("mdb_subscriber_config_create returned both a connection and an error")
                 }
-                (false, true) => Ok(Self { ptr, on_metadata }),
+                (false, true) => Ok(Self { ptr, on_message }),
                 (true, false) => {
-                    drop(Box::from_raw(on_metadata));
+                    drop(Box::from_raw(on_message));
                     Err(Error::new_owned(error))
                 }
                 (true, true) => {
@@ -189,30 +188,30 @@ impl SubscriberConfig {
         }
     }
 
-    unsafe extern "C" fn on_metadata(
-        metadata: *const mdb_sys::mdb_message_t,
+    unsafe extern "C" fn on_message(
+        message: *const mdb_sys::mdb_message_t,
         user_data: *mut c_void,
     ) {
         suppress_unwind!(|| {
-            debug!("Handling metadata {metadata:?} with user_data {user_data:?}");
-            debug!("Retrieving metadata...");
-            let metadata = Metadata::from_raw(metadata);
+            debug!("Handling message {message:?} with user_data {user_data:?}");
+            debug!("Retrieving message...");
+            let message = Message::from_raw(message);
             debug!("Retrieving callback...");
-            let user_data = user_data as *mut Box<OnMetadata>;
+            let user_data = user_data as *mut Box<OnMessage>;
             debug!("Calling callback...");
-            (*user_data)(&metadata);
+            (*user_data)(&message);
         });
     }
 }
 
 impl Drop for SubscriberConfig {
     fn drop(&mut self) {
-        // SAFETY: `Subscriber::try_new` sets `self.on_metadata = null_mut()` before passing it on
+        // SAFETY: `Subscriber::try_new` sets `self.on_message = null_mut()` before passing it on
         // and no other code reads it, so it is safe to drop.
         unsafe {
             mdb_sys::mdb_subscriber_config_destroy(&mut self.ptr);
-            if !self.on_metadata.is_null() {
-                drop(Box::from_raw(self.on_metadata));
+            if !self.on_message.is_null() {
+                drop(Box::from_raw(self.on_message));
             }
         }
     }
@@ -225,7 +224,7 @@ pub struct Subscriber<'a> {
     on_done: *mut Box<OnDone>,
     // We don't need to keep the entire config alive, only the callback, because
     // `mdb_subscriber_create_async` will copy any information it keeps.
-    on_metadata: *mut Box<OnMetadata>,
+    on_message: *mut Box<OnMessage>,
 }
 
 impl<'a> Subscriber<'a> {
@@ -250,13 +249,13 @@ impl<'a> Subscriber<'a> {
                     panic!("mdb_subscriber_create_async returned both a connection and an error")
                 }
                 (false, true) => {
-                    let on_metadata = config.on_metadata;
-                    config.on_metadata = std::ptr::null_mut();
+                    let on_message = config.on_message;
+                    config.on_message = std::ptr::null_mut();
                     Ok(Self {
                         _connection: connection,
                         ptr,
                         on_done,
-                        on_metadata,
+                        on_message,
                     })
                 }
                 (true, false) => {
@@ -293,7 +292,7 @@ impl<'a> Drop for Subscriber<'a> {
         unsafe {
             mdb_sys::mdb_subscriber_destroy(&mut self.ptr);
             drop(Box::from_raw(self.on_done));
-            drop(Box::from_raw(self.on_metadata));
+            drop(Box::from_raw(self.on_message));
         }
     }
 }
@@ -303,11 +302,11 @@ unsafe impl<'a> Send for Subscriber<'a> {}
 // implementation until it is needed or the Send and Sync properties are clearly guaranteed by
 // the C API.
 
-pub struct Metadata {
+pub struct Message {
     ptr: *const mdb_sys::mdb_message_t,
 }
 
-impl Metadata {
+impl Message {
     unsafe fn from_raw(ptr: *const mdb_sys::mdb_message_t) -> Self {
         // TODO: Can we encode that this is never owned?
         Self { ptr }

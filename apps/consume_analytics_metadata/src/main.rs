@@ -1,13 +1,7 @@
-use std::ffi::CStr;
-use std::process::abort;
-use std::thread::sleep;
-use std::time::Duration;
+use std::{ffi::CStr, process::abort, thread::sleep, time::Duration};
 
 use log::{debug, error, info};
-
 use mdb::{Connection, Subscriber, SubscriberConfig};
-
-mod app_logging;
 
 const TOPIC: &CStr = c"com.axis.analytics_scene_description.v0.beta";
 const SOURCE: &CStr = c"1";
@@ -24,8 +18,8 @@ fn main() {
     let config = SubscriberConfig::try_new(
         TOPIC,
         SOURCE,
-        Box::new(|metadata| {
-            let payload = String::from_utf8_lossy(metadata.payload());
+        Box::new(|message| {
+            let payload = String::from_utf8_lossy(message.payload());
             debug!("Decoded payload {:?}", &payload);
         }),
     )
@@ -50,8 +44,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use log::warn;
+
+    use super::*;
 
     #[test]
     fn receives_analytics_scene_description_promptly() {
@@ -63,8 +58,8 @@ mod tests {
         let config = SubscriberConfig::try_new(
             TOPIC,
             SOURCE,
-            Box::new(move |metadata| {
-                let payload = String::from_utf8(metadata.payload().to_vec());
+            Box::new(move |message| {
+                let payload = String::from_utf8(message.payload().to_vec());
                 let Some(tx) = &droppable_tx else {
                     debug!("Dropping message because sender was previously dropped");
                     return;

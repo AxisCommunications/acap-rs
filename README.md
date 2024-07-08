@@ -60,7 +60,7 @@ Important workflows are documented in the [Makefile](./Makefile) and can now be 
 Below is the list of examples available in the repository.
 
 * [`consume_analytics_metadata`](apps/consume_analytics_metadata/src/main.rs)
-: An example that consume metadata.
+: An example that consumes metadata.
 * [`embedded_web_page`](apps/embedded_web_page/src/main.rs)
 : An example that illustrates how to bundle an embedded web page.
 * [`hello_world`](apps/hello_world/src/main.rs)
