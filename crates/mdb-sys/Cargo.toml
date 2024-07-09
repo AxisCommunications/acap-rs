@@ -1,5 +1,6 @@
 [package]
 build = "build.rs"
+# TODO: Change name
 name = "mdb-sys"
 version = "0.0.0"
 edition.workspace = true
