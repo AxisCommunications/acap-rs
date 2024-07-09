@@ -144,6 +144,7 @@ name = "consume_analytics_metadata"
 version = "1.0.0"
 dependencies = [
  "app-logging",
+ "libc",
  "log",
  "mdb",
 ]
@@ -389,6 +390,7 @@ name = "mdb-sys"
 version = "0.0.0"
 dependencies = [
  "bindgen",
+ "libc",
  "pkg-config",
 ]
 

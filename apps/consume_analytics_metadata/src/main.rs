@@ -1,6 +1,6 @@
 use std::{ffi::CStr, process::abort, thread::sleep, time::Duration};
 
-use log::{debug, error, info};
+use log::{error, info};
 use mdb::{Connection, Subscriber, SubscriberConfig};
 
 const TOPIC: &CStr = c"com.axis.analytics_scene_description.v0.beta";
@@ -20,7 +20,8 @@ fn main() {
         SOURCE,
         Box::new(|message| {
             let payload = String::from_utf8_lossy(message.payload());
-            debug!("Decoded payload {:?}", &payload);
+            let libc::timespec{ tv_sec, tv_nsec } = message.timestamp();
+            info!("message received from topic: {TOPIC:?} on source: {SOURCE:?}: Monotonic time - {tv_sec}.{tv_nsec:0>9}. Data - {payload}");
         }),
     )
     .unwrap();
@@ -44,7 +45,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use log::warn;
+    use log::{debug, warn};
 
     use super::*;
 

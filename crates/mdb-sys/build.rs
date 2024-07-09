@@ -8,6 +8,7 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_function("^(mdb_.*)$")
         .allowlist_type("^(mdb_.*)$")
         .allowlist_var("^(mdb_.*)$")
+        .allowlist_recursively(false)
         .layout_tests(false);
     for path in library.include_paths {
         bindings = bindings.clang_args(&["-F", &path.to_str().unwrap()]);

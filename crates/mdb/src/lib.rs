@@ -3,7 +3,6 @@ use std::{
     any,
     ffi::CStr,
     fmt::{Debug, Display, Formatter},
-    mem,
     slice::from_raw_parts,
 };
 
@@ -328,13 +327,14 @@ impl Message {
         }
     }
 
-    // TODO: Figure out a better type to return
-    pub fn timestamp_bytes(&self) -> &[u8] {
+    // TODO: Consider other types.
+    // This is a monotonic timestamp but I haven't been able to verify that it is compatible with
+    // `Instant` nor that it is even possible to create `Instant`s.
+    pub fn timestamp(&self) -> &libc::timespec {
         unsafe {
-            from_raw_parts(
-                mdb_sys::mdb_message_get_timestamp(self.ptr) as *const u8,
-                mem::size_of::<mdb_sys::timespec>(),
-            )
+            mdb_sys::mdb_message_get_timestamp(self.ptr)
+                .as_ref()
+                .expect("the C API guarantees that the timestamp is not null")
         }
     }
 }

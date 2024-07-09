@@ -3,6 +3,8 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 
+pub use libc::timespec;
+
 #[cfg(not(target_arch = "x86_64"))]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

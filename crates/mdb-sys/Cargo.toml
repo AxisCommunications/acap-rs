@@ -8,3 +8,6 @@ edition.workspace = true
 [build-dependencies]
 bindgen = { workspace = true }
 pkg-config = { workspace = true }
+
+[dependencies]
+libc = { workspace = true }
