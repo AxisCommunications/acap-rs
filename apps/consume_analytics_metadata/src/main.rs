@@ -9,10 +9,10 @@ const SOURCE: &CStr = c"1";
 fn main() {
     app_logging::init_logger();
 
-    let connection = Connection::try_new(Box::new(|e| {
+    let connection = Connection::try_new(Some(Box::new(|e| {
         error!("Not connected because {e:?}");
         abort();
-    }))
+    })))
     .unwrap();
 
     let config = SubscriberConfig::try_new(
@@ -54,7 +54,8 @@ mod tests {
         let mut droppable_tx = Some(tx);
 
         let connection =
-            Connection::try_new(Box::new(|e| println!("Not connected because {e:?}"))).unwrap();
+            Connection::try_new(Some(Box::new(|e| println!("Not connected because {e:?}"))))
+                .unwrap();
         let config = SubscriberConfig::try_new(
             TOPIC,
             SOURCE,

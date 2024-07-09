@@ -1,3 +1,4 @@
+// TODO: Add documentation.
 use std::{
     any,
     ffi::CStr,
@@ -100,11 +101,15 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn try_new(on_error: Box<OnError>) -> Result<Self, Error> {
+    // TODO: Consider adopting a builder-like pattern.
+    pub fn try_new(on_error: Option<Box<OnError>>) -> Result<Self, Error> {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
-            let on_error = Box::into_raw(Box::new(on_error));
+            let on_error = match on_error {
+                None => std::ptr::null_mut(),
+                Some(on_error) => Box::into_raw(Box::new(on_error)),
+            };
             let ptr = mdb_sys::mdb_connection_create(
                 Some(Self::on_error),
                 on_error as *mut c_void,
@@ -116,7 +121,9 @@ impl Connection {
                 }
                 (false, true) => Ok(Self { ptr, on_error }),
                 (true, false) => {
-                    drop(Box::from_raw(on_error));
+                    if !on_error.is_null() {
+                        drop(Box::from_raw(on_error));
+                    }
                     Err(Error::new_owned(error))
                 }
                 (true, true) => {
@@ -138,6 +145,8 @@ impl Connection {
 }
 
 impl Drop for Connection {
+    // TODO: Consider avoiding a blocking call here or providing a method for manually destroying
+    //  the connection.
     fn drop(&mut self) {
         // SAFETY: Once the connection is destroyed it, and its worker thread, will not use any of the pointers given
         // to it at construction so accessing `on_error` without synchronization is safe.
@@ -284,6 +293,7 @@ impl<'a> Subscriber<'a> {
 }
 
 impl<'a> Drop for Subscriber<'a> {
+    // TODO: Consider allowing the user to control when potentially blocking calls happen.
     // SAFETY: Once destroy has returned, it is guaranteed that neither callback will be running nor
     // ever run again, so it is safe to drop them.
     // Naturally this does not apply to the on error callback, since that is associated with the
