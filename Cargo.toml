@@ -15,9 +15,11 @@ pkg-config = "0.3.30"
 syslog = "6.1.1"
 thiserror = "1.0.57"
 
+app-logging = { path = "crates/app-logging" }
 licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
-app-logging = { path = "crates/app-logging" }
+mdb = { path = "crates/mdb" }
+mdb-sys = { path = "crates/mdb-sys" }
 
 [workspace.package]
 edition = "2021"

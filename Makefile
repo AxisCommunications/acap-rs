@@ -56,7 +56,7 @@ else
 DOCKER_RUN = docker run \
 --volume ${CURDIR}/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/:/opt/app \
 --user $(shell id -u):$(shell id -g) \
-axisecp/acap-native-sdk:1.12-$(AXIS_DEVICE_ARCH)-ubuntu22.04
+axisecp/acap-native-sdk:1.15-$(AXIS_DEVICE_ARCH)-ubuntu22.04
 
 ACAP_BUILD = $(DOCKER_RUN) sh -c ". /opt/axis/acapsdk/environment-setup-* && acap-build --build no-build ."
 
@@ -131,9 +131,12 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 ## Check that all crates can be built
 check_build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE)/_envoy
 	cargo build \
+		--exclude consume_analytics_metadata \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
+		--exclude mdb \
+		--exclude mdb-sys \
 		--workspace
 	$(CROSS) build \
 		--target aarch64-unknown-linux-gnu \
@@ -167,9 +170,12 @@ check_lint:
 	RUSTFLAGS="-Dwarnings" cargo clippy \
 		--all-targets \
 		--no-deps \
+		--exclude consume_analytics_metadata \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
+		--exclude mdb \
+		--exclude mdb-sys \
 		--workspace
 	RUSTFLAGS="-Dwarnings" $(CROSS) clippy \
 		--all-targets \
@@ -181,9 +187,12 @@ check_lint:
 ## _
 check_tests:
 	cargo test \
+			--exclude consume_analytics_metadata \
 			--exclude licensekey \
 			--exclude licensekey-sys \
 			--exclude licensekey_handler \
+			--exclude mdb \
+			--exclude mdb-sys \
 			--workspace
 .PHONY: check_tests
 
