@@ -1,5 +1,4 @@
-//! Logging utilities for ACAP applications
-
+#![doc = include_str!("../README.md")]
 use std::{env, io::IsTerminal};
 
 use log::debug;
