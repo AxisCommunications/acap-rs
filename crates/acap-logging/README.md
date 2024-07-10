@@ -1,6 +1,8 @@
 _Logging utilities for ACAP applications_
 
-The logger should be initialized as early as possible:
+## Example
+
+The logger is initialized as early as possible:
 
 ```rust
 use log::{error, warn};
@@ -12,7 +14,7 @@ fn main() {
 }
 ```
 
-Also keep in mind that:
+## Pitfalls
 
 - Messages logged at the `trace` level will not be shown in the system logs on target.
 - Messages logged at the `warn` level or less severe will not be shown in terminals by default.
