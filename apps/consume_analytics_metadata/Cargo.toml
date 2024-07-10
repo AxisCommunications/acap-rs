@@ -7,5 +7,5 @@ edition.workspace = true
 libc = { workspace = true }
 log = { workspace = true }
 
-app-logging = { workspace = true }
+acap-logging = { workspace = true }
 mdb = { workspace = true }

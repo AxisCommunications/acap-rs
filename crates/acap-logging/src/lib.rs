@@ -1,4 +1,4 @@
-//! Utilities for managing app-logging in an application.
+//! Logging utilities for ACAP applications
 
 use std::{env, io::IsTerminal};
 
