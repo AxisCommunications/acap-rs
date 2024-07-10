@@ -68,6 +68,16 @@ Below is the list of examples available in the repository.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
 : An example that illustrates how to check the licensekey status.
 
+## Library crates
+
+| Name           | Documentation                                                   |
+|----------------|-----------------------------------------------------------------|
+| acap-logging   | [on docs.rs](https://docs.rs/acap-logging/latest/acap_logging/) |
+| licensekey     | [in source](crates/licensekey/src/lib.rs)                       |
+| licensekey-sys |                                                                 |
+| mdb            |                                                                 |
+| mdb-sys        |                                                                 |
+
 ## License
 
 [MIT](LICENSE)
