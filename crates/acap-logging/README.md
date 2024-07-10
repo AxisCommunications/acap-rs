@@ -4,10 +4,11 @@ _Logging utilities for ACAP applications_
 
 The logger is initialized as early as possible:
 
-```rust
+```no_run
 use log::{error, warn};
 
 fn main() {
+    # std::env::set_var("RUST_LOG_STYLE", "always");
     error!("This will never be shown");
     acap_logging::init_logger();
     error!("This will usually be shown");

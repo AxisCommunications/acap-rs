@@ -14,6 +14,12 @@ fn init_syslog() {
 ///
 /// If stdout is a terminal, write to stderr.
 /// Otherwise, write to the system logger.
+///
+/// # Panics
+///
+/// This function will panic if
+/// it fails to initialize the appropriate logger or
+/// a global logger has already been initialized.
 pub fn init_logger() {
     // Using `su -pc "..."` just says the "Connection to ... closed", and
     // I have not found another way to run as the SDK user over ssh and allocate a tty, so
