@@ -19,8 +19,3 @@ jobs:
           devcontainer exec --workspace-folder . make --always-make check_all
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=licensekey_handler
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=embedded_web_page
-      - name: Install host dependencies
-        run: cargo install cross
-      - name: Run checks on host
-        run: |
-          make check_all
