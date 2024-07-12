@@ -1,3 +1,4 @@
 *
 !/.devhost/
+!/crates/cargo-acap-build
 !/rust-toolchain.toml
