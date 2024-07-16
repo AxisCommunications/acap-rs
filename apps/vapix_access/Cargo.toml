@@ -1,0 +1,14 @@
+[package]
+name = "vapix_access"
+version = "1.0.0"
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1.38.0", features = ["rt", "macros"] }
+url = { workspace = true }
+
+acap-logging = { workspace = true }
+acap-vapix = { workspace = true }
