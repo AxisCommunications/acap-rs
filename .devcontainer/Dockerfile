@@ -56,8 +56,8 @@ RUN rustup show \
 ENV PATH=/usr/local/venv/bin:$PATH \
     VIRTUAL_ENV=/usr/local/venv
 
-RUN --mount=type=bind,target=/.devhost,source=.devhost \
-    cd /.devhost \
+RUN --mount=type=bind,target=/context \
+    cd /context/.devhost \
  && ./install-venv.sh $VIRTUAL_ENV \
  && chmod a+w -R $VIRTUAL_ENV
 
@@ -66,3 +66,7 @@ RUN --mount=type=bind,target=/.devhost,source=.devhost \
 # TODO: Replace the example in the README with something that does not mount any volumes.
 RUN mkdir /.cargo \
  && chmod a+w /.cargo/
+
+# `install-venv.sh` install a rust package which creates the cargo registry directory as root.
+# TODO: Improve this because it is slow (200 seconds).
+RUN chmod a+w -R $CARGO_HOME $RUSTUP_HOME

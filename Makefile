@@ -52,9 +52,8 @@ help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
-build: target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/_envoy
-	mkdir -p target/acap
-	cp $(patsubst %/_envoy,%/*.eap,$^) target/acap
+build:
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
@@ -85,11 +84,36 @@ stop:
 ##
 ## Prerequisites:
 ##
+## * <AXIS_PACKAGE> is recognized by `cargo-acap-build` as an ACAP app.
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-run: target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
-	scp $< root@$(AXIS_DEVICE_IP):/usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
+## * The device is added to `knownhosts`.
+run:
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
+	scp target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/$(AXIS_PACKAGE) root@$(AXIS_DEVICE_IP):/usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
+	ssh root@$(AXIS_DEVICE_IP) \
+		"cd /usr/local/packages/$(AXIS_PACKAGE) && su - acap-$(AXIS_PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(AXIS_PACKAGE)'"
+
+## Build and execute unit tests for <AXIS_PACKAGE> on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
+##
+## Forwards the following environment variables to the remote process:
+##
+## * `RUST_LOG`
+## * `RUST_LOG_STYLE`
+##
+## Prerequisites:
+##
+## * <AXIS_PACKAGE> is recognized by `cargo-acap-build` as an ACAP app.
+## * The app is installed on the device.
+## * The app is stopped.
+## * The device has SSH enabled the ssh user root configured.
+## * The device is added to `knownhosts`.
+test:
+	# The `scp` command below needs the wildcard to match exactly one file.
+	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
+	scp target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) root@$(AXIS_DEVICE_IP):/usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
 	ssh root@$(AXIS_DEVICE_IP) \
 		"cd /usr/local/packages/$(AXIS_PACKAGE) && su - acap-$(AXIS_PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(AXIS_PACKAGE)'"
 
@@ -101,7 +125,7 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 .PHONY: check_all
 
 ## Check that all crates can be built
-check_build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE)/_envoy
+check_build:
 	cargo build \
 		--exclude consume_analytics_metadata \
 		--exclude licensekey \
@@ -110,8 +134,10 @@ check_build: target/aarch64/$(AXIS_PACKAGE)/_envoy target/armv7hf/$(AXIS_PACKAGE
 		--exclude mdb \
 		--exclude mdb-sys \
 		--workspace
-	cargo build \
-		--target aarch64-unknown-linux-gnu \
+	cargo-acap-build \
+		--target aarch64 \
+		-- \
+		--exclude cargo-acap-build \
 		--workspace
 
 .PHONY: check_build
@@ -196,50 +222,3 @@ fix_lint:
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
-
-# Stage the files that will be packaged outside the source tree to avoid
-# * cluttering the source tree and `.gitignore` with build artifacts, and
-# * having the same file be built for different targets at different times.
-# Use the `_envoy` file as a target because
-# * `.DELETE_ON_ERROR` does not work for directories, and
-# * the name of the `.eap` file is annoying to predict.
-# When building for all targets using a single image we cannot rely on wildcard matching.
-target/aarch64/$(AXIS_PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
-target/armv7hf/$(AXIS_PACKAGE)/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
-target/%/$(AXIS_PACKAGE)/_envoy: AXIS_DEVICE_ARCH=$*
-target/%/$(AXIS_PACKAGE)/_envoy: target/%/$(AXIS_PACKAGE)/lib target/%/$(AXIS_PACKAGE)/html target/%/$(AXIS_PACKAGE)/$(AXIS_PACKAGE) target/%/$(AXIS_PACKAGE)/manifest.json target/%/$(AXIS_PACKAGE)/LICENSE
-	$(ACAP_BUILD)
-	touch $@
-
-target/%/$(AXIS_PACKAGE)/html: FORCE
-	mkdir -p $(dir $@)
-	if [ -d $@ ]; then rm -r $@; fi
-	if [ -d apps/$(AXIS_PACKAGE)/html ]; then cp -r apps/$(AXIS_PACKAGE)/html $@; fi
-
-target/%/$(AXIS_PACKAGE)/lib: FORCE
-	mkdir -p $(dir $@)
-	if [ -d $@ ]; then rm -r $@; fi
-	if [ -d apps/$(AXIS_PACKAGE)/lib ]; then cp -r apps/$(AXIS_PACKAGE)/lib $@; fi
-
-target/%/$(AXIS_PACKAGE)/manifest.json: apps/$(AXIS_PACKAGE)/manifest.json
-	mkdir -p $(dir $@)
-	cp $< $@
-
-target/%/$(AXIS_PACKAGE)/LICENSE: apps/$(AXIS_PACKAGE)/LICENSE
-	mkdir -p $(dir $@)
-	cp $< $@
-
-# The target triple and the name of the docker image do not match, so
-# at some point we need to map one to the other. It might as well be here.
-target/aarch64/$(AXIS_PACKAGE)/$(AXIS_PACKAGE): target/aarch64-unknown-linux-gnu/release/$(AXIS_PACKAGE)
-	mkdir -p $(dir $@)
-	cp $< $@
-
-target/armv7hf/$(AXIS_PACKAGE)/$(AXIS_PACKAGE): target/thumbv7neon-unknown-linux-gnueabihf/release/$(AXIS_PACKAGE)
-	mkdir -p $(dir $@)
-	cp $< $@
-
-# Always rebuild the executable because configuring accurate cache invalidation is annoying.
-target/%/release/$(AXIS_PACKAGE): FORCE
-	cargo -v build --release --target $* --package $(AXIS_PACKAGE)
-	touch $@ # This is a hack to make the `_envoy` target above always build
