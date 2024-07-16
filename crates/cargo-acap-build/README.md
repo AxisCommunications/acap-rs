@@ -1,6 +1,4 @@
-# `cargo-acap-build`
-
-A tool for building ACAP apps and other executables for deployment to Axis devices.
+_Build utilities for ACAP apps and other executables deployed to Axis devices_
 
 ## Application project structure
 
