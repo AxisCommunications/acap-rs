@@ -171,6 +171,8 @@ pub fn run_other(
     Ok(())
 }
 
+// TODO: Consider abstracting away the difference between devices that support developer mode, and
+//  those that don't.
 /// Run ACAP app on device in a realistic manner.
 ///
 /// `user` and `pass` are the credentials to use for the ssh connection.
