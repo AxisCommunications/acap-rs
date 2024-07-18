@@ -55,24 +55,37 @@ impl Client {
         }
     }
 
-    pub fn basic_auth(self, username: String, password: String) -> Self {
-        let password = Secret(password);
+    pub fn basic_auth<U, P>(self, username: U, password: P) -> Self
+    where
+        U: std::fmt::Display,
+        P: std::fmt::Display,
+    {
+        let username = username.to_string();
+        let password = Secret(password.to_string());
         Self {
             auth: Authentication::Basic { username, password },
             ..self
         }
     }
 
-    pub fn bearer_auth(self, token: String) -> Self {
-        let token = Secret(token);
+    pub fn bearer_auth<T>(self, token: T) -> Self
+    where
+        T: std::fmt::Display,
+    {
+        let token = Secret(token.to_string());
         Self {
             auth: Authentication::Bearer { token },
             ..self
         }
     }
 
-    pub fn digest_auth(self, username: String, password: String) -> Self {
-        let password = Secret(password);
+    pub fn digest_auth<U, P>(self, username: U, password: P) -> Self
+    where
+        U: std::fmt::Display,
+        P: std::fmt::Display,
+    {
+        let username = username.to_string();
+        let password = Secret(password.to_string());
         Self {
             auth: Authentication::Digest { username, password },
             ..self

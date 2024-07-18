@@ -3,12 +3,13 @@
 use std::{
     io::Read,
     process::{Command, Stdio},
-    time::Instant,
+    time::Duration,
 };
 
-use acap_vapix::{parameter_management, HttpClient};
+use acap_vapix::{systemready, HttpClient};
 use anyhow::{bail, Context};
 use log::{debug, info};
+use tokio::time;
 use url::Url;
 
 fn new_client() -> anyhow::Result<HttpClient> {
@@ -55,66 +56,40 @@ fn new_client() -> anyhow::Result<HttpClient> {
 async fn main() {
     acap_logging::init_logger();
     let client = new_client().unwrap();
-    let before = Instant::now();
-    let params = parameter_management::list().execute(&client).await.unwrap();
-    let after = Instant::now();
-    debug!(
-        "Retrieving parameters took {} milliseconds",
-        after.duration_since(before).as_millis()
-    );
-    info!("Retrieved {} parameters", params.len())
+    loop {
+        debug!("Checking if system is ready");
+        let data = systemready::systemready()
+            .timeout(u32::MAX)
+            .execute(&client)
+            .await
+            .unwrap();
+        if data.system_ready() {
+            if let Some(uptime) = data.uptime() {
+                info!("System is ready after being up for {uptime:?}");
+            } else {
+                info!("System is ready");
+            }
+            break;
+        } else {
+            debug!("System is not ready, checking soon.");
+            time::sleep(Duration::from_secs(1)).await;
+        }
+    }
 }
 
 #[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
-    use acap_vapix::{certificate_management, mqtt_client1, mqtt_event1, parameter_management};
-    use serde_json::Value;
+    use acap_vapix::systemready;
 
     use crate::new_client;
 
     #[tokio::test]
-    async fn smoke_test_certificate_management() {
+    async fn smoke_test_systemready() {
         let client = new_client().unwrap();
-        assert!(
-            certificate_management::delete_certificates("nonexistent-certificate-id")
-                .execute(&client)
-                .await
-                .is_err()
-        );
-    }
-
-    #[tokio::test]
-    async fn smoke_test_mqtt_client1() {
-        let client = new_client().unwrap();
-        let data = mqtt_client1::get_client_status()
-            .execute(&client)
-            .await
-            .unwrap();
-        let Some(Value::Object(status)) = data.get("status") else {
-            panic!("Status seems like something that should always be present")
-        };
-        let Some(Value::String(state)) = status.get("state") else {
-            panic!("State seems like something that should always be present")
-        };
-        assert!(state == "active" || state == "inactive")
-    }
-
-    #[tokio::test]
-    async fn smoke_test_mqtt_event1() {
-        let client = new_client().unwrap();
-        let _ = mqtt_event1::get_event_publication_config()
-            .execute(&client)
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn smoke_test_parameter_management() {
-        let client = new_client().unwrap();
-        let params = parameter_management::list().execute(&client).await.unwrap();
-        // This is not a documented invariant, but it seems unlikely to change, and it is useful for
-        // verifying that the parameters were retrieved somewhat correctly.
-        assert_eq!(params.get("root.Brand.Brand").unwrap(), "AXIS")
+        let data = systemready::systemready().execute(&client).await.unwrap();
+        // TODO: Remove once parsed eagerly
+        let _ = data.preview_mode();
+        let _ = data.uptime();
     }
 }
