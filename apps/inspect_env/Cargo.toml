@@ -1,0 +1,9 @@
+[package]
+name = "inspect_env"
+version = "1.0.0"
+edition.workspace = true
+
+[dependencies]
+log = { workspace = true }
+
+acap-logging = { workspace = true }

@@ -36,7 +36,8 @@ rm /tmp/node-v18.16.1-linux-x64.tar.gz
 # Install `devcontainer` into venv
 npm install -g @devcontainers/cli@0.65.0
 
-# Install `cargo-acap-build` into venv
+# Install packages from this project into venv
+cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/acap-ssh-utils
 cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-build
 
 rm -r /tmp/target
