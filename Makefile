@@ -144,8 +144,8 @@ check_build:
 	cargo-acap-build \
 		--target aarch64 \
 		-- \
-		--exclude cargo-acap-build \
 		--exclude acap-ssh-utils \
+		--exclude cargo-acap-build \
 		--workspace
 
 .PHONY: check_build

@@ -1,8 +1,6 @@
-use anyhow::{bail, Context};
-use std::fs;
-use std::fs::File;
-use std::path::PathBuf;
+use std::{fs, fs::File, path::PathBuf};
 
+use anyhow::{bail, Context};
 use cargo_acap_build::{build, get_cargo_metadata, Architecture};
 use clap::{Parser, ValueEnum};
 use log::debug;
