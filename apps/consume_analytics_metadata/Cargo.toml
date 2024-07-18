@@ -1,9 +1,11 @@
 [package]
-name = "inspect_env"
+name = "consume_analytics_metadata"
 version = "1.0.0"
 edition.workspace = true
 
 [dependencies]
+libc = { workspace = true }
 log = { workspace = true }
 
 acap-logging = { workspace = true }
+mdb = { workspace = true }

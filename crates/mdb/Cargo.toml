@@ -1,9 +1,10 @@
 [package]
-name = "app-logging"
+# TODO: Change name
+name = "mdb"
 version = "0.0.0"
 edition.workspace = true
 
 [dependencies]
+libc = { workspace = true }
 log = { workspace = true }
-env_logger = { workspace = true }
-syslog = { workspace = true }
+mdb-sys = { workspace = true }

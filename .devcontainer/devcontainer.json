@@ -1,17 +1,11 @@
 {
     "name": "acap-rs",
     "build": {
-        "dockerfile": "../Dockerfile",
+        "dockerfile": "Dockerfile",
         "context": ".."
     },
     "features": {
         "ghcr.io/devcontainers/features/common-utils:2": {},
     },
-    "remoteUser": "${localEnv:USER}",
-    "containerEnv": {
-        "CARGO_HOME": "/home/${localEnv:USER}/.cargo"
-    },
-    "postCreateCommand": {
-        "symlinkGhCli": "cargo install --path crates/acap-ssh-utils --root /usr/local/cargo"
-    }
+    "remoteUser": "${localEnv:USER}"
 }

@@ -19,7 +19,7 @@ fn check_license_status(app_name: &CStr) {
 }
 
 fn main() {
-    app_logging::init_logger();
+    acap_logging::init_logger();
     let app_name = CString::new(
         std::env::current_exe()
             .unwrap()

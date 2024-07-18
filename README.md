@@ -23,7 +23,7 @@ hello_world_1_0_0_aarch64.eap
 If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the app can be built using only `docker`:
 
 ```sh
-docker build --tag acap-rs .
+docker build --file .devcontainer/Dockerfile --tag acap-rs .
 docker run \
   --interactive \
   --rm \
@@ -37,35 +37,36 @@ docker run \
 
 This works with any of the [example applications](#example-applications).
 
-## Advanced setup
-
-Ensure global prerequisites are installed:
-
-* Docker
-* Rust e.g. [using rustup](https://www.rust-lang.org/tools/install)
-* Python e.g. using [pyenv](https://github.com/pyenv/pyenv)
-  * When using the system python on some versions of Debian and Ubuntu, it is necessary to `apt install python3-venv`.
-* `scp`, `ssh`, and `sshpass` (needed only for `make run`)
-
-Create, activate and populate the local development environment like
-
-```sh
-source ./init_env.sh
-make sync_env
-```
-
 Important workflows are documented in the [Makefile](./Makefile) and can now be listed with `make help`.
+
+## Advanced setup
+Development environments outside containers are more difficult to reproduce and maintain.
+Should it nonetheless be of interest, one procedure is documented in [this workflow](.github/workflows/on-host-workflow.yml).
 
 ## Example applications
 
 Below is the list of examples available in the repository.
 
+* [`consume_analytics_metadata`](apps/consume_analytics_metadata/src/main.rs)
+: An example that consumes metadata.
 * [`embedded_web_page`](apps/embedded_web_page/src/main.rs)
 : An example that illustrates how to bundle an embedded web page.
 * [`hello_world`](apps/hello_world/src/main.rs)
 : A simple "Hello, World!" application.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
 : An example that illustrates how to check the licensekey status.
+* [`using_a_build_script`](apps/using_a_build_script/src/main.rs)
+: Uses a build script to generate html, lib and app manifest files at build time.
+
+## Library crates
+
+| Name           | Documentation                                                   |
+|----------------|-----------------------------------------------------------------|
+| acap-logging   | [on docs.rs](https://docs.rs/acap-logging/latest/acap_logging/) |
+| licensekey     | [in source](crates/licensekey/src/lib.rs)                       |
+| licensekey-sys |                                                                 |
+| mdb            |                                                                 |
+| mdb-sys        |                                                                 |
 
 ## Binary crates
 

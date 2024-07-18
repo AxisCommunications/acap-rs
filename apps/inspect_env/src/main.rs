@@ -5,7 +5,7 @@ use std::{collections::HashMap, env, io::IsTerminal};
 use log::info;
 
 fn main() {
-    app_logging::init_logger();
+    acap_logging::init_logger();
     info!("args: {:?}", env::args().collect::<Vec<_>>());
     info!("vars: {:#?}", env::vars().collect::<HashMap<_, _>>());
     info!("current_dir: {:?}", env::current_dir());

@@ -1,0 +1,43 @@
+attrs==23.2.0
+    # via jsonschema
+build==1.0.3
+    # via pip-tools
+click==8.1.7
+    # via pip-tools
+fire==0.5.0
+    # via mkhelp
+jsonschema==3.2.0
+    # via -r .devhost/requirements.txt
+mkhelp==0.2
+    # via -r .devhost/requirements.txt
+packaging==23.2
+    # via build
+pip-tools==7.3.0
+    # via -r .devhost/requirements.txt
+pyproject-hooks==1.0.0
+    # via build
+pyrsistent==0.20.0
+    # via jsonschema
+six==1.16.0
+    # via
+    #   fire
+    #   jsonschema
+termcolor==2.4.0
+    # via fire
+tomli==2.0.1
+    # via
+    #   build
+    #   pip-tools
+    #   pyproject-hooks
+wheel==0.42.0
+    # via pip-tools
+
+# The following packages are considered to be unsafe in a requirements file:
+pip==24.0
+    # via
+    #   -r .devhost/requirements.txt
+    #   pip-tools
+setuptools==69.0.3
+    # via
+    #   jsonschema
+    #   pip-tools

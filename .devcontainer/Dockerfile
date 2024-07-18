@@ -1,7 +1,8 @@
 ARG REPO=axisecp
 ARG SDK=acap-native-sdk
 ARG UBUNTU_VERSION=22.04
-ARG VERSION=1.14
+# Keep in sync with `install-sdk.sh`.
+ARG VERSION=1.15
 ARG BASE_IMAGE=debian:bookworm-20240423
 
 FROM ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64
@@ -15,31 +16,6 @@ COPY --from=sdk-aarch64 /opt/axis/acapsdk/sysroots/aarch64 /opt/axis/acapsdk/sys
 COPY --from=sdk-armv7hf /opt/axis/acapsdk/sysroots/armv7hf /opt/axis/acapsdk/sysroots/armv7hf
 COPY --from=sdk-aarch64 /opt/axis/acapsdk/sysroots/x86_64-pokysdk-linux /opt/axis/acapsdk/sysroots/x86_64-pokysdk-linux
 
-RUN apt-get update \
- && apt-get install -y \
-    build-essential \
-    clang \
-    g++-aarch64-linux-gnu \
-    g++-arm-linux-gnueabihf \
-    libglib2.0-dev \
-    pkg-config \
-    iputils-ping \
-    python3-jsonschema \
-    sshpass \
-    wget \
- && rm -rf /var/lib/apt/lists/*
-
-ENV RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
-
-COPY docker/install_rust.sh rust-toolchain.toml ./
-RUN ./install_rust.sh \
- && rustup target add \
-    aarch64-unknown-linux-gnu \
-    thumbv7neon-unknown-linux-gnueabihf \
- && rm install_rust.sh rust-toolchain.toml
-
 ENV \
     SYSROOT_AARCH64=/opt/axis/acapsdk/sysroots/aarch64 \
     SYSROOT_ARMV7HF=/opt/axis/acapsdk/sysroots/armv7hf
@@ -47,8 +23,8 @@ ENV \
 ENV \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc" \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_AARCH64}" \
-    CC_aarch64_axis_linux_gnu="aarch64-linux-gnu-gcc" \
-    CXX_aarch64_axis_linux_gnu="aarch64-linux-gnu-g++" \
+    CC_aarch64_unknown_linux_gnu="aarch64-linux-gnu-gcc" \
+    CXX_aarch64_unknown_linux_gnu="aarch64-linux-gnu-g++" \
     PKG_CONFIG_LIBDIR_aarch64_unknown_linux_gnu="${SYSROOT_AARCH64}/usr/lib/pkgconfig:${SYSROOT_AARCH64}/usr/share/pkgconfig" \
     PKG_CONFIG_PATH_aarch64_unknown_linux_gnu="${SYSROOT_AARCH64}/usr/lib/pkgconfig:${SYSROOT_AARCH64}/usr/share/pkgconfig" \
     PKG_CONFIG_SYSROOT_DIR_aarch64_unknown_linux_gnu="${SYSROOT_AARCH64}" \
@@ -59,3 +35,38 @@ ENV \
     PKG_CONFIG_LIBDIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
     PKG_CONFIG_PATH_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
     PKG_CONFIG_SYSROOT_DIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}"
+
+COPY .devhost/install-system-packages.sh ./
+RUN ./install-system-packages.sh \
+ && rm install-system-packages.sh
+
+ENV PATH=/usr/local/cargo/bin:$PATH \
+    CARGO_HOME=/usr/local/cargo \
+    RUSTUP_HOME=/usr/local/rustup
+
+COPY .devhost/install-rust.sh ./
+RUN  ./install-rust.sh \
+ && chmod a+w -R $CARGO_HOME $RUSTUP_HOME \
+ && rm install-rust.sh
+
+COPY rust-toolchain.toml ./
+RUN rustup show \
+ && rm rust-toolchain.toml
+
+ENV PATH=/usr/local/venv/bin:$PATH \
+    VIRTUAL_ENV=/usr/local/venv
+
+RUN --mount=type=bind,target=/context \
+    cd /context/.devhost \
+ && ./install-venv.sh $VIRTUAL_ENV \
+ && chmod a+w -R $VIRTUAL_ENV
+
+# If neither `CARGO_HOME` nor `HOME` is set when launching a container, then cargo will try to
+# download crates to this directory. If launched with the `--user` option then this will fail.
+# TODO: Replace the example in the README with something that does not mount any volumes.
+RUN mkdir /.cargo \
+ && chmod a+w /.cargo/
+
+# `install-venv.sh` install a rust package which creates the cargo registry directory as root.
+# TODO: Improve this because it is slow (200 seconds).
+RUN chmod a+w -R $CARGO_HOME $RUSTUP_HOME
