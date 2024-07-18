@@ -14,7 +14,12 @@ use crate::{
     command_utils::RunWith,
 };
 
-pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<PathBuf>> {
+#[derive(Debug)]
+pub enum Artifact {
+    Eap { path: PathBuf, name: String },
+    Exe { path: PathBuf },
+}
+pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<Artifact>> {
     // If user supplies a target we lose track of which target is currently being built
     assert!(!args.contains(&"--target"));
 
@@ -60,17 +65,20 @@ pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<P
                 let out_dir = out_dirs.get(&package_id).cloned();
                 if is_app(&manifest_path, out_dir.as_deref()) {
                     // If the executable should be an ACAP app, create an `.eap` file.
-                    artifacts.push(pack(
-                        &cargo_target_directory,
-                        arch,
-                        target.name,
-                        manifest_path,
-                        executable,
-                        out_dir,
-                    )?);
+                    artifacts.push(Artifact::Eap {
+                        path: pack(
+                            &cargo_target_directory,
+                            arch,
+                            target.name.clone(),
+                            manifest_path,
+                            executable,
+                            out_dir,
+                        )?,
+                        name: target.name,
+                    });
                 } else {
                     // If the executable should not be an ACAP app, leave it as is.
-                    artifacts.push(executable);
+                    artifacts.push(Artifact::Exe { path: executable });
                 }
             }
             JsonMessage::CompilerMessage { message } => {

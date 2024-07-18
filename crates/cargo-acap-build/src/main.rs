@@ -1,7 +1,6 @@
-use std::{fs, fs::File, path::PathBuf};
+use std::fs::File;
 
-use anyhow::{bail, Context};
-use cargo_acap_build::{build, get_cargo_metadata, Architecture};
+use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
 use log::debug;
 
@@ -49,58 +48,12 @@ impl Cli {
     }
 }
 
-fn copy_eaps(artifacts: Vec<PathBuf>) -> anyhow::Result<()> {
-    let cargo_target_dir = get_cargo_metadata()?.target_directory;
-    let acap_dir = cargo_target_dir.join("acap");
-    match fs::create_dir(&acap_dir) {
-        Ok(()) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
-        Err(e) => Err(e)?,
-    }
-    // Note that:
-    // - The app name must contain no hyphens and by convention we give the package the same name.
-    // - Test binaries are usually named like `{package_name}`-{hex_string}`
-    // This means we should be able to guess the app name from the package name and use the reverse
-    // of that to give `.eap` files unique names.
-    // TODO: Consider exposing this from lib instead of guessing it here
-    for src in artifacts {
-        if let Some(extension) = src.extension() {
-            if extension.to_string_lossy() != "eap" {
-                debug!("{src:?} is not an `.eap`");
-                continue;
-            }
-        }
-        let to = src
-            .parent()
-            .context(".eap file has no parent dir")?
-            .file_name()
-            .context("dir has no name")?
-            .to_str()
-            .context("dir name is not a valid string")?;
-        let parts: Vec<_> = to.split('-').collect();
-        let from = match parts.len() {
-            0 => panic!("Every string splits into at least one substring"),
-            1 | 2 => parts[0],
-            _ => bail!("Expected dir name with at most one '-' but got {to:?}"),
-        };
-        let name = src
-            .file_name()
-            .context("eap has no file name")?
-            .to_str()
-            .context("eap file name is not a valid string")?
-            .replace(from, to);
-        let dst = acap_dir.join(name);
-        debug!("Copying `.eap` from {src:?} to {dst:?}");
-        fs::copy(src, dst)?;
-    }
-    Ok(())
-}
-
 fn build_and_copy(cli: Cli) -> anyhow::Result<()> {
-    let targets = cli.targets();
-    let args: Vec<_> = cli.args.iter().map(|s| s.as_str()).collect();
-    let artifacts = build(&targets, &args)?;
-    copy_eaps(artifacts)
+    AppBuilder::from_targets(cli.targets())
+        .args(cli.args)
+        .artifact_dir(get_cargo_metadata()?.target_directory.join("acap"))
+        .execute()?;
+    Ok(())
 }
 
 fn main() -> anyhow::Result<()> {

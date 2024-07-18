@@ -128,6 +128,23 @@ test: apps/$(AXIS_PACKAGE)/LICENSE
 		-- \
 		--test-threads=1
 
+## Bulk operations
+## ---------------
+
+## Install all apps on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+	cargo-acap-sdk install \
+		-- \
+		--package licensekey \
+		--package '*_*'
+
+## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
+test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+	cargo-acap-sdk test \
+		-- \
+		--package licensekey \
+		--package '*_*'
+
 ## Checks
 ## ------
 

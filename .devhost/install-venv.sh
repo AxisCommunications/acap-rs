@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-set -eu
+set -eux
 
 VIRTUAL_ENV="${1}"
 INIT_ENV="${2:-}"
