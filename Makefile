@@ -155,7 +155,6 @@ check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
-		--exclude acap-ssh-utils \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
@@ -186,7 +185,6 @@ check_lint:
 		--workspace
 	RUSTFLAGS="-Dwarnings" cargo clippy \
 		--all-targets \
-		--exclude acap-ssh-utils \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
