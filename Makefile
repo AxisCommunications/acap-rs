@@ -55,7 +55,7 @@ help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
-build:
+build: apps/$(AXIS_PACKAGE)/LICENSE
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
@@ -132,7 +132,7 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 .PHONY: check_all
 
 ## Check that all crates can be built
-check_build:
+check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo build \
 		--exclude consume_analytics_metadata \
 		--exclude licensekey \
@@ -227,6 +227,13 @@ fix_lint:
 		--strip-extras \
 		--output-file $@ \
 		$^
+
+# TODO: Find a convenient way to integrate this with cargo-acap-build
+apps/%/LICENSE: apps/%/Cargo.toml about.hbs
+	cargo-about generate \
+		--manifest-path apps/$*/Cargo.toml \
+		--output-file $@ \
+		about.hbs
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
