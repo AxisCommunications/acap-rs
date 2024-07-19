@@ -27,8 +27,6 @@ fn generate_lib(out_dir: &Path) {
     fs::write(libfoo, "Foxtrot").unwrap();
 }
 
-
-
 fn generate_html(out_dir: &Path) {
     let html = out_dir.join("html");
     match fs::create_dir(&html) {
