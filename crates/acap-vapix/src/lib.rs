@@ -18,6 +18,8 @@ mod http;
 
 /// Construct a new [`HttpClient`] for ACAP apps connecting to VAPIX on the same device.
 pub fn local_client() -> anyhow::Result<HttpClient> {
+    // TODO: Consider verifying the manifest or providing hints when it looks misconfigured and this
+    //  call fails.
     // TODO: Consider using a DBUs library like `zbus`
     debug!("Getting credentials...");
     let mut child = Command::new("/usr/bin/gdbus")
@@ -37,6 +39,7 @@ pub fn local_client() -> anyhow::Result<HttpClient> {
 
     let status = child.wait()?;
     if !status.success() {
+        // TODO: Consider capturing stderr and attaching to error or logging as warning.
         bail!("Command exited with status {status}")
     }
 
