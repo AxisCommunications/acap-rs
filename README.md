@@ -57,12 +57,15 @@ Below is the list of examples available in the repository.
 : An example that illustrates how to check the licensekey status.
 * [`using_a_build_script`](apps/using_a_build_script/src/main.rs)
 : Uses a build script to generate html, lib and app manifest files at build time.
+* [`vapix_access`](apps/vapix_access/src/main.rs)
+: Uses a VAPIX service account to access VAPIX APIs.
 
 ## Library crates
 
 | Name           | Documentation                                                   |
 |----------------|-----------------------------------------------------------------|
 | acap-logging   | [on docs.rs](https://docs.rs/acap-logging/latest/acap_logging/) |
+| acap-vapix     | [in source](crates/acap-vapix/src/lib.rs)                       |
 | licensekey     | [in source](crates/licensekey/src/lib.rs)                       |
 | licensekey-sys |                                                                 |
 | mdb            |                                                                 |

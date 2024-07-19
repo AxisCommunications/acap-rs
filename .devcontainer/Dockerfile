@@ -68,5 +68,7 @@ RUN mkdir /.cargo \
  && chmod a+w /.cargo/
 
 # `install-venv.sh` install a rust package which creates the cargo registry directory as root.
-# TODO: Improve this because it is slow (200 seconds).
-RUN chmod a+w -R $CARGO_HOME $RUSTUP_HOME
+# TODO: Consider removing the content of `CARGO_HOME` instead of `chmod`ing it;
+# it is over 400M already, but that for now having that cached at the start of the dev container may be an advantage.
+RUN find $CARGO_HOME $RUSTUP_HOME -type d -exec chmod a+rwx {} +
+RUN find $CARGO_HOME $RUSTUP_HOME -type f -exec chmod a+rw {} +
