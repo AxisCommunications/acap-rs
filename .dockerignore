@@ -1,4 +1,5 @@
 *
 !/.devhost/
+!/crates/acap-ssh-utils
 !/crates/cargo-acap-build
 !/rust-toolchain.toml

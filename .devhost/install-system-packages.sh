@@ -15,4 +15,5 @@ apt-get install \
   iputils-ping \
   libglib2.0-dev \
   pkg-config \
-  python3-venv
+  python3-venv \
+  sshpass

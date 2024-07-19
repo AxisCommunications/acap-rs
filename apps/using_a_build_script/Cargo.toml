@@ -2,6 +2,7 @@
 name = "using_a_build_script"
 version = "1.0.0"
 edition.workspace = true
+publish = false
 
 [build-dependencies]
 serde = { workspace = true }

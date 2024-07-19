@@ -7,16 +7,19 @@
 # Name of package containing the app to be built.
 # Rust does not enforce that the path to the package matches the package name, but
 # this makefile does to keep things simple.
-AXIS_PACKAGE ?= hello_world
+export AXIS_PACKAGE ?= hello_world
 
 # The architecture that will be assumed when interacting with the device.
-AXIS_DEVICE_ARCH ?= aarch64
+export AXIS_DEVICE_ARCH ?= aarch64
 
 # The IP address of the device to interact with.
-AXIS_DEVICE_IP ?= 192.168.0.90
+export AXIS_DEVICE_IP ?= 192.168.0.90
+
+# The username to use when interacting with the device.
+export AXIS_DEVICE_USER ?= root
 
 # The password to use when interacting with the device.
-AXIS_DEVICE_PASS ?= pass
+export AXIS_DEVICE_PASS ?= pass
 
 # Other
 # -----
@@ -52,7 +55,7 @@ help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
-build:
+build: apps/$(AXIS_PACKAGE)/LICENSE
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
@@ -91,9 +94,11 @@ stop:
 ## * The device is added to `knownhosts`.
 run:
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
-	scp target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/$(AXIS_PACKAGE) root@$(AXIS_DEVICE_IP):/usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
-	ssh root@$(AXIS_DEVICE_IP) \
-		"cd /usr/local/packages/$(AXIS_PACKAGE) && su - acap-$(AXIS_PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(AXIS_PACKAGE)'"
+	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
+	acap-ssh-utils run-app \
+		--environment RUST_LOG=debug \
+		--environment RUST_LOG_STYLE=always \
+		$(AXIS_PACKAGE)
 
 ## Build and execute unit tests for <AXIS_PACKAGE> on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 ##
@@ -113,9 +118,11 @@ test:
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
-	scp target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) root@$(AXIS_DEVICE_IP):/usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
-	ssh root@$(AXIS_DEVICE_IP) \
-		"cd /usr/local/packages/$(AXIS_PACKAGE) && su - acap-$(AXIS_PACKAGE) -s /bin/sh --preserve-environment -c '$(if $(RUST_LOG_STYLE),RUST_LOG_STYLE=$(RUST_LOG_STYLE) )$(if $(RUST_LOG),RUST_LOG=$(RUST_LOG) )./$(AXIS_PACKAGE)'"
+	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
+	acap-ssh-utils run-app \
+		--environment RUST_LOG=debug \
+		--environment RUST_LOG_STYLE=always \
+		$(AXIS_PACKAGE)
 
 ## Checks
 ## ------
@@ -125,7 +132,7 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 .PHONY: check_all
 
 ## Check that all crates can be built
-check_build:
+check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo build \
 		--exclude consume_analytics_metadata \
 		--exclude licensekey \
@@ -137,6 +144,7 @@ check_build:
 	cargo-acap-build \
 		--target aarch64 \
 		-- \
+		--exclude acap-ssh-utils \
 		--exclude cargo-acap-build \
 		--workspace
 
@@ -219,6 +227,13 @@ fix_lint:
 		--strip-extras \
 		--output-file $@ \
 		$^
+
+# TODO: Find a convenient way to integrate this with cargo-acap-build
+apps/%/LICENSE: apps/%/Cargo.toml about.hbs
+	cargo-about generate \
+		--manifest-path apps/$*/Cargo.toml \
+		--output-file $@ \
+		about.hbs
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@

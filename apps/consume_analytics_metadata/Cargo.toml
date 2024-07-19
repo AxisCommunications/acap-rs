@@ -2,6 +2,7 @@
 name = "consume_analytics_metadata"
 version = "1.0.0"
 edition.workspace = true
+publish = false
 
 [dependencies]
 libc = { workspace = true }
