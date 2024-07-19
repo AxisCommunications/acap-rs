@@ -55,6 +55,8 @@ Below is the list of examples available in the repository.
 : A simple "Hello, World!" application.
 * [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
 : An example that illustrates how to check the licensekey status.
+* [`reverse_proxy`](apps/reverse_proxy/src/main.rs)
+: Uses a web server and reverse proxy configuration to expose HTTP and WebSocket APIs.
 * [`using_a_build_script`](apps/using_a_build_script/src/main.rs)
 : Uses a build script to generate html, lib and app manifest files at build time.
 * [`vapix_access`](apps/vapix_access/src/main.rs)

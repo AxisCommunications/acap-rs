@@ -19,5 +19,6 @@ jobs:
           devcontainer exec --workspace-folder . make --always-make check_all
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=licensekey_handler
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=embedded_web_page
+          devcontainer exec --workspace-folder . make build AXIS_PACKAGE=reverse_proxy
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=using_a_build_script
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=vapix_access
