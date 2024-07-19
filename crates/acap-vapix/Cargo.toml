@@ -1,18 +1,21 @@
 [package]
 name = "acap-vapix"
-version = "0.1.0"
+version = "0.0.1"
 edition.workspace = true
+description = "VAPIX access for ACAP apps"
 license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/AxisCommunications/acap-rs"
+repository = "https://github.com/AxisCommunications/acap-rs"
 
 [dependencies]
-diqwest = "3.1.0"
-reqwest = { version = "0.12.5", default-features = false, features = ["json"] }
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = { version = "1.0.118" }
-url = "2.5.2"
-anyhow = "1.0.86"
-log = "0.4.21"
-clap = { version = "4.5.7", features = ["derive"] }
+anyhow = { workspace = true }
+diqwest = { workspace = true }
+log = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+url = { workspace = true }
 
 [dev-dependencies]
 env_logger = "0.11.3"
