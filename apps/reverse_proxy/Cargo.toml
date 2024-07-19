@@ -2,6 +2,7 @@
 name = "reverse_proxy"
 version = "1.0.0"
 edition.workspace = true
+publish = false
 
 [dependencies]
 axum = { workspace = true, features = ["tokio", "ws"] }
@@ -13,4 +14,4 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower-http = { workspace = true, features = ["fs", "trace"] }
 serde = { workspace = true, features = ["derive"] }
 
-app-logging = { workspace = true }
+acap-logging = { workspace = true }

@@ -11,11 +11,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install dependencies
-        run: cargo install cross
-      - name: Run checks
+      - name: Install dev container dependencies
+        run: npm install -g @devcontainers/cli@0.65.0
+      - name: Run checks in dev container
         run: |
-          make --always-make check_all
-          PACKAGE=licensekey_handler make build
-          PACKAGE=embedded_web_page make build
-          PACKAGE=reverse_proxy make build
+          devcontainer up --workspace-folder .
+          devcontainer exec --workspace-folder . make --always-make check_all
+          devcontainer exec --workspace-folder . make build AXIS_PACKAGE=licensekey_handler
+          devcontainer exec --workspace-folder . make build AXIS_PACKAGE=embedded_web_page
+          devcontainer exec --workspace-folder . make build AXIS_PACKAGE=using_a_build_script
+          devcontainer exec --workspace-folder . make build AXIS_PACKAGE=reverse_proxy

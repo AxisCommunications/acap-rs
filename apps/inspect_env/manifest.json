@@ -1,0 +1,11 @@
+{
+    "schemaVersion": "1.2",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "inspect_env",
+            "vendor": "Axis Communications",
+            "runMode": "never",
+            "version": "1.0.0"
+        }
+    }
+}

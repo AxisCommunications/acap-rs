@@ -2,9 +2,10 @@
 name = "licensekey_handler"
 version = "1.0.0"
 edition.workspace = true
+publish = false
 
 [dependencies]
 log = { workspace = true }
 
-app-logging = { workspace = true }
+acap-logging = { workspace = true }
 licensekey = { workspace = true }

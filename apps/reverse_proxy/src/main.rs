@@ -112,7 +112,7 @@ fn new_app() -> Router {
 
 #[tokio::main]
 async fn main() {
-    app_logging::init_logger();
+    acap_logging::init_logger();
     let app = new_app();
     // Unwrap is OK because if we cannot start the web server then there is nothing useful the app
     // can do, so exiting is appropriate.
