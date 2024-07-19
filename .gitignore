@@ -2,3 +2,4 @@
 /.idea/
 /init_env.sh
 /target/
+/apps/*/LICENSE

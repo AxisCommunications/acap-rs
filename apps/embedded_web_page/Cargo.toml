@@ -2,3 +2,4 @@
 name = "embedded_web_page"
 version = "1.0.0"
 edition.workspace = true
+publish = false
