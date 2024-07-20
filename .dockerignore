@@ -2,4 +2,5 @@
 !/.devhost/
 !/crates/acap-ssh-utils
 !/crates/cargo-acap-build
+!/crates/device-manager
 !/rust-toolchain.toml
