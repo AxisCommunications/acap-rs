@@ -105,6 +105,10 @@ impl Client {
     pub fn post(&self, path: &str) -> Result<RequestBuilder, url::ParseError> {
         self.request(Method::POST, path)
     }
+
+    pub fn put(&self, path: &str) -> Result<RequestBuilder, url::ParseError> {
+        self.request(Method::PUT, path)
+    }
 }
 
 #[derive(Debug)]

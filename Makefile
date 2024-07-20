@@ -54,6 +54,10 @@ EAP_INSTALL = cd $(CURDIR)/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/ \
 help:
 	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
 
+## Reset <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> to a clean state suitable for development and testing.
+reinit:
+	RUST_LOG=info device-manager reinit
+
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build: apps/$(AXIS_PACKAGE)/LICENSE
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
@@ -146,6 +150,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		-- \
 		--exclude acap-ssh-utils \
 		--exclude cargo-acap-build \
+		--exclude device-manager \
 		--workspace
 
 .PHONY: check_build

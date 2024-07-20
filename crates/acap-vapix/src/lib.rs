@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-pub use apis::systemready;
+pub use apis::{parameter_management, systemready};
 pub use http::Client as HttpClient;
 use log::debug;
 use url::Url;
