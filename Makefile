@@ -173,7 +173,7 @@ check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/)
 
 ## Check that the code is free of lints
 check_lint:
-	RUSTFLAGS="-Dwarnings" cargo clippy \
+	cargo clippy \
 		--all-targets \
 		--no-deps \
 		--exclude consume_analytics_metadata \
@@ -182,12 +182,12 @@ check_lint:
 		--exclude licensekey_handler \
 		--exclude mdb \
 		--exclude mdb-sys \
-		--workspace
-	RUSTFLAGS="-Dwarnings" cargo clippy \
+		--workspace -- -Dwarnings
+	cargo clippy \
 		--all-targets \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
-		--workspace
+		--workspace -- -Dwarnings
 .PHONY: check_lint
 
 ## _
