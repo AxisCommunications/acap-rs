@@ -1,6 +1,6 @@
 [package]
 name = "consume_analytics_metadata"
-version = "1.0.0"
+version = "0.0.0"
 edition.workspace = true
 publish = false
 

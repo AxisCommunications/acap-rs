@@ -61,7 +61,7 @@ fn generate_manifest(out_dir: &Path) {
                 "appName": "using_a_build_script",
                 "vendor": "Axis Communications",
                 "runMode": "never",
-                "version": "1.0.0"
+                "version": "0.0.0"
             },
             "configuration": {
                 "settingPage": "index.html"
