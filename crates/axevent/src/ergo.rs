@@ -1,10 +1,11 @@
-/// Ergonomic API for sending and receiving events.
-///
-/// It is meant to make it easy to use the Event API in a sensible way, encoding knowledge that
-/// is not apparent from the C API and its documentation.
-///
-/// Note that since this API relies on empirical observations as well as the C API and its
-/// documentation it is unlikely to ever be completely stable.
+//! Ergonomic API for sending and receiving events.
+//!
+//! It is meant to make it easy to use the Event API in a sensible way, encoding knowledge that
+//! is not apparent from the C API and its documentation.
+//!
+//! Note that since this API relies on empirical observations as well as the C API and its
+//! documentation; a non-breaking change in the underlying C API could force a breaking change in
+//! this API.
 use std::ops::Add;
 use std::{
     mem,

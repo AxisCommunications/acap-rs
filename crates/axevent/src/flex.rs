@@ -1,10 +1,12 @@
 #![allow(non_upper_case_globals)]
 #![allow(clippy::redundant_closure_call)]
-/// Flexible API for declaring and sending events.
-///
-/// It is meant to support migrating users and power users by providing a safe API that
-/// * has a similar structure to the C API, and
-/// * allows everything that can be done (safely) with the C API.
+//! Flexible API for declaring and sending events.
+//!
+//! It is meant to support migrating users and power users by providing a safe API that
+//! * has a similar structure to the C API, and
+//! * allows everything that can be done (safely) with the C API.
+//!
+//! Please see the ACAP documentation for [`axevent.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/axevent_8h.html).
 use std::ffi::CString;
 use std::{
     any,
@@ -79,6 +81,7 @@ impl Declaration {
 // once.
 type DeclarationCompleteCallback = dyn FnOnce(Declaration) + Send + 'static;
 
+/// Please see the ACAP documentation for [`ax_event.sh`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event_8h.html).
 pub struct Event {
     raw: *mut AXEvent,
     // TODO: Considering using separate owned and borrowed key value set types.
@@ -125,6 +128,7 @@ impl Drop for Event {
 
 unsafe impl Send for Event {}
 
+/// Please see the ACAP documentation for [`ax_event_handler.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event__handler_8h.html).
 pub struct Handler {
     raw: *mut AXEventHandler,
     // TODO: Investigate storing the `Box`es directly
@@ -258,6 +262,7 @@ impl Handler {
     }
 }
 
+/// Please see the ACAP documentation for [`ax_event_key_value_set.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event__key__value__set_8h.html).
 pub struct KeyValueSet {
     raw: *mut AXEventKeyValueSet,
 }
