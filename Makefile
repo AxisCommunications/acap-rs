@@ -139,11 +139,14 @@ check_all: check_build check_docs check_format check_lint check_tests check_gene
 check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo build \
 		--exclude consume_analytics_metadata \
+		--exclude axevent \
+		--exclude axevent-sys \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
 		--exclude mdb \
 		--exclude mdb-sys \
+		--exclude send_event \
 		--workspace
 	cargo-acap-build \
 		--target aarch64 \
@@ -182,11 +185,14 @@ check_lint:
 		--all-targets \
 		--no-deps \
 		--exclude consume_analytics_metadata \
+		--exclude axevent \
+		--exclude axevent-sys \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
 		--exclude mdb \
 		--exclude mdb-sys \
+		--exclude send_event \
 		--workspace -- -Dwarnings
 	cargo clippy \
 		--all-targets \
@@ -199,11 +205,14 @@ check_lint:
 check_tests:
 	cargo test \
 			--exclude consume_analytics_metadata \
+			--exclude axevent \
+			--exclude axevent-sys \
 			--exclude licensekey \
 			--exclude licensekey-sys \
 			--exclude licensekey_handler \
 			--exclude mdb \
 			--exclude mdb-sys \
+			--exclude send_event \
 			--workspace
 .PHONY: check_tests
 

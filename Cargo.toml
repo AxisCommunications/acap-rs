@@ -12,6 +12,7 @@ bindgen = "0.69.4"
 diqwest = "3.1.0"
 env_logger = "0.11.2"
 futures = "0.3.30"
+glib = "0.19.7"
 glib-sys = "0.19.5"
 libc = "0.2.153"
 log = "0.4.20"
@@ -27,6 +28,8 @@ url = "2.5.2"
 
 acap-logging = { path = "crates/acap-logging" }
 acap-vapix = { path = "crates/acap-vapix" }
+axevent = { path = "crates/axevent" }
+axevent-sys = { path = "crates/axevent-sys" }
 licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
 mdb = { path = "crates/mdb" }
