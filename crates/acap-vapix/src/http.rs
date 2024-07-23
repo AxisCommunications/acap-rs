@@ -1,6 +1,7 @@
 //! Support for implementing bindings that use HTTP.
 use std::fmt::{Debug, Formatter};
 
+use anyhow::bail;
 use diqwest::WithDigestAuth;
 use reqwest::Method;
 use url::Url;
@@ -79,6 +80,10 @@ impl Client {
         }
     }
 
+    /// Configure client to use digest authentication
+    ///
+    /// Note that this is not implemented when upgrading to websocket, and attempting to do
+    /// so will return an error.
     pub fn digest_auth<U, P>(self, username: U, password: P) -> Self
     where
         U: std::fmt::Display,
@@ -93,8 +98,18 @@ impl Client {
     }
 
     pub fn request(&self, method: Method, path: &str) -> Result<RequestBuilder, url::ParseError> {
-        let builder = self.client.request(method, self.base.join(path)?);
+        let mut builder = self.client.request(method, self.base.join(path)?);
         let auth = self.auth.clone();
+        match &auth {
+            Authentication::Basic { username, password } => {
+                builder = builder.basic_auth(username, Some(password.revealed()))
+            }
+            Authentication::Bearer { token } => {
+                builder = builder.bearer_auth(token.revealed());
+            }
+            Authentication::Digest { .. } => {}
+            Authentication::Anonymous => {}
+        }
         Ok(RequestBuilder { auth, builder })
     }
 
@@ -129,19 +144,45 @@ impl RequestBuilder {
         }
     }
 
+    /// Request that the connection, once established, be upgraded to the WebSocket protocol.
+    ///
+    /// Note that this is not implemented when upgrading to websocket, and attempting to do
+    /// so will return an error.
+    pub fn upgrade(self) -> UpgradedRequestBuilder {
+        use reqwest_websocket::RequestBuilderExt;
+
+        let Self { auth, builder } = self;
+        UpgradedRequestBuilder {
+            auth,
+            builder: builder.upgrade(),
+        }
+    }
+
     pub async fn send(self) -> anyhow::Result<reqwest::Response> {
         let Self { builder, auth } = self;
         match auth {
-            Authentication::Basic { username, password } => Ok(builder
-                .basic_auth(username, Some(password.revealed()))
-                .send()
-                .await?),
-            Authentication::Bearer { token } => {
-                Ok(builder.bearer_auth(token.revealed()).send().await?)
-            }
+            Authentication::Basic { .. } => Ok(builder.send().await?),
+            Authentication::Bearer { .. } => Ok(builder.send().await?),
             Authentication::Digest { username, password } => Ok(builder
                 .send_with_digest_auth(&username, password.revealed())
                 .await?),
+            Authentication::Anonymous => Ok(builder.send().await?),
+        }
+    }
+}
+
+pub struct UpgradedRequestBuilder {
+    auth: Authentication,
+    builder: reqwest_websocket::UpgradedRequestBuilder,
+}
+
+impl UpgradedRequestBuilder {
+    pub async fn send(self) -> anyhow::Result<reqwest_websocket::UpgradeResponse> {
+        let Self { builder, auth } = self;
+        match auth {
+            Authentication::Basic { .. } => Ok(builder.send().await?),
+            Authentication::Bearer { .. } => Ok(builder.send().await?),
+            Authentication::Digest { .. } => bail!("unimplemented"),
             Authentication::Anonymous => Ok(builder.send().await?),
         }
     }
