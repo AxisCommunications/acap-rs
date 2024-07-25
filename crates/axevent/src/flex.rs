@@ -7,11 +7,10 @@
 //! * allows everything that can be done (safely) with the C API.
 //!
 //! Please see the ACAP documentation for [`axevent.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/axevent_8h.html).
-use std::ffi::CString;
 use std::{
     any,
     collections::HashMap,
-    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr},
+    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
     fmt::Debug,
     process, ptr,
     sync::Mutex,
@@ -39,6 +38,7 @@ use glib::{
 };
 use glib_sys::{gboolean, gpointer, GError};
 use log::debug;
+
 macro_rules! abort_unwind {
     ($f:expr) => {
         std::panic::catch_unwind($f).unwrap_or_else(|_| {
@@ -63,15 +63,40 @@ macro_rules! try_func {
     }}
 }
 
+struct Deferred {
+    func: Option<Box<dyn FnOnce()>>,
+}
+
+impl Drop for Deferred {
+    fn drop(&mut self) {
+        let func = self.func.take().unwrap();
+        func();
+    }
+}
+
+impl Deferred {
+    pub fn new<F>(func: F) -> Self
+    where
+        F: FnOnce() + 'static,
+    {
+        Self {
+            func: Some(Box::new(func)),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Declaration(u32);
 
 impl Declaration {
+    unsafe fn drop_callback(user_data: *mut Box<DeclarationCompleteCallback>) {
+        drop(Box::from_raw(user_data));
+    }
+
     // I think this should work
     unsafe extern "C" fn handle_callback(declaration: c_uint, user_data: *mut c_void) {
         abort_unwind!(|| {
-            let callback = user_data as *mut Box<DeclarationCompleteCallback>;
-            let callback = Box::from_raw(callback);
+            let callback = &mut *(user_data as *mut Box<DeclarationCompleteCallback>);
             callback(Self(declaration));
         });
     }
@@ -79,7 +104,8 @@ impl Declaration {
 
 // It is not stated explicitly, but it makes no sense that this callback would be called more than
 // once.
-type DeclarationCompleteCallback = dyn FnOnce(Declaration) + Send + 'static;
+// TODO: Consider relaxing to `FnOnce`
+type DeclarationCompleteCallback = dyn FnMut(Declaration) + Send + 'static;
 
 /// Please see the ACAP documentation for [`ax_event.sh`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event_8h.html).
 pub struct Event {
@@ -132,7 +158,8 @@ unsafe impl Send for Event {}
 pub struct Handler {
     raw: *mut AXEventHandler,
     // TODO: Investigate storing the `Box`es directly
-    subscription_callbacks: Mutex<HashMap<Subscription, *mut Box<SubscriptionCallback>>>,
+    declaration_callbacks: Mutex<HashMap<Declaration, Deferred>>,
+    subscription_callbacks: Mutex<HashMap<Subscription, Deferred>>,
 }
 
 impl Default for Handler {
@@ -145,12 +172,9 @@ impl Drop for Handler {
     fn drop(&mut self) {
         debug!("Dropping {}", any::type_name::<Self>());
         // SAFETY: Empirically `ax_event_handler_free` will not return before all callbacks have
-        // returned, so it is safe to free the stored callbacks.
+        // returned, and the callbacks will not be dropped before this function returns.
         unsafe {
             ax_event_handler_free(self.raw);
-            for (_, b) in self.subscription_callbacks.lock().unwrap().drain() {
-                drop(Box::from_raw(b));
-            }
         }
     }
 }
@@ -164,18 +188,22 @@ impl Handler {
         unsafe {
             Self {
                 raw: ax_event_handler_new(),
+                declaration_callbacks: Mutex::new(HashMap::new()),
                 subscription_callbacks: Mutex::new(HashMap::new()),
             }
         }
     }
 
+    // Using generics to remove one layer of boxing is more difficult for `declare` than for
+    // `subscribe` because the user must always provide a type, which is not obvious when the
+    // callback is `None`.
+    // TODO: Investigate making the callback generic.
     pub fn declare(
         &self,
         key_value_set: &KeyValueSet,
         stateless: bool,
         callback: Option<Box<DeclarationCompleteCallback>>,
     ) -> Result<Declaration> {
-        // TODO: Don't leak callback when it is never called.
         let callback = callback.map(|c| Box::into_raw(Box::new(c)));
         unsafe {
             let mut declaration = c_uint::default();
@@ -197,14 +225,27 @@ impl Handler {
             )?;
 
             let handle = Declaration(declaration);
+
+            if let Some(callback) = callback {
+                self.declaration_callbacks.lock().unwrap().insert(
+                    handle,
+                    Deferred::new(move || Declaration::drop_callback(callback)),
+                );
+            }
+
             Ok(handle)
         }
     }
 
     pub fn undeclare(&self, declaration: &Declaration) -> Result<()> {
         unsafe {
-            try_func!(ax_event_handler_undeclare, self.raw, declaration.0)?;
-            Ok(())
+            let result = try_func!(ax_event_handler_undeclare, self.raw, declaration.0);
+            self.declaration_callbacks
+                .lock()
+                .unwrap()
+                .remove(declaration)
+                .unwrap();
+            result
         }
     }
 
@@ -219,12 +260,11 @@ impl Handler {
         }
     }
 
-    pub fn subscribe(
-        &self,
-        key_value_set: KeyValueSet,
-        callback: Box<SubscriptionCallback>,
-    ) -> Result<Subscription> {
-        let callback = Box::into_raw(Box::new(callback));
+    pub fn subscribe<F>(&self, key_value_set: KeyValueSet, callback: F) -> Result<Subscription>
+    where
+        F: FnMut(Subscription, Event) + Send,
+    {
+        let callback = Box::into_raw(Box::new(callback)) as gpointer;
         unsafe {
             let mut subscription = c_uint::default();
             try_func!(
@@ -232,16 +272,16 @@ impl Handler {
                 self.raw,
                 key_value_set.raw,
                 &mut subscription,
-                Some(Subscription::handle_callback),
-                callback as *mut c_void,
+                Some(Subscription::handle_callback::<F>),
+                callback,
             )?;
 
             let handle = Subscription(subscription);
 
-            self.subscription_callbacks
-                .lock()
-                .unwrap()
-                .insert(handle, callback);
+            self.subscription_callbacks.lock().unwrap().insert(
+                handle,
+                Deferred::new(move || Subscription::drop_callback::<F>(callback)),
+            );
 
             Ok(handle)
         }
@@ -250,13 +290,11 @@ impl Handler {
     pub fn unsubscribe(&self, subscription: &Subscription) -> Result<()> {
         unsafe {
             let result = try_func!(ax_event_handler_unsubscribe, self.raw, subscription.0);
-            let b = self
-                .subscription_callbacks
+            self.subscription_callbacks
                 .lock()
                 .unwrap()
                 .remove(subscription)
                 .unwrap();
-            drop(Box::from_raw(b));
             result
         }
     }
@@ -535,20 +573,27 @@ type Result<T> = core::result::Result<T, Error>;
 pub struct Subscription(u32);
 
 impl Subscription {
-    unsafe extern "C" fn handle_callback(
+    unsafe fn drop_callback<F>(user_data: gpointer)
+    where
+        F: FnMut(Subscription, Event) + Send,
+    {
+        drop(Box::from_raw(user_data as *mut F));
+    }
+
+    unsafe extern "C" fn handle_callback<F>(
         subscription: c_uint,
         event: *mut AXEvent,
         user_data: gpointer,
-    ) {
+    ) where
+        F: FnMut(Subscription, Event) + Send,
+    {
         abort_unwind!(|| {
-            let callback = user_data as *mut Box<SubscriptionCallback>;
+            let callback = &mut *(user_data as *mut F);
             let event = Event::from_raw(event);
-            (*callback)(Subscription(subscription), event);
+            callback(Subscription(subscription), event);
         });
     }
 }
-
-type SubscriptionCallback = dyn FnMut(Subscription, Event) + Send;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
