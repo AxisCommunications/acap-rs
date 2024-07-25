@@ -1,0 +1,27 @@
+{
+    "schemaVersion": "1.5.0",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "complex",
+            "vendor": "Axis Communications",
+            "runMode": "respawn",
+            "version": "0.0.0"
+        },
+        "configuration": {
+            "httpConfig": [
+                {
+                    "access": "viewer",
+                    "type": "directory"
+                }
+            ],
+            "reverseProxy": [
+                {
+                    "apiPath": "api/",
+                    "target": "http://localhost:2001",
+                    "access": "admin"
+                }
+            ],
+            "settingPage": "index.html"
+        }
+    }
+}

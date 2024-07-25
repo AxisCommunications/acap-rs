@@ -3,6 +3,11 @@
 version = 3
 
 [[package]]
+name = "acap-dirs"
+version = "0.0.0"
+source = "git+https://github.com/AxisCommunications/acap-rs.git?rev=82b12f37b0dd5c756a74851a949b1d5c3567ab1e#82b12f37b0dd5c756a74851a949b1d5c3567ab1e"
+
+[[package]]
 name = "acap-logging"
 version = "0.0.1"
 dependencies = [
@@ -411,6 +416,22 @@ name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
+
+[[package]]
+name = "complex"
+version = "0.0.0"
+dependencies = [
+ "acap-dirs",
+ "acap-logging",
+ "anyhow",
+ "axum",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-http",
+]
 
 [[package]]
 name = "consume_analytics_metadata"
