@@ -3,6 +3,9 @@ accepted = [
     "Apache-2.0",
     "BSD-3-Clause",
     "Unicode-DFS-2016",
+    # FIXME: Review
+    "EPL-1.0",
+    "EPL-2.0",
 ]
 ignore-build-dependencies = true
 ignore-dev-dependencies = true
