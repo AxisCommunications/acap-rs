@@ -79,6 +79,8 @@ struct RunApp {
     #[clap(short, long)]
     #[arg(value_parser = parse_env_pair)]
     environment: Vec<(String, String)>,
+    /// Pass additional arguments to the remote program.
+    args: Vec<String>,
 }
 
 impl RunApp {
@@ -92,6 +94,7 @@ impl RunApp {
                 .iter()
                 .map(|(k, v)| (k.as_str(), v.as_str()))
                 .collect(),
+            &self.args.iter().map(String::as_str).collect::<Vec<_>>(),
         )
     }
 }
@@ -106,6 +109,8 @@ struct RunOther {
     #[clap(short, long)]
     #[arg(value_parser = parse_env_pair)]
     environment: Vec<(String, String)>,
+    /// Pass additional arguments to the remote program.
+    args: Vec<String>,
 }
 
 impl RunOther {
@@ -119,6 +124,7 @@ impl RunOther {
                 .iter()
                 .map(|(k, v)| (k.as_str(), v.as_str()))
                 .collect(),
+            &self.args.iter().map(String::as_str).collect::<Vec<_>>(),
         )
     }
 }

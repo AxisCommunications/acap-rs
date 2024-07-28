@@ -32,6 +32,7 @@ This table is an attempt at providing an overview of what exists and how usable 
 
 | Name                           | Methods | Status       |
 |--------------------------------|---------|--------------|
+| Basic device information       | 2/4     | Experimental |
 | Event streaming over WebSocket | 1/1     | Experimental |
 | Parameter management           | 2/5     | Experimental |
 | Systemready                    | 1/2     | Experimental |

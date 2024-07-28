@@ -31,9 +31,37 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use acap_vapix::{
-        parameter_management, systemready, ws_data_stream,
+        basic_device_info, parameter_management, systemready, ws_data_stream,
         ws_data_stream::{ContentFilter, TopicFilter},
     };
+
+    #[tokio::test]
+    async fn smoke_test_basic_device_info() {
+        let mut client = acap_vapix::local_client().unwrap();
+
+        let properties = basic_device_info::Client::new(&client)
+            .get_all_properties()
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(properties.property_list.unrestricted.brand, "AXIS");
+
+        let properties = basic_device_info::Client::new(&client)
+            .get_properties(&["Brand"])
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(properties.property_list.get("Brand").unwrap(), "AXIS");
+
+        client = client.anonymous_auth();
+
+        let properties = basic_device_info::Client::new(&client)
+            .get_all_unrestricted_properties()
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(properties.property_list.brand, "AXIS");
+    }
 
     #[tokio::test]
     async fn smoke_test_parameter_management() {

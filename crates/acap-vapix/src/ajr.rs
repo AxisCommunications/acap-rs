@@ -12,6 +12,16 @@ use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestEnvelope<P> {
+    api_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    context: Option<String>,
+    #[serde(flatten)]
+    params: P,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResponseEnvelope<T> {
