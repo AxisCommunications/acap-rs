@@ -7,12 +7,13 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-pub use apis::{parameter_management, systemready};
+pub use apis::{parameter_management, systemready, ws_data_stream};
 pub use http::Client as HttpClient;
 use log::debug;
 use url::Url;
 
 mod ajr;
+mod ajr2;
 mod ajr_http;
 mod apis;
 mod http;
