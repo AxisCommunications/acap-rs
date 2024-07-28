@@ -2,7 +2,7 @@ use std::{env, fs::File};
 
 use clap::{Parser, Subcommand};
 use device_manager::{initialize, restore};
-use log::debug;
+use log::{debug, info};
 use url::Host;
 
 /// Utilities for managing individual devices.
@@ -74,8 +74,18 @@ async fn main() -> anyhow::Result<()> {
     };
     debug!("Logging initialized");
 
+    // There are probably many places where this program could get stuck, such as when waiting for
+    // a parameter to change, and even when it succeeds it takes a long time. Interrupting it causes
+    // it to exit without writing logs to disk, so if they were not printed to stderr information
+    // about where the program was interrupted is lost. This makes it harder to find and report
+    // problems.
+    // TODO: Find and bound unbounded retry loops
+    // TODO: Save logs on SIGINT.
     match Cli::parse().exec().await {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            info!("Orl Korrect");
+            Ok(())
+        }
         Err(e) => {
             if let Some(log_file) = log_file {
                 Err(e.context(format!("A detailed log has been saved to {log_file:?}")))
