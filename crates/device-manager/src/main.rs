@@ -74,8 +74,13 @@ async fn main() -> anyhow::Result<()> {
     };
     debug!("Logging initialized");
 
+    // There are probably many places where this program could get stuck, such as when waiting for
+    // a parameter to change, and even when it succeeds it takes a long time. Interrupting it causes
+    // it to exit without writing logs to disk, so if they were not printed to stderr information
+    // about where the program was interrupted is lost. This makes it harder to find and report
+    // problems.
+    // TODO: Find and bound unbounded retry loops
     // TODO: Save logs on SIGINT.
-    // This program often fails
     match Cli::parse().exec().await {
         Ok(()) => {
             info!("Orl Korrect");
