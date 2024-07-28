@@ -2,7 +2,7 @@ use std::{env, fs::File};
 
 use clap::{Parser, Subcommand};
 use device_manager::{initialize, restore};
-use log::debug;
+use log::{debug, info};
 use url::Host;
 
 /// Utilities for managing individual devices.
@@ -74,8 +74,13 @@ async fn main() -> anyhow::Result<()> {
     };
     debug!("Logging initialized");
 
+    // TODO: Save logs on SIGINT.
+    // This program often fails
     match Cli::parse().exec().await {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            info!("Orl Korrect");
+            Ok(())
+        }
         Err(e) => {
             if let Some(log_file) = log_file {
                 Err(e.context(format!("A detailed log has been saved to {log_file:?}")))
