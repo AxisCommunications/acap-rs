@@ -8,6 +8,7 @@ apt-get install \
   --no-install-recommends \
   build-essential \
   clang \
+  cmake \
   curl \
   g++-aarch64-linux-gnu \
   g++-arm-linux-gnueabihf \
