@@ -96,7 +96,7 @@ stop:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 ## * The device is added to `knownhosts`.
-run:
+run: apps/$(AXIS_PACKAGE)/LICENSE
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
@@ -118,7 +118,7 @@ run:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 ## * The device is added to `knownhosts`.
-test:
+test: apps/$(AXIS_PACKAGE)/LICENSE
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
