@@ -42,7 +42,7 @@ impl Inner {
 
         while let Some(msg_opt) = stream.next().await {
             if let Some(msg) = msg_opt {
-                info!("Received {}", msg.payload_str());
+                info!("topic: {topic}; payload: {payload};",topic=msg.topic(), payload=msg.payload_str());
             } else {
                 warn!("Connection lost, reconnecting");
                 while let Err(e) = client.reconnect().await {
