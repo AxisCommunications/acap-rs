@@ -6,28 +6,8 @@ use std::fmt::Debug;
 use anyhow::Context;
 use log::debug;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
-use crate::ajr::ResponseEnvelope;
-
-pub async fn execute_params<S, D>(
-    path: &str,
-    api_version: &str,
-    method: &str,
-    params: S,
-    client: &crate::http::Client,
-) -> anyhow::Result<D>
-where
-    S: Serialize + Debug,
-    D: for<'a> Deserialize<'a>,
-{
-    let request_envelope = json!({
-        "method": method,
-        "apiVersion": api_version,
-        "params": params,
-    });
-    execute_request(path, request_envelope, client).await
-}
+use crate::ajr2::ResponseEnvelope;
 
 pub async fn execute_request<S, D>(
     path: &str,

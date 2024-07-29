@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-pub use apis::{parameter_management, systemready, ws_data_stream};
+pub use apis::{basic_device_info, parameter_management, systemready, ws_data_stream};
 pub use http::Client as HttpClient;
 use log::debug;
 use url::Url;
@@ -15,6 +15,7 @@ use url::Url;
 mod ajr;
 mod ajr2;
 mod ajr_http;
+mod ajr_http2;
 mod apis;
 mod http;
 

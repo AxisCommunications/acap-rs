@@ -126,7 +126,9 @@ test:
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
-		$(AXIS_PACKAGE)
+		$(AXIS_PACKAGE) \
+		-- \
+		--test-threads=1
 
 ## Checks
 ## ------

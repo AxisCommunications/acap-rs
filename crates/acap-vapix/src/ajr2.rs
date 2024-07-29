@@ -57,14 +57,26 @@ mod tests {
         let envelope: ResponseEnvelope<()> = serde_json::from_str(s).unwrap();
         envelope.data().unwrap();
     }
+
     #[test]
     #[ignore]
     #[should_panic]
-    /// Documents the fact that this implementation is incapable of (de)serializing a responses with
+    /// Documents the fact that this implementation is incapable of (de)serializing a response with
     /// no member named either _data_ or _error_, which some VAPIX APIs use to signal that a request
     /// was successful.
     fn can_parse_missing_data_response() {
         let s = r#"{"apiVersion":"1.0","method":"events:configure"}"#;
+        let envelope: ResponseEnvelope<()> = serde_json::from_str(s).unwrap();
+        envelope.data().unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    #[should_panic]
+    /// Documents the fact that this implementation is incapable of (de)serializing a request with
+    /// no member named _param_, which some VAPIX APIs use for requests that have no params.
+    fn can_parse_missing_param_request() {
+        let s = r#"{"apiVersion":"1.3","method":"getAllUnrestrictedProperties"}"#;
         let envelope: ResponseEnvelope<()> = serde_json::from_str(s).unwrap();
         envelope.data().unwrap();
     }
