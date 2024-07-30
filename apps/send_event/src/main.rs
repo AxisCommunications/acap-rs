@@ -54,8 +54,12 @@ fn setup_declaration(handler: Handler, start_value: f64) -> anyhow::Result<Decla
         &key_value_set,
         false,
         Some({
-            let handler = Arc::clone(&handler);
-            Box::new(move |declaration| declaration_complete(declaration, handler, start_value))
+            let mut handler = Some(Arc::clone(&handler));
+            Box::new(move |declaration| {
+                if let Some(handler) = handler.take() {
+                    declaration_complete(declaration, handler, start_value);
+                }
+            })
         }),
     )?;
     Ok(declaration)
@@ -151,5 +155,12 @@ mod tests {
         let expected = c"Hello";
         let actual = send_and_receive_event(expected).unwrap();
         assert_eq!(actual.as_c_str(), expected);
+    }
+
+    #[test]
+    #[ignore]
+    fn can_declare_without_callback() {
+        let handler = Handler::new();
+        let _declaration = handler.declare(&KeyValueSet::new(), true, None);
     }
 }

@@ -6,9 +6,9 @@
 //! Note that since this API relies on empirical observations as well as the C API and its
 //! documentation; a non-breaking change in the underlying C API could force a breaking change in
 //! this API.
-use std::ops::Add;
 use std::{
     mem,
+    ops::Add,
     sync::{mpsc::TrySendError, Arc},
     thread,
     thread::JoinHandle,
@@ -140,26 +140,23 @@ impl<'a> Subscription<'a> {
     pub fn try_new(kvs: KeyValueSet, handler: &'a Handler) -> Result<Self, crate::flex::Error> {
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         let mut droppable_tx = Some(tx);
-        let id = handler.subscribe(
-            kvs,
-            Box::new(move |_, evt| {
-                let Some(tx) = &droppable_tx else {
-                    debug!("Dropping event because sender was previously dropped");
-                    return;
-                };
-                if let Err(e) = tx.try_send(evt) {
-                    // Signal to receiver that the sender experienced a problem.
-                    drop(mem::take(&mut droppable_tx));
-                    // Explain to operator what happened.
-                    match e {
-                        TrySendError::Full(_) => warn!("Receiver is not keeping up"),
-                        // The `Drop` implementation usually ensures `unsubscribe` is called
-                        // before the `rx` is dropped.
-                        TrySendError::Disconnected(_) => warn!("Receiver disconnected"),
-                    }
+        let id = handler.subscribe(kvs, move |_, evt| {
+            let Some(tx) = &droppable_tx else {
+                debug!("Dropping event because sender was previously dropped");
+                return;
+            };
+            if let Err(e) = tx.try_send(evt) {
+                // Signal to receiver that the sender experienced a problem.
+                drop(mem::take(&mut droppable_tx));
+                // Explain to operator what happened.
+                match e {
+                    TrySendError::Full(_) => warn!("Receiver is not keeping up"),
+                    // The `Drop` implementation usually ensures `unsubscribe` is called
+                    // before the `rx` is dropped.
+                    TrySendError::Disconnected(_) => warn!("Receiver disconnected"),
                 }
-            }),
-        )?;
+            }
+        })?;
         Ok(Self { rx, id, handler })
     }
 }
