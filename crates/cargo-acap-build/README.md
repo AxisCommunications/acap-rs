@@ -1,4 +1,17 @@
-_Build utilities for ACAP apps and other executables deployed to Axis devices_
+```console
+$ cargo-acap-build -h
+ACAP analog to `cargo build`
+
+Usage: cargo-acap-build [OPTIONS] [ARGS]...
+
+Arguments:
+  [ARGS]...  Pass additional arguments to `cargo build`
+
+Options:
+      --target <TARGET>  If given, build only for the given architecture(s) [possible values: aarch64, armv7hf]
+  -h, --help             Print help (see more with '--help')
+  -V, --version          Print version
+```
 
 ## Application project structure
 
@@ -11,7 +24,7 @@ A simple project will look something like:
             - `main.rs`: Conventional location for the executable[^3].
     - `LICENSE`: Open source acknowledgements[^4].
     - `manifest.json` Application manifest defining the app and its configuration[^5].
-      If absent, the resulting artifact will be a plain executable instead of an Embedded Application Package (EAP).
+      If absent, the resulting artifact will be a plain executable instead of an EAP.
     - `html/`: Optional web client pages to include in the app[^6][^7].
     - `lib/`: Optional dynamically linked libraries to include in the app[^6][^7].
     - `additional-files/`: Optional additional files to include in the app[^7].
