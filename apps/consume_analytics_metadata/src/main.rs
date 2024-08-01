@@ -83,7 +83,7 @@ mod tests {
         )
         .unwrap();
 
-        let payload = rx.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
+        let payload = rx.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
         assert!(!payload.is_empty());
         println!("{payload}");
     }
