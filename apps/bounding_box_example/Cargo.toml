@@ -1,0 +1,12 @@
+[package]
+name = "bounding_box_example"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+bbox = { path = "../../crates/bbox" }
