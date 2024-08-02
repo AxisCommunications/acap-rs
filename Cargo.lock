@@ -264,6 +264,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "bbox"
+version = "0.0.0"
+dependencies = [
+ "bbox-sys",
+]
+
+[[package]]
+name = "bbox-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen",
+ "pkg-config",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.69.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -305,6 +320,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "bounding_box_example"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "bbox",
+ "log",
 ]
 
 [[package]]
