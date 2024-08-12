@@ -5,4 +5,4 @@ edition.workspace = true
 license = "MIT"
 
 [dependencies]
-bbox-sys = { path = "../bbox-sys" }
+bbox-sys = { workspace = true }

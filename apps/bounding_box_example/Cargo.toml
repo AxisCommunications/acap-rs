@@ -9,4 +9,4 @@ anyhow = { workspace = true }
 log = { workspace = true }
 
 acap-logging = { workspace = true }
-bbox = { path = "../../crates/bbox" }
+bbox = { workspace = true }

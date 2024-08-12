@@ -111,6 +111,10 @@ fn main() {
     // Even though running is not used for signal handling yet, it is useful for removing the sleep
     // in the smoke tests.
     // TODO: Consider implementing signal handling.
+    // Even though all bbox functions return `std::io::Result`, not all are equally severe;
+    // while e.g. `try_color` may succeed after failing once, this is unlikely to be the case for
+    // e.g. `try_video_output`.
+    // TODO: Consider implementing error handling that is closer to that of the C example.
     let running = Arc::new(AtomicBool::new(true));
     for i in 0.. {
         example_single_channel(Arc::clone(&running)).unwrap();
