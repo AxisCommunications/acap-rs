@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
+#![allow(clippy::useless_transmute)]
 
 #[cfg(not(target_arch = "x86_64"))]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

@@ -1,10 +1,18 @@
 //! An example of how to draw bounding boxes using the Bounding Box API.
 
-use std::{thread::sleep, time::Duration};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::sleep,
+    time::Duration,
+};
 
 use bbox::flex::{Bbox, Color};
+use log::info;
 
-fn example_single_channel() -> anyhow::Result<()> {
+fn example_single_channel(running: Arc<AtomicBool>) -> anyhow::Result<()> {
     let mut bbox = Bbox::try_view_new(1)?;
     bbox.try_clear().unwrap();
 
@@ -42,21 +50,90 @@ fn example_single_channel() -> anyhow::Result<()> {
     bbox.try_draw_path()?;
 
     bbox.try_commit(0)?;
-    sleep(Duration::from_secs(5));
+    if running.load(Ordering::SeqCst) {
+        sleep(Duration::from_secs(5));
+    }
     Ok(())
 }
+
+fn example_multiple_channels(running: Arc<AtomicBool>) -> anyhow::Result<()> {
+    // Draw on channel 1 and 2
+    let mut bbox = Bbox::try_new(&[1, 2])?;
+
+    // If camera lacks video output, this call will succeed but not do anything.
+    bbox.try_video_output(true)?;
+
+    // Create all needed colors [These operations are slow!]
+    let colors = [
+        Color::from_rgb(0xff, 0, 0),
+        Color::from_rgb(0, 0xff, 0),
+        Color::from_rgb(0, 0, 0xff),
+    ];
+
+    // Switch to thick corner style
+    bbox.try_thickness_thick()?;
+    bbox.try_style_corners()?;
+
+    let w = 1920.0;
+    let h = 1080.0;
+    let box_w = 100.0 / w;
+    let box_h = 100.0 / h;
+
+    for i in 0..32 {
+        let x = 200.0 * (i % 8) as f32 / w;
+        let y = 200.0 * (i / 8) as f32 / h;
+
+        // Switch color [This operation is fast!]
+        bbox.try_color(colors[i % colors.len()]).unwrap();
+
+        bbox.try_rectangle(x, y, x + box_w, y + box_h).unwrap();
+    }
+
+    bbox.try_commit(0)?;
+    if running.load(Ordering::SeqCst) {
+        sleep(Duration::from_secs(5));
+    }
+    Ok(())
+}
+
+fn example_clear(running: Arc<AtomicBool>) -> anyhow::Result<()> {
+    let mut bbox = Bbox::try_new(&[1])?;
+    bbox.try_clear()?;
+    bbox.try_commit(0)?;
+    if running.load(Ordering::SeqCst) {
+        sleep(Duration::from_secs(5));
+    }
+    Ok(())
+}
+
 fn main() {
     acap_logging::init_logger();
-    example_single_channel().unwrap();
+    // Even though running is not used for signal handling yet, it is useful for removing the sleep
+    // in the smoke tests.
+    // TODO: Consider implementing signal handling.
+    let running = Arc::new(AtomicBool::new(true));
+    for i in 0.. {
+        example_single_channel(Arc::clone(&running)).unwrap();
+        example_multiple_channels(Arc::clone(&running)).unwrap();
+        example_clear(Arc::clone(&running)).unwrap();
+        if i == 0 {
+            info!("All examples succeeded.")
+        }
+    }
 }
 
 #[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
-    use crate::example_single_channel;
+    use std::sync::{atomic::AtomicBool, Arc};
+
+    use super::*;
 
     #[test]
     fn smoke_test() {
-        example_single_channel().unwrap();
+        let running = Arc::new(AtomicBool::new(false));
+        example_single_channel(Arc::clone(&running)).unwrap();
+        example_multiple_channels(Arc::clone(&running)).unwrap();
+        example_clear(Arc::clone(&running)).unwrap();
     }
 }

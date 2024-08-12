@@ -1,5 +1,4 @@
-#![allow(non_upper_case_globals)]
-#![allow(clippy::redundant_closure_call)]
+#![allow(clippy::too_many_arguments)]
 
 use std::ptr;
 
@@ -34,11 +33,31 @@ impl Drop for Bbox {
     }
 }
 impl Bbox {
+    /// # Panics
+    ///
+    /// Panics if `!(1..=4.contains(&channels.len())`
+    pub fn try_new(channels: &[u32]) -> std::io::Result<Self> {
+        unsafe {
+            let ptr = match channels.len() {
+                0 => panic!("Expected at least one channel, got 0"),
+                1 => bbox_sys::bbox_new(1, channels[0]),
+                2 => bbox_sys::bbox_new(2, channels[0], channels[1]),
+                3 => bbox_sys::bbox_new(3, channels[0], channels[1], channels[2]),
+                4 => bbox_sys::bbox_new(4, channels[0], channels[1], channels[2], channels[3]),
+                n => panic!("Expected at most 4 channels, got {n}"),
+            };
+            if ptr.is_null() {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(Self { ptr })
+        }
+    }
+
     pub fn try_view_new(view: u32) -> std::io::Result<Self> {
         unsafe {
             let ptr = bbox_sys::bbox_view_new(view);
             if ptr.is_null() {
-                return Err(std::io::Error::last_os_error().into());
+                return Err(std::io::Error::last_os_error());
             }
             Ok(Self { ptr })
         }
