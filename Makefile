@@ -158,6 +158,9 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude bbox \
+		--exclude bbox-sys \
+		--exclude bounding_box_example \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
@@ -204,6 +207,9 @@ check_lint:
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude bbox \
+		--exclude bbox-sys \
+		--exclude bounding_box_example \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
@@ -221,16 +227,19 @@ check_lint:
 ## _
 check_tests:
 	cargo test \
-			--exclude consume_analytics_metadata \
-			--exclude axevent \
-			--exclude axevent-sys \
-			--exclude licensekey \
-			--exclude licensekey-sys \
-			--exclude licensekey_handler \
-			--exclude mdb \
-			--exclude mdb-sys \
-			--exclude send_event \
-			--workspace
+		--exclude consume_analytics_metadata \
+		--exclude axevent \
+		--exclude axevent-sys \
+		--exclude bbox \
+		--exclude bbox-sys \
+		--exclude bounding_box_example \
+		--exclude licensekey \
+		--exclude licensekey-sys \
+		--exclude licensekey_handler \
+		--exclude mdb \
+		--exclude mdb-sys \
+		--exclude send_event \
+		--workspace
 .PHONY: check_tests
 
 ## Fixes
