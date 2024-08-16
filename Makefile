@@ -41,8 +41,6 @@ export AXIS_DEVICE_PASS ?= pass
 FORCE:;
 .PHONY: FORCE
 
-ACAP_BUILD = . /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
-
 # It doesn't matter which SDK is sourced for installing, but using a wildcard would fail since there are multiple in the container.
 EAP_INSTALL = cd $(CURDIR)/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/ \
 && . /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) $@
@@ -84,11 +82,6 @@ stop:
 
 ## Build and run <AXIS_PACKAGE> directly on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 ##
-## Forwards the following environment variables to the remote process:
-##
-## * `RUST_LOG`
-## * `RUST_LOG_STYLE`
-##
 ## Prerequisites:
 ##
 ## * <AXIS_PACKAGE> is recognized by `cargo-acap-build` as an ACAP app.
@@ -104,11 +97,6 @@ run: apps/$(AXIS_PACKAGE)/LICENSE
 		$(AXIS_PACKAGE)
 
 ## Build and execute unit tests for <AXIS_PACKAGE> on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
-##
-## Forwards the following environment variables to the remote process:
-##
-## * `RUST_LOG`
-## * `RUST_LOG_STYLE`
 ##
 ## Prerequisites:
 ##
@@ -216,12 +204,16 @@ check_lint:
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
-		--workspace -- -Dwarnings
+		--workspace \
+		-- \
+		-Dwarnings
 	cargo clippy \
 		--all-targets \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
-		--workspace -- -Dwarnings
+		--workspace \
+		-- \
+		-Dwarnings
 .PHONY: check_lint
 
 ## _
