@@ -111,10 +111,10 @@ struct DeployOptions {
 impl DeployOptions {
     pub async fn http_client(&self) -> anyhow::Result<HttpClient> {
         let Self { host, user, pass } = self;
-        Ok(HttpClient::from_host(host)
+        HttpClient::from_host(host)
             .await?
             .automatic_auth(user, pass)
-            .await?)
+            .await
     }
 }
 
