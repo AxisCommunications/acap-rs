@@ -57,49 +57,36 @@ enum Commands {
 // TODO: Include package selection for better completions and help messages.
 #[derive(clap::Args, Debug, Clone)]
 struct BuildOptions {
-    /// Architecture of the device to build for.
-    #[arg(long, env = "AXIS_DEVICE_ARCH")]
-    target: Option<ArchAbi>,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
     args: Vec<String>,
 }
 
-impl TryInto<ResolvedBuildOptions> for BuildOptions {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<ResolvedBuildOptions, Self::Error> {
-        let Self { target, args } = self;
-        Ok(ResolvedBuildOptions {
-            target: target.ok_or(anyhow::anyhow!("Target not set"))?,
-            args,
-        })
-    }
-}
-
 impl BuildOptions {
     async fn resolve(self, deploy_options: &DeployOptions) -> anyhow::Result<ResolvedBuildOptions> {
-        let Self { target, args } = self;
+        let Self { args } = self;
         // TODO: Consider using `get_properties` instead.
-        let target = match target {
-            None => basic_device_info::Client::new(&deploy_options.http_client())
-                .get_all_properties()
-                .send()
-                .await?
-                .property_list
-                .restricted
-                .architecture
-                .parse()?,
-            Some(t) => t,
-        };
+        let target = basic_device_info::Client::new(&deploy_options.http_client())
+            .get_all_properties()
+            .send()
+            .await?
+            .property_list
+            .restricted
+            .architecture
+            .parse()?;
         Ok(ResolvedBuildOptions { target, args })
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(clap::Args, Debug, Clone)]
 pub struct ResolvedBuildOptions {
+    /// Architecture of the device to build for.
+    #[arg(long, env = "AXIS_DEVICE_ARCH")]
     target: ArchAbi,
+    /// Pass additional arguments to `cargo build`.
+    ///
+    /// Beware that not all incompatible arguments have been documented.
     args: Vec<String>,
 }
 
