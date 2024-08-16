@@ -1,7 +1,7 @@
 use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
 use log::debug;
 
-use crate::BuildOptions;
+use crate::{BuildOptions, ResolvedBuildOptions};
 
 #[derive(clap::Parser, Debug, Clone)]
 pub struct BuildCommand {
@@ -11,9 +11,8 @@ pub struct BuildCommand {
 
 impl BuildCommand {
     pub fn exec(self) -> anyhow::Result<()> {
-        let Self {
-            build_options: BuildOptions { target, mut args },
-        } = self;
+        let Self { build_options } = self;
+        let ResolvedBuildOptions { target, mut args } = build_options.try_into()?;
 
         if !args.iter().any(|arg| {
             arg.split('=')
