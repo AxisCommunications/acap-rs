@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "acap-build"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "acap-logging"
 version = "0.1.0"
 dependencies = [
@@ -391,11 +400,11 @@ checksum = "a12916984aab3fa6e39d655a33e09c0071eb36d6ab3aea5c2d78551f1df6d952"
 name = "cargo-acap-build"
 version = "0.0.0"
 dependencies = [
+ "acap-build",
  "anyhow",
  "clap",
  "dirs",
  "env_logger",
- "home",
  "log",
  "serde",
  "serde_json",

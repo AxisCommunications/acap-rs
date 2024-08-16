@@ -1,0 +1,9 @@
+[package]
+name = "acap-build"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.79"
+log = "0.4.17"
+serde = { version = "1.0.197", features = ["derive"] }
