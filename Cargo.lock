@@ -377,6 +377,7 @@ dependencies = [
  "dirs 5.0.1",
  "env_logger",
  "log",
+ "reqwest",
  "tokio",
  "url",
 ]

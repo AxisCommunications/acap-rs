@@ -4,7 +4,7 @@ use acap_vapix::{basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use log::debug;
-use url::{Host, Url};
+use url::Host;
 
 use crate::commands::{
     build_command::BuildCommand, completions_command::CompletionsCommand,
@@ -67,7 +67,7 @@ impl BuildOptions {
     async fn resolve(self, deploy_options: &DeployOptions) -> anyhow::Result<ResolvedBuildOptions> {
         let Self { args } = self;
         // TODO: Consider using `get_properties` instead.
-        let target = basic_device_info::Client::new(&deploy_options.http_client())
+        let target = basic_device_info::Client::new(&deploy_options.http_client().await?)
             .get_all_properties()
             .send()
             .await?
@@ -109,14 +109,12 @@ struct DeployOptions {
 }
 
 impl DeployOptions {
-    pub fn http_client(&self) -> HttpClient {
+    pub async fn http_client(&self) -> anyhow::Result<HttpClient> {
         let Self { host, user, pass } = self;
-        // TODO: Consider selecting scheme automatically.
-        // TODO: Consider selecting auth automatically.
-        HttpClient::new(
-            Url::parse(&format!("http://{host}")).expect("Valid host produces valid URL"),
-        )
-        .basic_auth(user, pass)
+        Ok(HttpClient::from_host(host)
+            .await?
+            .automatic_auth(user, pass)
+            .await?)
     }
 }
 
