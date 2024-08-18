@@ -7,8 +7,9 @@ use log::debug;
 use url::Host;
 
 use crate::commands::{
-    build_command::BuildCommand, completions_command::CompletionsCommand,
-    install_command::InstallCommand, run_command::RunCommand, test_command::TestCommand,
+    build_command::BuildCommand, completions_command::CompletionsCommand, control_command,
+    control_command::ControlCommand, install_command::InstallCommand, run_command::RunCommand,
+    test_command::TestCommand,
 };
 
 mod command_utils;
@@ -32,6 +33,10 @@ impl Cli {
             Commands::Run(cmd) => cmd.exec().await?,
             Commands::Test(cmd) => cmd.exec().await?,
             Commands::Completions(cmd) => cmd.exec(Cli::command())?,
+            Commands::Start(cmd) => cmd.exec::<control_command::Start>().await?,
+            Commands::Stop(cmd) => cmd.exec::<control_command::Stop>().await?,
+            Commands::Restart(cmd) => cmd.exec::<control_command::Restart>().await?,
+            Commands::Remove(cmd) => cmd.exec::<control_command::Remove>().await?,
         }
         Ok(())
     }
@@ -47,6 +52,14 @@ enum Commands {
     Test(TestCommand),
     /// Build app(s) with release profile and install on the device.
     Install(InstallCommand),
+    /// Start app on device.
+    Start(ControlCommand),
+    /// Stop app on device.
+    Stop(ControlCommand),
+    /// Restart app on device.
+    Restart(ControlCommand),
+    /// Remove app form device.
+    Remove(ControlCommand),
     /// Print shell completion script for this program
     ///
     /// In `zsh` this can be used to enable completions in the current shell like
