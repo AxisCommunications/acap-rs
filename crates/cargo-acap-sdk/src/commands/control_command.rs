@@ -32,7 +32,7 @@ impl IntoAction for Remove {
     }
 }
 
-// TODO: Enable starting multiple apps
+// TODO: Consider controlling multiple apps with the same selection options used by build etc.
 #[derive(clap::Parser, Debug, Clone)]
 pub struct ControlCommand {
     /// Name of package to control.
