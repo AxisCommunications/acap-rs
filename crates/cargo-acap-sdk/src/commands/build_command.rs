@@ -1,18 +1,18 @@
 use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
 use log::debug;
 
-use crate::BuildOptions;
+use crate::ResolvedBuildOptions;
 
 #[derive(clap::Parser, Debug, Clone)]
 pub struct BuildCommand {
     #[command(flatten)]
-    build_options: BuildOptions,
+    build_options: ResolvedBuildOptions,
 }
 
 impl BuildCommand {
     pub fn exec(self) -> anyhow::Result<()> {
         let Self {
-            build_options: BuildOptions { target, mut args },
+            build_options: ResolvedBuildOptions { target, mut args },
         } = self;
 
         if !args.iter().any(|arg| {

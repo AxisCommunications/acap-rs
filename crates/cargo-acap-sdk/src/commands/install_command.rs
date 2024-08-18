@@ -4,7 +4,7 @@ use anyhow::Context;
 use cargo_acap_build::{AppBuilder, Architecture, Artifact};
 use log::debug;
 
-use crate::{command_utils::RunWith, ArchAbi, BuildOptions, DeployOptions};
+use crate::{command_utils::RunWith, ArchAbi, BuildOptions, DeployOptions, ResolvedBuildOptions};
 
 #[derive(clap::Parser, Debug, Clone)]
 pub struct InstallCommand {
@@ -15,11 +15,14 @@ pub struct InstallCommand {
 }
 
 impl InstallCommand {
-    pub fn exec(self) -> anyhow::Result<()> {
+    pub async fn exec(self) -> anyhow::Result<()> {
         let Self {
-            build_options: BuildOptions { target, mut args },
+            build_options,
             deploy_options,
         } = self;
+
+        let ResolvedBuildOptions { target, mut args } =
+            build_options.resolve(&deploy_options).await?;
 
         if !args.iter().any(|arg| {
             arg.split('=')

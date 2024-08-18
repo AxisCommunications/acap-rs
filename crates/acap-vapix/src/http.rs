@@ -3,8 +3,11 @@ use std::fmt::{Debug, Formatter};
 
 use anyhow::bail;
 use diqwest::WithDigestAuth;
+use log::debug;
 use reqwest::Method;
-use url::Url;
+use url::{Host, Url};
+
+use crate::{parameter_management, systemready};
 
 #[derive(Clone)]
 struct Secret(String);
@@ -41,12 +44,75 @@ pub struct Client {
 }
 
 impl Client {
+    /// Create an HTTP client from only the host part of a URL.
+    ///
+    /// # Security
+    ///
+    /// The returned client may use HTTP, including if the server certificate is invalid.
+    /// For this reason this function should not be used, except possibly during development.
+    pub async fn from_host(host: &Host) -> anyhow::Result<Self> {
+        // TODO: Allow users explicit control over whether to accept or reject invalid certs.
+        for scheme in ["https", "http"] {
+            debug!("Trying {scheme}");
+            let url = Url::parse(&format!("{scheme}://{host}"))
+                .expect("Valid schema and host produces valid URL");
+            let client = Self::new(url);
+            if systemready::systemready()
+                .execute(&client)
+                .await
+                .map_err(|e| debug!("{e:?}"))
+                .is_ok()
+            {
+                return Ok(client);
+            }
+        }
+        bail!("Could not find a scheme that works")
+    }
     pub fn new(base: Url) -> Self {
         Self {
             auth: Authentication::Anonymous,
             base,
             client: reqwest::Client::new(),
         }
+    }
+
+    async fn is_authenticated(&self) -> anyhow::Result<bool> {
+        // TODO: Differentiate between auth errors and other errors
+        Ok(parameter_management::list()
+            .group("root.Brand.Brand")
+            .execute(self)
+            .await
+            .map_err(|e| debug!("{e:?}"))
+            .is_ok())
+    }
+
+    pub async fn automatic_auth<U, P>(self, username: U, password: P) -> anyhow::Result<Self>
+    where
+        U: std::fmt::Display,
+        P: std::fmt::Display,
+    {
+        let username = username.to_string();
+        let password = password.to_string();
+
+        debug!("Trying digest authentication");
+        let client = self.digest_auth(&username, &password);
+        if client.is_authenticated().await? {
+            return Ok(client);
+        }
+
+        debug!("Trying basic authentication");
+        let client = client.basic_auth(username, password);
+        if client.is_authenticated().await? {
+            return Ok(client);
+        }
+
+        debug!("Trying anonymous authentication");
+        let client = client.anonymous_auth();
+        if client.is_authenticated().await? {
+            return Ok(client);
+        }
+
+        bail!("Could not find an authentication method that works")
     }
 
     pub fn anonymous_auth(self) -> Self {

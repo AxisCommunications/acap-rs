@@ -369,6 +369,7 @@ name = "cargo-acap-sdk"
 version = "0.0.0"
 dependencies = [
  "acap-ssh-utils",
+ "acap-vapix",
  "anyhow",
  "cargo-acap-build",
  "clap",
@@ -376,6 +377,8 @@ dependencies = [
  "dirs 5.0.1",
  "env_logger",
  "log",
+ "reqwest",
+ "tokio",
  "url",
 ]
 

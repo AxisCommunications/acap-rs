@@ -170,7 +170,7 @@ fn exactly_one(
         manifest_file.exists(),
         out_file.as_ref().map(|f| f.exists()).unwrap_or(false),
     ) {
-        (false, false) => bail!("{file_name:?} exists neither {manifest_dir:?} nor {out_dir:?}"),
+        (false, false) => bail!("{file_name:?} exists neither in manifest dir {manifest_dir:?} nor in out dir {out_dir:?}"),
         (false, true) => Ok(out_file.expect("checked above")),
         (true, false) => Ok(manifest_file),
         (true, true) => bail!("{file_name:?} exist in both {manifest_dir:?} and {out_dir:?}"),

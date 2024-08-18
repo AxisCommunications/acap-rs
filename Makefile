@@ -161,6 +161,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		-- \
 		--exclude acap-ssh-utils \
 		--exclude cargo-acap-build \
+		--exclude cargo-acap-sdk \
 		--exclude device-manager \
 		--workspace
 

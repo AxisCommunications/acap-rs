@@ -1,7 +1,7 @@
 use cargo_acap_build::{AppBuilder, Architecture, Artifact};
 use log::debug;
 
-use crate::{BuildOptions, DeployOptions};
+use crate::{BuildOptions, DeployOptions, ResolvedBuildOptions};
 
 #[derive(clap::Parser, Debug, Clone)]
 pub struct RunCommand {
@@ -12,16 +12,19 @@ pub struct RunCommand {
 }
 
 impl RunCommand {
-    pub fn exec(self) -> anyhow::Result<()> {
+    pub async fn exec(self) -> anyhow::Result<()> {
         let Self {
-            build_options: BuildOptions { target, args },
-            deploy_options:
-                DeployOptions {
-                    host: address,
-                    user: username,
-                    pass: password,
-                },
+            build_options,
+            deploy_options,
         } = self;
+
+        let ResolvedBuildOptions { target, args } = build_options.resolve(&deploy_options).await?;
+
+        let DeployOptions {
+            host: address,
+            user: username,
+            pass: password,
+        } = deploy_options;
 
         let artifacts = AppBuilder::from_targets([Architecture::from(target)])
             .args(args)

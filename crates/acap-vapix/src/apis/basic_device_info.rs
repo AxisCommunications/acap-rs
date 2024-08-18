@@ -94,6 +94,10 @@ impl<'a> GetPropertiesRequest<'a> {
 }
 
 // TODO: Consider exposing a flat struct
+// Pros of flat:
+// - user does not need to know which substructure to look in; I tried
+//   `getAllUnrestrictedProperties` so this wasn't an issue but I did that because I didn't know
+//   the name of `architecture` and I was too lazy to look it up in the docs.
 #[non_exhaustive]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
