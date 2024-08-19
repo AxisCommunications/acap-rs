@@ -13,6 +13,8 @@ pub const PATH: &str = "axis-cgi/applications/control.cgi";
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
+    // Not documented but happens when setting package="" or returnpage=":".
+    Internal,
     NotFound,
     AlreadyRunning,
     NotRunning,
@@ -24,6 +26,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Internal => write!(f, "internal (1)"),
             Self::NotFound => write!(f, "not found (4)"),
             Self::AlreadyRunning => write!(f, "already running (6)"),
             Self::NotRunning => write!(f, "not running (7)"),
@@ -92,12 +95,24 @@ impl ControlRequest {
             .await
             .with_context(|| format!("status code: {status}"))?;
 
-        if text.trim() == "OK" {
-            debug_assert_eq!(status, StatusCode::OK);
-            return Ok(());
+        // The return page functionality does not seem useful outside of browsers.
+        // TODO: Consider removing support for return page
+        if let Some(returnpage) = returnpage {
+            // TODO: Consider parsing the html response
+            if text.starts_with("<html>")&&text.contains(&returnpage) {
+                debug_assert_eq!(status, StatusCode::OK);
+                return Ok(())
+            }
+        } else {
+            if text.trim() == "OK" {
+                debug_assert_eq!(status, StatusCode::OK);
+                return Ok(());
+            }
         }
 
+
         let e = match text.trim().strip_prefix("Error: ") {
+            Some("1") => Error::Internal.into(),
             Some("4") => Error::NotFound.into(),
             Some("6") => Error::AlreadyRunning.into(),
             Some("7") => Error::NotRunning.into(),
