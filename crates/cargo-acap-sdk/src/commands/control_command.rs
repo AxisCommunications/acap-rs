@@ -1,4 +1,4 @@
-use acap_vapix::{application, application::Action};
+use acap_vapix::{applications_control, applications_control::Action};
 
 use crate::DeployOptions;
 
@@ -48,7 +48,7 @@ impl ControlCommand {
             package,
             deploy_options,
         } = self;
-        application::control(T::action(), package)
+        applications_control::control(T::action(), package)
             .execute(&deploy_options.http_client().await?)
             .await?;
         Ok(())

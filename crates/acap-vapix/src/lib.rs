@@ -7,7 +7,9 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-pub use apis::{application, basic_device_info, parameter_management, systemready, ws_data_stream};
+pub use apis::{
+    applications_control, basic_device_info, parameter_management, systemready, ws_data_stream,
+};
 pub use http::Client as HttpClient;
 use log::debug;
 use url::Url;
