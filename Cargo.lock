@@ -33,7 +33,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "digest_auth",
- "diqwest",
  "env_logger",
  "futures-util",
  "log",
@@ -589,17 +588,6 @@ dependencies = [
  "md-5",
  "rand",
  "sha2",
-]
-
-[[package]]
-name = "diqwest"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "753559f3659efa905c873c59efad5ef0f5e94912b3dbd2069331c554daa33d81"
-dependencies = [
- "digest_auth",
- "reqwest",
- "url",
 ]
 
 [[package]]
@@ -1730,6 +1718,7 @@ dependencies = [
  "js-sys",
  "log",
  "mime",
+ "mime_guess",
  "native-tls",
  "once_cell",
  "percent-encoding",
