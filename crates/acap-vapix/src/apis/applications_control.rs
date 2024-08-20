@@ -99,9 +99,9 @@ impl ControlRequest {
         // TODO: Consider removing support for return page
         if let Some(returnpage) = returnpage {
             // TODO: Consider parsing the html response
-            if text.starts_with("<html>")&&text.contains(&returnpage) {
+            if text.starts_with("<html>") && text.contains(&returnpage) {
                 debug_assert_eq!(status, StatusCode::OK);
-                return Ok(())
+                return Ok(());
             }
         } else {
             if text.trim() == "OK" {
@@ -109,7 +109,6 @@ impl ControlRequest {
                 return Ok(());
             }
         }
-
 
         let e = match text.trim().strip_prefix("Error: ") {
             Some("1") => Error::Internal.into(),
