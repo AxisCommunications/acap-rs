@@ -103,11 +103,9 @@ impl ControlRequest {
                 debug_assert_eq!(status, StatusCode::OK);
                 return Ok(());
             }
-        } else {
-            if text.trim() == "OK" {
-                debug_assert_eq!(status, StatusCode::OK);
-                return Ok(());
-            }
+        } else if text.trim() == "OK" {
+            debug_assert_eq!(status, StatusCode::OK);
+            return Ok(());
         }
 
         let e = match text.trim().strip_prefix("Error: ") {
