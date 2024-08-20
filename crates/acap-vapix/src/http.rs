@@ -7,7 +7,7 @@ use log::debug;
 use reqwest::Method;
 use url::{Host, Url};
 
-use crate::{parameter_management, systemready};
+use crate::{basic_device_info, systemready};
 
 #[derive(Clone)]
 struct Secret(String);
@@ -78,9 +78,9 @@ impl Client {
 
     async fn is_authenticated(&self) -> anyhow::Result<bool> {
         // TODO: Differentiate between auth errors and other errors
-        Ok(parameter_management::list()
-            .group("root.Brand.Brand")
-            .execute(self)
+        Ok(basic_device_info::Client::new(self)
+            .get_all_properties()
+            .send()
             .await
             .map_err(|e| debug!("{e:?}"))
             .is_ok())

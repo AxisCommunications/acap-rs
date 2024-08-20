@@ -1,6 +1,6 @@
 use std::{ffi::OsString, fs::File, str::FromStr};
 
-use acap_vapix::{basic_device_info, HttpClient};
+use acap_vapix::{applications_control, basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use log::debug;
@@ -8,7 +8,8 @@ use url::Host;
 
 use crate::commands::{
     build_command::BuildCommand, completions_command::CompletionsCommand,
-    install_command::InstallCommand, run_command::RunCommand, test_command::TestCommand,
+    control_command::ControlCommand, install_command::InstallCommand, run_command::RunCommand,
+    test_command::TestCommand,
 };
 
 mod command_utils;
@@ -32,6 +33,10 @@ impl Cli {
             Commands::Run(cmd) => cmd.exec().await?,
             Commands::Test(cmd) => cmd.exec().await?,
             Commands::Completions(cmd) => cmd.exec(Cli::command())?,
+            Commands::Start(cmd) => cmd.exec(applications_control::Action::Start).await?,
+            Commands::Stop(cmd) => cmd.exec(applications_control::Action::Stop).await?,
+            Commands::Restart(cmd) => cmd.exec(applications_control::Action::Restart).await?,
+            Commands::Remove(cmd) => cmd.exec(applications_control::Action::Remove).await?,
         }
         Ok(())
     }
@@ -47,6 +52,14 @@ enum Commands {
     Test(TestCommand),
     /// Build app(s) with release profile and install on the device.
     Install(InstallCommand),
+    /// Start app on device.
+    Start(ControlCommand),
+    /// Stop app on device.
+    Stop(ControlCommand),
+    /// Restart app on device.
+    Restart(ControlCommand),
+    /// Remove app form device.
+    Remove(ControlCommand),
     /// Print shell completion script for this program
     ///
     /// In `zsh` this can be used to enable completions in the current shell like

@@ -66,19 +66,17 @@ install:
 	| grep -v '^to start your application type$$' \
 	| grep -v '^  eap-install.sh start$$'
 
-## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 remove:
-	@ $(EAP_INSTALL)
+	cargo-acap-sdk remove
 
-## Start <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Start <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 start:
-	@ $(EAP_INSTALL) \
-	| grep -v '^to stop your application type$$' \
-	| grep -v '^  eap-install.sh stop$$'
+	cargo-acap-sdk start
 
-## Stop <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Stop <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 stop:
-	@ $(EAP_INSTALL)
+	cargo-acap-sdk stop
 
 ## Build and run <AXIS_PACKAGE> directly on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 ##
