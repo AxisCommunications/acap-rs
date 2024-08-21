@@ -51,6 +51,8 @@ then
     echo "# Automatically created by install-venv.sh";
     echo ". ${VIRTUAL_ENV}/bin/activate";
     echo "unset -f deactivate";
+    echo 'cargo-acap-sdk completions $(basename $SHELL) | . /dev/stdin'
+    echo alias asdk=cargo-acap-sdk
     cat environment-setup.sh;
   } > "${INIT_ENV}"
 fi
