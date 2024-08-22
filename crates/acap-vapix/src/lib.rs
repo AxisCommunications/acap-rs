@@ -8,7 +8,8 @@ use std::{
 
 use anyhow::{bail, Context};
 pub use apis::{
-    applications_control, basic_device_info, parameter_management, systemready, ws_data_stream,
+    applications_control, basic_device_info, certificate_management, mqtt_client1, mqtt_event1,
+    parameter_management, systemready, ws_data_stream,
 };
 pub use http::Client as HttpClient;
 use log::debug;
