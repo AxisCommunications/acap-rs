@@ -36,6 +36,9 @@ impl Cli {
             Commands::Start(cmd) => cmd.exec(applications_control::Action::Start).await?,
             Commands::Stop(cmd) => cmd.exec(applications_control::Action::Stop).await?,
             Commands::Restart(cmd) => cmd.exec(applications_control::Action::Restart).await?,
+            // The Cargo command `remove` is not the inverse of `install`, instead it is the inverse
+            // of `add`. Furthermore `install` maps to the verb _upload_ in VAPIX.
+            // TODO: Consider renaming this and other commands for consistency.
             Commands::Remove(cmd) => cmd.exec(applications_control::Action::Remove).await?,
         }
         Ok(())
@@ -123,6 +126,12 @@ struct DeployOptions {
 
 impl DeployOptions {
     pub async fn http_client(&self) -> anyhow::Result<HttpClient> {
+        // This takes about 200ms on my setup. It's not terrible since successful requests to
+        // applications control take on the order of seconds, but it is a bit annoying on failing
+        // requests that take 200-500ms. But since `from_host` tries more secure configurations
+        // first this will probably improve as https and digest support are added and
+        // `device-manager` is changed to set up the devices accordingly.
+        // TODO: Consider allowing the resolved settings to be cached or configured
         let Self { host, user, pass } = self;
         HttpClient::from_host(host)
             .await?
