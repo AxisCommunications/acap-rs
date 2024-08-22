@@ -1,19 +1,72 @@
 //! Support for implementing bindings that use [AJR](`crate::ajr`) over HTTP.
-// TODO: Return actionable error instead of `anyhow::Error`.
 
-use std::fmt::Debug;
+use std::{
+    error::Error,
+    fmt::{Debug, Display, Formatter},
+};
 
-use anyhow::Context;
 use log::debug;
 use serde::{Deserialize, Serialize};
 
-use crate::ajr2::ResponseEnvelope;
+use crate::{
+    ajr,
+    ajr2::ResponseEnvelope,
+    http::{HttpError, HttpErrorKind},
+};
+
+#[derive(Debug)]
+pub enum AjrHttpError {
+    // TODO: Consider using something more general to allow request building to fail in other ways.
+    Build(url::ParseError),
+    Transport(HttpError),
+    Procedure(ajr::Error),
+}
+
+impl Display for AjrHttpError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Build(e) => Display::fmt(e, f),
+            Self::Transport(e) => Display::fmt(e, f),
+            Self::Procedure(e) => Display::fmt(e, f),
+        }
+    }
+}
+
+impl Error for AjrHttpError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match &self {
+            AjrHttpError::Build(e) => Some(e),
+            AjrHttpError::Transport(e) => Some(e),
+            AjrHttpError::Procedure(e) => Some(e),
+        }
+    }
+}
+
+impl From<HttpError> for AjrHttpError {
+    fn from(value: HttpError) -> Self {
+        match value.kind() {
+            HttpErrorKind::Authentication => Self::Transport(value),
+            HttpErrorKind::Authorization => Self::Transport(value),
+            HttpErrorKind::Other => Self::Transport(value),
+        }
+    }
+}
+
+impl AjrHttpError {
+    fn build(e: url::ParseError) -> Self {
+        Self::Build(e)
+    }
+
+    fn procedure(e: ajr::Error) -> Self {
+        Self::Procedure(e)
+    }
+}
 
 pub async fn execute_request<S, D>(
     path: &str,
     request_envelope: S,
     client: &crate::http::Client,
-) -> anyhow::Result<D>
+) -> Result<D, AjrHttpError>
 where
     S: Serialize + Debug,
     D: for<'a> Deserialize<'a>,
@@ -21,7 +74,8 @@ where
     // TODO: Consider not logging the request_envelope for performance and security.
     debug!("Building request from {request_envelope:?}.");
     let builder = client
-        .post(path)?
+        .post(path)
+        .map_err(AjrHttpError::build)?
         .replace_with(|b| b.json(&request_envelope));
     debug!(
         "Sending request {}",
@@ -30,19 +84,14 @@ where
     let response = builder.send().await?;
     debug!("Receiving response...");
     let status = response.status();
-    let text = response.text().await?;
+    let text = response
+        .text()
+        .await
+        .map_err(|e| HttpError::from_status(e, status))?;
     // TODO: Consider not logging the text for performance and security.
     debug!("Parsing response from text {text}.");
     let response_envelope = serde_json::from_str::<ResponseEnvelope<D>>(&text)
-        .context(status)
-        .with_context(|| format!("Response text was {text:?}"))?;
+        .map_err(|e| HttpError::from_status(e, status))?;
     debug!("Convert result.");
-    // TODO: Consider not logging the request for performance and security.
-    response_envelope.data().with_context(|| {
-        format!(
-            "Request was {}",
-            serde_json::to_string(&request_envelope)
-                .expect("This already serialized successfully above")
-        )
-    })
+    response_envelope.data().map_err(AjrHttpError::procedure)
 }

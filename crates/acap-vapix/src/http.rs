@@ -1,13 +1,17 @@
 //! Support for implementing bindings that use HTTP.
-use std::fmt::{Debug, Formatter};
 
-use anyhow::bail;
+use std::{
+    error::Error,
+    fmt::{Debug, Display, Formatter},
+};
+
+use anyhow::{anyhow, bail};
 use diqwest::WithDigestAuth;
 use log::debug;
-use reqwest::Method;
+use reqwest::{Method, StatusCode};
 use url::{Host, Url};
 
-use crate::{basic_device_info, systemready};
+use crate::{ajr_http2::AjrHttpError, basic_device_info, systemready};
 
 #[derive(Clone)]
 struct Secret(String);
@@ -77,13 +81,20 @@ impl Client {
     }
 
     async fn is_authenticated(&self) -> anyhow::Result<bool> {
-        // TODO: Differentiate between auth errors and other errors
-        Ok(basic_device_info::Client::new(self)
+        let Err(e) = basic_device_info::Client::new(self)
             .get_all_properties()
             .send()
             .await
-            .map_err(|e| debug!("{e:?}"))
-            .is_ok())
+        else {
+            return Ok(true);
+        };
+        let AjrHttpError::Transport(e) = e else {
+            return Err(e.into());
+        };
+        if e.kind() != HttpErrorKind::Authentication {
+            return Err(e.into());
+        }
+        Ok(false)
     }
 
     pub async fn automatic_auth<U, P>(self, username: U, password: P) -> anyhow::Result<Self>
@@ -192,6 +203,113 @@ impl Client {
     }
 }
 
+/// The error type for executing HTTP requests.
+#[derive(Debug)]
+pub struct HttpError {
+    inner: anyhow::Error,
+    kind: HttpErrorKind,
+}
+
+impl Display for HttpError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.inner, f)
+    }
+}
+
+impl Error for HttpError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.inner.source()
+    }
+}
+
+impl HttpError {
+    pub(crate) fn other<E: Into<anyhow::Error>>(e: E) -> Self {
+        Self {
+            inner: e.into(),
+            kind: HttpErrorKind::Other,
+        }
+    }
+
+    pub(crate) fn from_status<E: Into<anyhow::Error>>(e: E, status: StatusCode) -> Self {
+        let kind = match status {
+            StatusCode::UNAUTHORIZED => HttpErrorKind::Authentication,
+            StatusCode::FORBIDDEN => HttpErrorKind::Authorization,
+            _ => HttpErrorKind::Other,
+        };
+        // TODO: Consider replacing the error if it can be classified
+        Self {
+            inner: e.into(),
+            kind,
+        }
+    }
+
+    fn other_from_reqwest(e: reqwest::Error) -> Self {
+        debug_assert!(e.status().is_none());
+        Self::other(e)
+    }
+
+    fn other_from_reqwest_websocket(e: reqwest_websocket::Error) -> Self {
+        if let reqwest_websocket::Error::Reqwest(e) = e {
+            Self::other_from_reqwest(e)
+        } else {
+            Self::other(e)
+        }
+    }
+
+    fn from_diqwest(e: diqwest::error::Error) -> Self {
+        match e {
+            diqwest::error::Error::Reqwest(e) => Self::other_from_reqwest(e),
+            diqwest::error::Error::DigestAuth(digest_auth::Error::MissingRequired(what, ctx)) => {
+                Self {
+                    inner: anyhow!("Missing {what} in header: {ctx}"),
+                    kind: HttpErrorKind::Authentication,
+                }
+            }
+            diqwest::error::Error::DigestAuth(e) => Self::other(e),
+            diqwest::error::Error::ToStr(e) => Self::other(e),
+            diqwest::error::Error::AuthHeaderMissing => Self::other(anyhow!("auth header missing")),
+            diqwest::error::Error::RequestBuilderNotCloneable => {
+                Self::other(anyhow!("request builder not cloneable"))
+            }
+        }
+    }
+
+    /// Attempt to downcast the inner error to a concrete type.
+    pub fn downcast<E: Debug + Display + Send + Sync + 'static>(self) -> Result<E, Self> {
+        let Self { inner, kind } = self;
+        match inner.downcast() {
+            Ok(e) => Ok(e),
+            Err(inner) => Err(Self { inner, kind }),
+        }
+    }
+
+    /// Returns the corresponding [`HttpErrorKind`] for this error.
+    pub fn kind(&self) -> HttpErrorKind {
+        self.kind
+    }
+}
+
+/// A list specifying categories of HTTP errors.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HttpErrorKind {
+    // TODO: Consider collecting all status codes in one variant
+    /// Corresponds to status code 401 Unauthorized.
+    ///
+    /// In other words, the request lacks valid credentials.
+    Authentication,
+    /// Corresponds to status code 403 Forbidden.
+    ///
+    /// In other words, request was authenticated but the credentials do not have sufficient
+    /// permissions.
+    Authorization,
+    /// The error cannot (yet) be classified.
+    ///
+    /// This variant should not be used because errors of this kind are likely to be reclassified in
+    /// the future.
+    Other,
+}
+
 #[derive(Debug)]
 pub struct RequestBuilder {
     auth: Authentication,
@@ -224,15 +342,22 @@ impl RequestBuilder {
         }
     }
 
-    pub async fn send(self) -> anyhow::Result<reqwest::Response> {
+    pub async fn send(self) -> Result<reqwest::Response, HttpError> {
         let Self { builder, auth } = self;
         match auth {
-            Authentication::Basic { .. } => Ok(builder.send().await?),
-            Authentication::Bearer { .. } => Ok(builder.send().await?),
-            Authentication::Digest { username, password } => Ok(builder
+            Authentication::Basic { .. } => {
+                builder.send().await.map_err(HttpError::other_from_reqwest)
+            }
+            Authentication::Bearer { .. } => {
+                builder.send().await.map_err(HttpError::other_from_reqwest)
+            }
+            Authentication::Digest { username, password } => builder
                 .send_with_digest_auth(&username, password.revealed())
-                .await?),
-            Authentication::Anonymous => Ok(builder.send().await?),
+                .await
+                .map_err(HttpError::from_diqwest),
+            Authentication::Anonymous => {
+                builder.send().await.map_err(HttpError::other_from_reqwest)
+            }
         }
     }
 }
@@ -243,13 +368,22 @@ pub struct UpgradedRequestBuilder {
 }
 
 impl UpgradedRequestBuilder {
-    pub async fn send(self) -> anyhow::Result<reqwest_websocket::UpgradeResponse> {
+    pub async fn send(self) -> Result<reqwest_websocket::UpgradeResponse, HttpError> {
         let Self { builder, auth } = self;
         match auth {
-            Authentication::Basic { .. } => Ok(builder.send().await?),
-            Authentication::Bearer { .. } => Ok(builder.send().await?),
-            Authentication::Digest { .. } => bail!("unimplemented"),
-            Authentication::Anonymous => Ok(builder.send().await?),
+            Authentication::Basic { .. } => builder
+                .send()
+                .await
+                .map_err(HttpError::other_from_reqwest_websocket),
+            Authentication::Bearer { .. } => builder
+                .send()
+                .await
+                .map_err(HttpError::other_from_reqwest_websocket),
+            Authentication::Digest { .. } => Err(HttpError::other(anyhow!("unimplemented"))),
+            Authentication::Anonymous => builder
+                .send()
+                .await
+                .map_err(HttpError::other_from_reqwest_websocket),
         }
     }
 }
