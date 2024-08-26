@@ -14,8 +14,6 @@ python3 -m venv "${VIRTUAL_ENV}"
 # As of writing this is needed because:
 # - the system version of `jsonschema` on Bookworm is 4.10.3, but the SDK uses 3.2.0, which
 #   presumably is incompatible.
-# - `mkhelp` is used to provide help texts for the `Makefile`. This would ideally be installed
-#   locally using `pipx` or ported to Rust where it can ship with its own lockfile.
 PIP_CONSTRAINT=constraints.txt pip install --requirement requirements.txt
 
 # Install `npm` into venv.
@@ -38,6 +36,7 @@ npm install -g @devcontainers/cli@0.65.0
 
 # Install rust programs
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target cargo-about@0.6.2
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target mkhelp@0.2.3
 cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/acap-ssh-utils
 cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-build
 cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/device-manager
