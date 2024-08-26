@@ -10,6 +10,7 @@ repository = "https://github.com/AxisCommunications/acap-rs"
 
 [dependencies]
 anyhow = { workspace = true }
+digest_auth = {workspace = true}
 diqwest = { workspace = true }
 futures-util = { workspace = true }
 log = { workspace = true }

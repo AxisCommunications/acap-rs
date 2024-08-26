@@ -13,7 +13,7 @@ use crate::vapix::{
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Transport(reqwest::Error),
+    Transport(anyhow::Error),
     // A valid HTTP response is received but we cannot parse an AJR response because
     // * not valid json
     // * does not deserialize into the typed ResponseEnvelope
@@ -29,7 +29,12 @@ pub enum Error {
 
 impl From<reqwest::Error> for Error {
     fn from(value: reqwest::Error) -> Self {
-        Self::Transport(value)
+        Self::Transport(value.into())
+    }
+}
+impl From<acap_vapix::HttpError> for Error {
+    fn from(value: acap_vapix::HttpError) -> Self {
+        Self::Transport(value.into())
     }
 }
 
