@@ -244,7 +244,8 @@ impl HttpError {
     }
 
     fn other_from_reqwest(e: reqwest::Error) -> Self {
-        debug_assert!(e.status().is_none());
+        // TODO: Consider demoting to `debug_assert!` or removing this helper entirely.
+        assert!(e.status().is_none());
         Self::other(e)
     }
 

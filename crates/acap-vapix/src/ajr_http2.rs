@@ -14,6 +14,10 @@ use crate::{
     http::{HttpError, HttpErrorKind},
 };
 
+// Auth, or at least authorization, errors can be communicate using either or both of AJR and HTTP.
+// If this and branching on auth errors is common, it may be convenient to lift them out so that
+// users don't have to inspect two variants.
+// TODO: Consider giving auth errors their own category
 #[derive(Debug)]
 pub enum AjrHttpError {
     // TODO: Consider using something more general to allow request building to fail in other ways.
@@ -42,6 +46,12 @@ impl Error for AjrHttpError {
     }
 }
 
+impl From<ajr::Error> for AjrHttpError {
+    fn from(value: ajr::Error) -> Self {
+        Self::Procedure(value)
+    }
+}
+
 impl From<HttpError> for AjrHttpError {
     fn from(value: HttpError) -> Self {
         match value.kind() {
@@ -55,10 +65,6 @@ impl From<HttpError> for AjrHttpError {
 impl AjrHttpError {
     fn build(e: url::ParseError) -> Self {
         Self::Build(e)
-    }
-
-    fn procedure(e: ajr::Error) -> Self {
-        Self::Procedure(e)
     }
 }
 
@@ -93,5 +99,5 @@ where
     let response_envelope = serde_json::from_str::<ResponseEnvelope<D>>(&text)
         .map_err(|e| HttpError::from_status(e, status))?;
     debug!("Convert result.");
-    response_envelope.data().map_err(AjrHttpError::procedure)
+    Ok(response_envelope.data()?)
 }
