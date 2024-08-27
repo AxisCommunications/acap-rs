@@ -1,14 +1,14 @@
 //! Bindings for the [Basic device information](https://www.axis.com/vapix-library/subjects/t10175981/section/t10132180/display) API.
-// TODO: Return actionable errors.
+// TODO: Consider creating enum with error codes.
 // TODO: Implement `getSupportedVersions`.
 // TODO: Proper documentation.
-// TODO: Consider adding support for checking if the API should be present
+// TODO: Consider adding support for checking if the API should be present.
 use std::{collections::HashMap, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{ajr_http2, HttpClient};
+use crate::{ajr_http2, ajr_http2::AjrHttpError, HttpClient};
 
 const PATH: &str = "axis-cgi/basicdeviceinfo.cgi";
 
@@ -26,7 +26,7 @@ pub struct GetAllPropertiesRequest<'a> {
 }
 
 impl<'a> GetAllPropertiesRequest<'a> {
-    pub async fn send(self) -> anyhow::Result<GetAllPropertiesData> {
+    pub async fn send(self) -> Result<GetAllPropertiesData, AjrHttpError> {
         ajr_http2::execute_request(
             PATH,
             json!({
@@ -51,7 +51,7 @@ pub struct GetAllUnrestrictedPropertiesRequest<'a> {
 }
 
 impl<'a> GetAllUnrestrictedPropertiesRequest<'a> {
-    pub async fn send(self) -> anyhow::Result<GetAllUnrestrictedPropertiesData> {
+    pub async fn send(self) -> Result<GetAllUnrestrictedPropertiesData, AjrHttpError> {
         ajr_http2::execute_request(
             PATH,
             json!({
@@ -79,7 +79,7 @@ pub struct GetPropertiesRequest<'a> {
 
 // TODO: Consider helping users discover properties by using an enum or methods.
 impl<'a> GetPropertiesRequest<'a> {
-    pub async fn send(self) -> anyhow::Result<GetPropertiesData> {
+    pub async fn send(self) -> Result<GetPropertiesData, AjrHttpError> {
         ajr_http2::execute_request(
             PATH,
             json!({

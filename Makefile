@@ -50,7 +50,7 @@ EAP_INSTALL = cd $(CURDIR)/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/ \
 ## =====
 
 help:
-	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
+	@mkhelp $(firstword $(MAKEFILE_LIST))
 
 ## Reset <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> to a clean state suitable for development and testing.
 reinit:

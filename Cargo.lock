@@ -32,6 +32,7 @@ name = "acap-vapix"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "digest_auth",
  "diqwest",
  "env_logger",
  "futures-util",
