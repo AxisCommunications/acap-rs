@@ -5,12 +5,10 @@ use std::{
     fmt::{Debug, Display, Formatter},
 };
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, bail};
+use diqwest::WithDigestAuth;
 use log::debug;
-use reqwest::{
-    header::{HeaderValue, AUTHORIZATION, WWW_AUTHENTICATE},
-    Method, StatusCode,
-};
+use reqwest::{Method, StatusCode};
 use url::{Host, Url};
 
 use crate::{ajr_http2::AjrHttpError, basic_device_info, systemready};
@@ -189,11 +187,7 @@ impl Client {
             Authentication::Digest { .. } => {}
             Authentication::Anonymous => {}
         }
-        Ok(RequestBuilder {
-            auth,
-            builder,
-            client: self.clone(),
-        })
+        Ok(RequestBuilder { auth, builder })
     }
 
     pub fn get(&self, path: &str) -> Result<RequestBuilder, url::ParseError> {
@@ -263,6 +257,24 @@ impl HttpError {
         }
     }
 
+    fn from_diqwest(e: diqwest::error::Error) -> Self {
+        match e {
+            diqwest::error::Error::Reqwest(e) => Self::other_from_reqwest(e),
+            diqwest::error::Error::DigestAuth(digest_auth::Error::MissingRequired(what, ctx)) => {
+                Self {
+                    inner: anyhow!("Missing {what} in header: {ctx}"),
+                    kind: HttpErrorKind::Authentication,
+                }
+            }
+            diqwest::error::Error::DigestAuth(e) => Self::other(e),
+            diqwest::error::Error::ToStr(e) => Self::other(e),
+            diqwest::error::Error::AuthHeaderMissing => Self::other(anyhow!("auth header missing")),
+            diqwest::error::Error::RequestBuilderNotCloneable => {
+                Self::other(anyhow!("request builder not cloneable"))
+            }
+        }
+    }
+
     /// Attempt to downcast the inner error to a concrete type.
     pub fn downcast<E: Debug + Display + Send + Sync + 'static>(self) -> Result<E, Self> {
         let Self { inner, kind } = self;
@@ -303,7 +315,6 @@ pub enum HttpErrorKind {
 pub struct RequestBuilder {
     auth: Authentication,
     builder: reqwest::RequestBuilder,
-    client: Client,
 }
 
 impl RequestBuilder {
@@ -311,15 +322,10 @@ impl RequestBuilder {
         self,
         f: impl FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     ) -> Self {
-        let Self {
-            auth,
-            builder,
-            client,
-        } = self;
+        let Self { auth, builder } = self;
         Self {
             auth,
             builder: f(builder),
-            client,
         }
     }
 
@@ -330,7 +336,7 @@ impl RequestBuilder {
     pub fn upgrade(self) -> UpgradedRequestBuilder {
         use reqwest_websocket::RequestBuilderExt;
 
-        let Self { auth, builder, .. } = self;
+        let Self { auth, builder } = self;
         UpgradedRequestBuilder {
             auth,
             builder: builder.upgrade(),
@@ -338,46 +344,21 @@ impl RequestBuilder {
     }
 
     pub async fn send(self) -> Result<reqwest::Response, HttpError> {
-        let Self {
-            builder,
-            auth,
-            client,
-        } = self;
+        let Self { builder, auth } = self;
         match auth {
-            Authentication::Basic { .. } => Ok(builder
-                .send()
-                .await
-                .map_err(HttpError::other_from_reqwest)?),
-            Authentication::Bearer { .. } => Ok(builder
-                .send()
-                .await
-                .map_err(HttpError::other_from_reqwest)?),
-            Authentication::Digest { username, password } => {
-                let mut challenge = send_for_challenge(client).await.map_err(HttpError::other)?;
-
-                let (client, request) = builder.build_split();
-                let mut request = request.map_err(HttpError::other_from_reqwest)?;
-                let context = digest_auth::AuthContext::new_with_method(
-                    username,
-                    password.revealed(),
-                    request.url().as_str(),
-                    Option::<&'_ [u8]>::None,
-                    digest_auth::HttpMethod::from(request.method().as_str()),
-                );
-                let answer = challenge.respond(&context).map_err(HttpError::other)?;
-                request.headers_mut().insert(
-                    AUTHORIZATION,
-                    HeaderValue::from_str(&answer.to_string()).map_err(HttpError::other)?,
-                );
-                Ok(client
-                    .execute(request)
-                    .await
-                    .map_err(HttpError::other_from_reqwest)?)
+            Authentication::Basic { .. } => {
+                builder.send().await.map_err(HttpError::other_from_reqwest)
             }
-            Authentication::Anonymous => Ok(builder
-                .send()
+            Authentication::Bearer { .. } => {
+                builder.send().await.map_err(HttpError::other_from_reqwest)
+            }
+            Authentication::Digest { username, password } => builder
+                .send_with_digest_auth(&username, password.revealed())
                 .await
-                .map_err(HttpError::other_from_reqwest)?),
+                .map_err(HttpError::from_diqwest),
+            Authentication::Anonymous => {
+                builder.send().await.map_err(HttpError::other_from_reqwest)
+            }
         }
     }
 }
@@ -406,23 +387,4 @@ impl UpgradedRequestBuilder {
                 .map_err(HttpError::other_from_reqwest_websocket),
         }
     }
-}
-
-async fn send_for_challenge(client: Client) -> anyhow::Result<digest_auth::WwwAuthenticateHeader> {
-    // Use an API that is
-    // - exists,
-    // - requires authorization,
-    // - is nullipotent and, preferably, cheap in case it succeeds.
-    // FIXME: Ensure the pilot request targets an API that is available on all kinds of devices.
-    let resp = client
-        .post("axis-cgi/capturemode.cgi")?
-        .builder
-        .send()
-        .await?;
-    Ok(digest_auth::parse(
-        resp.headers()
-            .get(WWW_AUTHENTICATE)
-            .context(WWW_AUTHENTICATE)?
-            .to_str()?,
-    )?)
 }

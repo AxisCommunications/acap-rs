@@ -11,7 +11,7 @@ use std::{
 };
 
 use reqwest::{
-    multipart::{Form, Part},
+    header::{CONTENT_LENGTH, CONTENT_TYPE},
     StatusCode,
 };
 
@@ -103,10 +103,33 @@ pub struct UploadRequest<'a> {
 impl<'a> UploadRequest<'a> {
     pub async fn send(self) -> Result<(), HttpRpcError<UploadApplicationError>> {
         let Self { client, name, data } = self;
+        let mut form = Vec::new();
+        form.extend(b"--909c9a6bc15f00b579c6ceafa0daac3ec8989a59");
+        form.extend(b"\r\n");
+        form.extend(b"Content-Disposition: form-data; name=\"packfil\"; filename=\"");
+        form.extend(name.as_bytes());
+        form.extend(b"\"");
+        form.extend(b"\r\n");
+        form.extend(b"Content-Type: application/octet-stream");
+        form.extend(b"\r\n");
+        form.extend(b"\r\n");
+        form.extend(data);
+        form.extend(b"\r\n");
+        form.extend(b"--909c9a6bc15f00b579c6ceafa0daac3ec8989a59--");
+        form.extend(b"\r\n");
+
         let response = client
             .post(PATH)
             .map_err(HttpRpcError::ParseUrl)?
-            .replace_with(|b| b.multipart(Form::new().part("x", Part::bytes(data).file_name(name))))
+            .replace_with(|b| {
+                dbg!(b
+                    .header(
+                        CONTENT_TYPE,
+                        "multipart/form-data; boundary=909c9a6bc15f00b579c6ceafa0daac3ec8989a59"
+                    )
+                    .header(CONTENT_LENGTH, form.len())
+                    .body(form))
+            })
             .send()
             .await
             .map_err(HttpRpcError::other)?;
