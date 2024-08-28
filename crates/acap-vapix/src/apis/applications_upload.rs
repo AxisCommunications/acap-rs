@@ -104,6 +104,7 @@ impl<'a> UploadRequest<'a> {
     pub async fn send(self) -> Result<(), HttpRpcError<UploadApplicationError>> {
         let Self { client, name, data } = self;
         let mut form = Vec::new();
+        // TODO: Replace hard coded boundary by something random
         form.extend(b"--909c9a6bc15f00b579c6ceafa0daac3ec8989a59");
         form.extend(b"\r\n");
         form.extend(b"Content-Disposition: form-data; name=\"packfil\"; filename=\"");
