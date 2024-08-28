@@ -41,11 +41,6 @@ export AXIS_DEVICE_PASS ?= pass
 FORCE:;
 .PHONY: FORCE
 
-# It doesn't matter which SDK is sourced for installing, but using a wildcard would fail since there are multiple in the container.
-EAP_INSTALL = cd $(CURDIR)/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/ \
-&& . /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) $@
-
-
 ## Verbs
 ## =====
 
@@ -62,9 +57,7 @@ build: apps/$(AXIS_PACKAGE)/LICENSE
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
-	@ $(EAP_INSTALL) \
-	| grep -v '^to start your application type$$' \
-	| grep -v '^  eap-install.sh start$$'
+	cargo-acap-sdk install
 
 ## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 remove:
