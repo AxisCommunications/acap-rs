@@ -2,4 +2,5 @@
 /.idea/
 /init_env.sh
 /target/
+/workspaces/*/target/
 /apps/*/LICENSE
