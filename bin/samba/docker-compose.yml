@@ -1,0 +1,22 @@
+version: '3.4'
+
+services:
+  server:
+    command: '-s "share;/mnt;yes;no;yes" -S -p'
+    environment:
+      - USERID=${USERID}
+      - GROUPID=${GROUPID}
+    image: dperson/samba@sha256:66088b78a19810dd1457a8f39340e95e663c728083efa5fe7dc0d40b2478e869
+    restart: unless-stopped
+    volumes:
+      - ${DATA_PATH}:/mnt
+  tunnel:
+    build: services/tunnel
+    command: 'sshpass -e ssh -N -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R 445:server:445 ${AXIS_DEVICE_USER}@${AXIS_DEVICE_IP}'
+    depends_on:
+      - server
+    environment:
+      - SSHPASS=${AXIS_DEVICE_PASS}
+    profiles:
+      - tunnel
+    restart: unless-stopped
