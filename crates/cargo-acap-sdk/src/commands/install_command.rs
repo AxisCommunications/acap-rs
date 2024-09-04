@@ -19,18 +19,7 @@ impl InstallCommand {
             deploy_options,
         } = self;
 
-        let ResolvedBuildOptions { target, mut args } =
-            build_options.resolve(&deploy_options).await?;
-
-        if !args.iter().any(|arg| {
-            arg.split('=')
-                .next()
-                .expect("Split always yields at least one substring")
-                .starts_with("--profile")
-        }) {
-            debug!("Using release profile by default");
-            args.push("--profile=release".to_string());
-        }
+        let ResolvedBuildOptions { target, args } = build_options.resolve(&deploy_options).await?;
 
         let artifacts = AppBuilder::from_targets([Architecture::from(target)])
             .args(args)
