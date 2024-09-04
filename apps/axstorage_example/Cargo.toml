@@ -1,0 +1,13 @@
+[package]
+name = "axstorage_example"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+glib = { workspace = true }
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+axstorage = { workspace = true }
