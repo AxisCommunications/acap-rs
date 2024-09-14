@@ -173,7 +173,7 @@ check_docs:
 
 ## Check that the code is formatted correctly
 check_format:
-	cargo fmt --check --locked
+	cargo fmt --check
 .PHONY: check_format
 
 ## Check that generated files are up to date
