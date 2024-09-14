@@ -146,6 +146,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace
 	cargo-acap-build \
 		--target aarch64 \
@@ -154,6 +155,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude cargo-acap-build \
 		--exclude cargo-acap-sdk \
 		--exclude device-manager \
+		--locked \
 		--workspace
 
 .PHONY: check_build
@@ -163,6 +165,7 @@ check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
+		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
@@ -170,7 +173,7 @@ check_docs:
 
 ## Check that the code is formatted correctly
 check_format:
-	cargo fmt --check
+	cargo fmt --check --locked
 .PHONY: check_format
 
 ## Check that generated files are up to date
@@ -196,11 +199,13 @@ check_lint:
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace \
 		-- \
 		-Dwarnings
 	cargo clippy \
 		--all-targets \
+		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace \
@@ -223,6 +228,7 @@ check_tests:
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace
 .PHONY: check_tests
 
