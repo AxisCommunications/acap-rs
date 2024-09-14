@@ -53,11 +53,17 @@ reinit:
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build: apps/$(AXIS_PACKAGE)/LICENSE
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
+	cargo-acap-build \
+		--target $(AXIS_DEVICE_ARCH) \
+		-- \
+		--package $(AXIS_PACKAGE) \
+		--profile app
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
-	cargo-acap-sdk install
+	cargo-acap-sdk install \
+	-- \
+	--profile app
 
 ## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 remove:
@@ -115,7 +121,8 @@ install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo-acap-sdk install \
 		-- \
 		--package licensekey \
-		--package '*_*'
+		--package '*_*' \
+		--profile app
 
 ## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
