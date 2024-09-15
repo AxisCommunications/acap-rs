@@ -2,7 +2,7 @@ name: on host workflow
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, trim-paths ]
   pull_request:
 
 jobs:
@@ -52,4 +52,6 @@ jobs:
         # To verify that the procedure has worked, the all checks are run as well.
         run: |
           source ./init_env.sh
-          make check_all
+          make artifacts.sha256sum
+          cat artifacts.sha256sum
+          git diff

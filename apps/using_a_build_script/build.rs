@@ -42,10 +42,12 @@ fn generate_html(out_dir: &Path) {
         "{timestamp}",
         &format!(
             "{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
+            env::var_os("SOURCE_DATE_EPOCH")
+                .map(|s| s.to_str().unwrap().parse().unwrap())
+                .unwrap_or_else(|| std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs())
         ),
     );
     println!("cargo:rerun-if-changed={index_in}");

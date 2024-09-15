@@ -1,0 +1,2 @@
+[build]
+rustflags = ['--remap-path-prefix=/home/apljungquist/.cargo=/usr/local/cargo']

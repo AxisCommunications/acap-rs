@@ -21,6 +21,8 @@ export AXIS_DEVICE_USER ?= root
 # The password to use when interacting with the device.
 export AXIS_DEVICE_PASS ?= pass
 
+export SOURCE_DATE_EPOCH ?= 0
+
 # Other
 # -----
 
@@ -177,7 +179,7 @@ check_format:
 .PHONY: check_format
 
 ## Check that generated files are up to date
-check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+check_generated_files: artifacts.sha256sum $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
@@ -264,6 +266,11 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		--manifest-path apps/$*/Cargo.toml \
 		--output-file $@ \
 		about.hbs
+
+artifacts.sha256sum:
+	cargo-acap-sdk build --target aarch64 -- -p '*_*' --profile release -Z trim-paths
+	find target/aarch64/ -name '*.eap' | xargs sha256sum > $@
+.PHONY: artifacts.sha256sum
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@

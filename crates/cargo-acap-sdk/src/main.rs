@@ -1,5 +1,5 @@
 use std::{ffi::OsString, fs::File, str::FromStr};
-
+use anyhow::{bail, Context};
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
@@ -16,11 +16,24 @@ mod command_utils;
 
 mod commands;
 
+#[derive(Clone, Debug)]
+struct Toolchain(String);
+
+impl FromStr for Toolchain {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.strip_prefix('+').context("Expected +")?.to_string()))
+    }
+}
+
 /// Tools for developing ACAP apps using Rust
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
+    #[clap(value_parser)]
+    toolchain: Option<Toolchain>,
     #[command(subcommand)]
     command: Commands,
 }
