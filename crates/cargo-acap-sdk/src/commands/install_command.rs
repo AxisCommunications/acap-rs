@@ -45,6 +45,7 @@ impl InstallCommand {
                         .upload(path)?
                         .send()
                         .await?;
+                    debug!("Installed app {name}");
                 }
                 Artifact::Exe { path } => {
                     debug!("Skipping exe {path:?}");
