@@ -177,7 +177,7 @@ check_format:
 .PHONY: check_format
 
 ## Check that generated files are up to date
-check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
@@ -248,6 +248,9 @@ fix_lint:
 
 ## Nouns
 ## =====
+
+Cargo.lock: FORCE
+	cargo metadata > /dev/null
 
 .devhost/constraints.txt: .devhost/requirements.txt
 	pip-compile \
