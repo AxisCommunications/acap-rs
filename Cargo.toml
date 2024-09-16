@@ -42,3 +42,12 @@ mdb-sys = { path = "crates/mdb-sys" }
 
 [workspace.package]
 edition = "2021"
+
+# For projects that build only apps it's probably easier to customize the releae profile.
+[profile.app]
+inherits = "release"
+opt-level = "s"
+strip = "symbols"
+lto = true
+panic = "abort"
+codegen-units = 1
