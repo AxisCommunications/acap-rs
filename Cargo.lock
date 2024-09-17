@@ -17,7 +17,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
- "dirs 5.0.1",
+ "dirs",
  "env_logger",
  "flate2",
  "log",
@@ -363,7 +363,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
- "dirs 5.0.1",
+ "dirs",
  "env_logger",
  "home",
  "log",
@@ -381,7 +381,7 @@ dependencies = [
  "cargo-acap-build",
  "clap",
  "clap_complete",
- "dirs 5.0.1",
+ "dirs",
  "env_logger",
  "log",
  "reqwest",
@@ -562,7 +562,7 @@ dependencies = [
  "acap-vapix",
  "anyhow",
  "clap",
- "dirs 3.0.2",
+ "dirs",
  "env_logger",
  "log",
  "regex",
@@ -610,31 +610,11 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
-dependencies = [
- "dirs-sys 0.3.7",
-]
-
-[[package]]
-name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
- "dirs-sys 0.4.1",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users",
- "winapi",
+ "dirs-sys",
 ]
 
 [[package]]
