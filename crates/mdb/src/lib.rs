@@ -1,5 +1,5 @@
 // TODO: Add documentation.
-use std::{any, ffi::CStr, slice::from_raw_parts};
+use std::{any, ffi::CStr, marker::PhantomData, slice::from_raw_parts};
 
 use libc::c_void;
 use log::{debug, error};
@@ -245,14 +245,17 @@ unsafe impl<'a> Send for Subscriber<'a> {}
 // implementation until it is needed or the Send and Sync properties are clearly guaranteed by
 // the C API.
 
-pub struct Message {
+pub struct Message<'a> {
     ptr: *const mdb_sys::mdb_message_t,
+    _marker: PhantomData<&'a mdb_sys::mdb_message_t>,
 }
 
-impl Message {
+impl Message<'_> {
     unsafe fn from_raw(ptr: *const mdb_sys::mdb_message_t) -> Self {
-        // TODO: Can we encode that this is never owned?
-        Self { ptr }
+        Self {
+            ptr,
+            _marker: PhantomData,
+        }
     }
     pub fn payload(&self) -> &[u8] {
         unsafe {
