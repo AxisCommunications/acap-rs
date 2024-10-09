@@ -55,11 +55,11 @@ fn setup_declaration(handler: Handler, start_value: f64) -> anyhow::Result<Decla
         false,
         Some({
             let mut handler = Some(Arc::clone(&handler));
-            Box::new(move |declaration| {
+            move |declaration| {
                 if let Some(handler) = handler.take() {
                     declaration_complete(declaration, handler, start_value);
                 }
-            })
+            }
         }),
     )?;
     Ok(declaration)
@@ -158,9 +158,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn can_declare_without_callback() {
         let handler = Handler::new();
-        let _declaration = handler.declare(&KeyValueSet::new(), true, None);
+        handler
+            .declare::<fn(axevent::flex::Declaration)>(&topic().unwrap(), true, None)
+            .unwrap();
     }
 }

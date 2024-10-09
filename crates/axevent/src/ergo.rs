@@ -71,12 +71,12 @@ impl<'a> Declaration<'a> {
         let id = handler.declare(
             &kvs,
             stateless,
-            Some(Box::new(move |_| match tx.try_send(()) {
+            Some(move |_| match tx.try_send(()) {
                 Ok(()) => debug!("Declaration complete sent"),
                 Err(TrySendError::Disconnected(())) => debug!("Declaration complete not sent"),
                 // Channel has capacity 1 and at most 1 message is ever sent
                 Err(TrySendError::Full(())) => unreachable!(),
-            })),
+            }),
         )?;
         Ok(Self { rx, id, handler })
     }
