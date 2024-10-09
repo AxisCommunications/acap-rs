@@ -37,9 +37,10 @@ npm install -g @devcontainers/cli@0.65.0
 # Install rust programs
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target cargo-about@0.6.2
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target mkhelp@0.2.3
-cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/acap-ssh-utils
-cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-build
-cargo install --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/device-manager
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/acap-ssh-utils
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-build
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-sdk
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/device-manager
 
 rm -r /tmp/target
 
