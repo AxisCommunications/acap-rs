@@ -5,7 +5,7 @@ use acap_vapix::{systemready, HttpClient};
 use anyhow::bail;
 use log::{debug, info};
 use tokio::time::sleep;
-use url::{Host, Url};
+use url::Host;
 
 use crate::vapix::axis_cgi::firmwaremanagement1;
 
@@ -128,7 +128,7 @@ impl<'a> UptimeRestartDetector<'a> {
 
 pub async fn restore(host: &Host, user: &str, pass: &str) -> anyhow::Result<()> {
     info!("Restoring device...");
-    let mut client = HttpClient::new(Url::parse(&format!("http://{host}")).unwrap());
+    let mut client = HttpClient::from_host(host).await?;
     debug!("Checking if factory default is needed...");
     if systemready::systemready()
         .execute(&client)

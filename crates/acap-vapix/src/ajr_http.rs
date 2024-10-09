@@ -26,6 +26,18 @@ where
         "apiVersion": api_version,
         "params": params,
     });
+    execute_request(path, request_envelope, client).await
+}
+
+pub async fn execute_request<S, D>(
+    path: &str,
+    request_envelope: S,
+    client: &crate::http::Client,
+) -> anyhow::Result<D>
+where
+    S: Serialize + Debug,
+    D: for<'a> Deserialize<'a>,
+{
     // TODO: Consider not logging the request_envelope for performance and security.
     debug!("Building request from {request_envelope:?}.");
     let builder = client

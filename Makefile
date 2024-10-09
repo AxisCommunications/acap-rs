@@ -41,18 +41,11 @@ export AXIS_DEVICE_PASS ?= pass
 FORCE:;
 .PHONY: FORCE
 
-ACAP_BUILD = . /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) && cd $(@D) && acap-build --build no-build .
-
-# It doesn't matter which SDK is sourced for installing, but using a wildcard would fail since there are multiple in the container.
-EAP_INSTALL = cd $(CURDIR)/target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/ \
-&& . /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux && eap-install.sh $(AXIS_DEVICE_IP) $(AXIS_DEVICE_PASS) $@
-
-
 ## Verbs
 ## =====
 
 help:
-	@mkhelp print_docs $(firstword $(MAKEFILE_LIST)) help
+	@mkhelp $(firstword $(MAKEFILE_LIST))
 
 ## Reset <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> to a clean state suitable for development and testing.
 reinit:
@@ -60,34 +53,31 @@ reinit:
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build: apps/$(AXIS_PACKAGE)/LICENSE
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
+	cargo-acap-build \
+		--target $(AXIS_DEVICE_ARCH) \
+		-- \
+		--package $(AXIS_PACKAGE) \
+		--profile app
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
-	@ $(EAP_INSTALL) \
-	| grep -v '^to start your application type$$' \
-	| grep -v '^  eap-install.sh start$$'
+	cargo-acap-sdk install \
+	-- \
+	--profile app
 
-## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 remove:
-	@ $(EAP_INSTALL)
+	cargo-acap-sdk remove
 
-## Start <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Start <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 start:
-	@ $(EAP_INSTALL) \
-	| grep -v '^to stop your application type$$' \
-	| grep -v '^  eap-install.sh stop$$'
+	cargo-acap-sdk start
 
-## Stop <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+## Stop <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 stop:
-	@ $(EAP_INSTALL)
+	cargo-acap-sdk stop
 
 ## Build and run <AXIS_PACKAGE> directly on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
-##
-## Forwards the following environment variables to the remote process:
-##
-## * `RUST_LOG`
-## * `RUST_LOG_STYLE`
 ##
 ## Prerequisites:
 ##
@@ -95,8 +85,7 @@ stop:
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-## * The device is added to `knownhosts`.
-run:
+run: apps/$(AXIS_PACKAGE)/LICENSE
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
@@ -106,19 +95,13 @@ run:
 
 ## Build and execute unit tests for <AXIS_PACKAGE> on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 ##
-## Forwards the following environment variables to the remote process:
-##
-## * `RUST_LOG`
-## * `RUST_LOG_STYLE`
-##
 ## Prerequisites:
 ##
 ## * <AXIS_PACKAGE> is recognized by `cargo-acap-build` as an ACAP app.
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-## * The device is added to `knownhosts`.
-test:
+test: apps/$(AXIS_PACKAGE)/LICENSE
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
@@ -126,7 +109,27 @@ test:
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
-		$(AXIS_PACKAGE)
+		$(AXIS_PACKAGE) \
+		-- \
+		--test-threads=1
+
+## Bulk operations
+## ---------------
+
+## Install all apps on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
+install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+	cargo-acap-sdk install \
+		-- \
+		--package licensekey \
+		--package '*_*' \
+		--profile app
+
+## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
+test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+	cargo-acap-sdk test \
+		-- \
+		--package licensekey \
+		--package '*_*'
 
 ## Checks
 ## ------
@@ -141,19 +144,25 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude bbox \
+		--exclude bbox-sys \
+		--exclude bounding_box_example \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace
 	cargo-acap-build \
 		--target aarch64 \
 		-- \
 		--exclude acap-ssh-utils \
 		--exclude cargo-acap-build \
+		--exclude cargo-acap-sdk \
 		--exclude device-manager \
+		--locked \
 		--workspace
 
 .PHONY: check_build
@@ -163,6 +172,7 @@ check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
+		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
@@ -174,7 +184,7 @@ check_format:
 .PHONY: check_format
 
 ## Check that generated files are up to date
-check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
@@ -187,33 +197,46 @@ check_lint:
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude bbox \
+		--exclude bbox-sys \
+		--exclude bounding_box_example \
 		--exclude licensekey \
 		--exclude licensekey-sys \
 		--exclude licensekey_handler \
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
-		--workspace -- -Dwarnings
+		--locked \
+		--workspace \
+		-- \
+		-Dwarnings
 	cargo clippy \
 		--all-targets \
+		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
-		--workspace -- -Dwarnings
+		--workspace \
+		-- \
+		-Dwarnings
 .PHONY: check_lint
 
 ## _
 check_tests:
 	cargo test \
-			--exclude consume_analytics_metadata \
-			--exclude axevent \
-			--exclude axevent-sys \
-			--exclude licensekey \
-			--exclude licensekey-sys \
-			--exclude licensekey_handler \
-			--exclude mdb \
-			--exclude mdb-sys \
-			--exclude send_event \
-			--workspace
+		--exclude consume_analytics_metadata \
+		--exclude axevent \
+		--exclude axevent-sys \
+		--exclude bbox \
+		--exclude bbox-sys \
+		--exclude bounding_box_example \
+		--exclude licensekey \
+		--exclude licensekey-sys \
+		--exclude licensekey_handler \
+		--exclude mdb \
+		--exclude mdb-sys \
+		--exclude send_event \
+		--locked \
+		--workspace
 .PHONY: check_tests
 
 ## Fixes
@@ -232,6 +255,9 @@ fix_lint:
 
 ## Nouns
 ## =====
+
+Cargo.lock: FORCE
+	cargo metadata > /dev/null
 
 .devhost/constraints.txt: .devhost/requirements.txt
 	pip-compile \

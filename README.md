@@ -73,6 +73,15 @@ Below is the list of examples available in the repository.
 | mdb            |                                                                 |
 | mdb-sys        |                                                                 |
 
+## Troubleshooting
+
+The docker image may fail to build with the following included in the output:
+`/usr/bin/env: 'sh\r': No such file or directory`
+This is likely caused by `git` replacing POSIX newlines with Windows newlines in which case it can be resolved by either
+
+- cloning the code in Windows Subsystem for Linux (WSL), or
+- reconfiguring `git`.
+
 ## License
 
 [MIT](LICENSE)

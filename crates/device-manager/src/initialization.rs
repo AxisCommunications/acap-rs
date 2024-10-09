@@ -5,6 +5,7 @@ use std::{
 };
 
 use acap_vapix::{parameter_management, systemready, HttpClient};
+use anyhow::Context;
 use log::{debug, info};
 use tokio::time::sleep;
 use url::{Host, Url};
@@ -62,32 +63,33 @@ async fn wait_for_param(client: &HttpClient, key: &str, value: &str) -> anyhow::
             .await
         {
             Ok(kvps) => {
-                debug!("Presumed changed");
-                assert_eq!(kvps.get(key).unwrap(), value);
-                return Ok(());
+                if kvps.get(key).context("key missing")? == value {
+                    return Ok(());
+                }
+                debug!("Confirmed unchanged");
             }
             Err(e) => {
                 debug!("Presumed unchanged because {e}");
-                sleep(Duration::from_secs(1)).await;
-                continue;
             }
         }
+        sleep(Duration::from_secs(1)).await;
+        continue;
     }
 }
 
 pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     let primary_user = "root";
-    let no_auth_client = HttpClient::new(Url::parse(&format!("http://{host}")).unwrap());
+    let mut client = HttpClient::new(Url::parse(&format!("http://{host}")).unwrap());
 
     debug!("Assert that device can be adopted...");
     assert!(systemready::systemready()
-        .execute(&no_auth_client)
+        .execute(&client)
         .await?
         .need_setup());
 
     info!("Adding the primary user...");
     pwdgrp::add(
-        &no_auth_client,
+        &client,
         primary_user,
         pass,
         pwdgrp::Group::Root,
@@ -96,17 +98,27 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     )
     .await?;
 
-    let digest_auth_client = no_auth_client.digest_auth(primary_user, pass);
+    client = client.digest_auth(primary_user, pass);
     wait_for_param(
-        &digest_auth_client,
+        &client,
         "root.Properties.API.Browser.RootPwdSetValue",
         "yes",
     )
     .await?;
 
+    info!("Downgrading auth to basic...");
+    parameter_management::update()
+        .set("root.Network.HTTP.AuthenticationPolicy", "basic")
+        .execute(&client)
+        .await?;
+    client = client.basic_auth(primary_user, pass);
+    // Note that the authentication policy may not yet be active just because it is configured.
+    // This one reason why basic auth is configured on the client before this step.
+    wait_for_param(&client, "root.Network.HTTP.AuthenticationPolicy", "basic").await?;
+
     info!("Adding other users...");
     pwdgrp::add(
-        &digest_auth_client,
+        &client,
         "ariel",
         pass,
         pwdgrp::Group::Users,
@@ -115,7 +127,7 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     )
     .await?;
     pwdgrp::add(
-        &digest_auth_client,
+        &client,
         "orion",
         pass,
         pwdgrp::Group::Users,
@@ -124,7 +136,7 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     )
     .await?;
     pwdgrp::add(
-        &digest_auth_client,
+        &client,
         "vega",
         pass,
         pwdgrp::Group::Users,
@@ -136,7 +148,7 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     info!("Enabling SSH...");
     parameter_management::update()
         .set("root.Network.SSH.Enabled", "yes")
-        .execute(&digest_auth_client)
+        .execute(&client)
         .await?;
 
     // TODO: Consider factoring out to `acap-ssh-utils` crate.
@@ -146,7 +158,7 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     log_stdout(ssh_keygen)?;
 
     // TODO: Check firmware version, make this call only when needed, and fail failures.
-    if let Err(e) = restore_root_ssh_user(&digest_auth_client, pass).await {
+    if let Err(e) = restore_root_ssh_user(&client, pass).await {
         info!("Could not restore root ssh user because {e} (this is expected on older firmware)");
     }
 
@@ -161,5 +173,5 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
         .arg(&format!("root@{}", host));
     log_stdout(sshpass)?;
 
-    Ok(digest_auth_client)
+    Ok(client)
 }
