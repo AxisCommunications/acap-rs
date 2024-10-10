@@ -280,6 +280,32 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 artifacts.sha256sum: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo build --bin cargo-acap-sdk
 	./target/debug/cargo-acap-sdk build --target aarch64 -- -p '*_*' --profile release -Z trim-paths
+	set -eux \
+	&& cd target/aarch64/bounding_box_example \
+	&& gzip -c bounding_box_example > bounding_box_example.gz \
+	&& tar -czvf bounding_box_example-1.tar.gz bounding_box_example \
+	&& tar \
+		   --use-compress-program="gzip --no-name -9" \
+		   --sort=name \
+		   --mtime="@$${SOURCE_DATE_EPOCH:-$$(\date +%s)}" \
+		   --owner=0 \
+		   --group=0 \
+		   --numeric-owner \
+		   --create \
+		   --file bounding_box_example-2.tar.gz \
+		   --exclude-vcs \
+		   --exclude="*~" \
+		   --format=gnu \
+		   bounding_box_example \
+	&& tar \
+		   --use-compress-program="gzip -9" \
+		   --mtime="@$${SOURCE_DATE_EPOCH:-$$(\date +%s)}" \
+		   --owner=0 \
+		   --group=0 \
+		   --numeric-owner \
+		   --create \
+		   --file bounding_box_example-3.tar.gz \
+		   bounding_box_example
 	find target/aarch64/ -type f | sort | xargs sha256sum > $@
 .PHONY: artifacts.sha256sum
 
