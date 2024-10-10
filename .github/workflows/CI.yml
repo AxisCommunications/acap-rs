@@ -17,6 +17,7 @@ jobs:
         run: |
           devcontainer up --workspace-folder .
           devcontainer exec --workspace-folder . make --always-make check_all
+          devcontainer exec --workspace-folder . make --always-make check_generated_files_container
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=licensekey_handler
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=embedded_web_page
           devcontainer exec --workspace-folder . make build AXIS_PACKAGE=reverse_proxy
