@@ -1,9 +1,9 @@
-use std::{ffi::OsString, fs::File, str::FromStr};
-use anyhow::{bail, Context};
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
+use anyhow::{bail, Context};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use log::debug;
+use std::{ffi::OsString, fs::File, str::FromStr};
 use url::Host;
 
 use crate::commands::{

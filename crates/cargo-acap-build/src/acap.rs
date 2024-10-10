@@ -1,6 +1,6 @@
 /// Wrapper around the ACAP SDK, in particular`acap-build`.
 use std::{
-    fs,
+    env, fs,
     path::{Path, PathBuf},
 };
 
@@ -129,6 +129,12 @@ impl AppBuilder {
             &format!(". /opt/axis/acapsdk/{env_setup} && {acap_build:?}"),
         ]);
         sh.run_with_logged_stdout()?;
+        println!("{:?}", env::var("SOURCE_DATE_EPOCH"));
+        std::process::Command::new("sh")
+            .args(&["-c", "echo $SOURCE_DATE_EPOCH"])
+            .spawn()?
+            .wait()
+            .unwrap();
         let mut apps = Vec::new();
         for entry in fs::read_dir(staging_dir)? {
             let entry = entry?;

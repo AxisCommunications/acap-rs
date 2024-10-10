@@ -278,7 +278,8 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		about.hbs
 
 artifacts.sha256sum: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
-	cargo-acap-sdk build --target aarch64 -- -p '*_*' --profile release -Z trim-paths
+	cargo build --bin cargo-acap-sdk
+	./target/debug/cargo-acap-sdk build --target aarch64 -- -p '*_*' --profile release -Z trim-paths
 	find target/aarch64/ -type f | sort | xargs sha256sum > $@
 .PHONY: artifacts.sha256sum
 
