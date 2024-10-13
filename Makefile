@@ -21,6 +21,9 @@ export AXIS_DEVICE_USER ?= root
 # The password to use when interacting with the device.
 export AXIS_DEVICE_PASS ?= pass
 
+# Reproducible and stable results by default
+export SOURCE_DATE_EPOCH ?= 0
+
 # Other
 # -----
 
@@ -156,7 +159,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--locked \
 		--workspace
 	cargo-acap-build \
-		--target aarch64 \
+		--target $(AXIS_DEVICE_ARCH) \
 		-- \
 		--exclude acap-ssh-utils \
 		--exclude cargo-acap-build \
@@ -188,6 +191,14 @@ check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard cra
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
+
+## Check that machine-dependent generated files are up to date
+##
+## Remember to fist build the apps and to make both targets in the dev-container.
+check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum
+	git update-index -q --refresh
+	git --no-pager diff --exit-code HEAD -- $^
+.PHONY: check_generated_files_container
 
 ## Check that the code is free of lints
 check_lint:
@@ -274,6 +285,9 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		--manifest-path apps/$*/Cargo.toml \
 		--output-file $@ \
 		about.hbs
+
+apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+	shasum $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@

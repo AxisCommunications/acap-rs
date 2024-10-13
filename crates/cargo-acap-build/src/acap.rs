@@ -11,12 +11,18 @@ use crate::command_utils::RunWith;
 
 mod manifest;
 
+fn copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> std::io::Result<u64> {
+    let mut src = fs::File::open(src)?;
+    let mut dst = fs::File::create(dst)?;
+    std::io::copy(&mut src, &mut dst)
+}
+
 fn copy_recursively(src: &Path, dst: &Path) -> anyhow::Result<()> {
     if src.is_file() {
         if dst.exists() {
             bail!("Path already exists {dst:?}");
         }
-        fs::copy(src, dst)?;
+        copy(src, dst)?;
         debug!("Created reg {dst:?}");
         return Ok(());
     }
@@ -55,9 +61,9 @@ impl AppBuilder {
     ) -> anyhow::Result<Self> {
         fs::create_dir(&staging_dir)?;
 
-        fs::copy(manifest, staging_dir.join("manifest.json"))?;
-        fs::copy(exe, staging_dir.join(app_name))?;
-        fs::copy(license, staging_dir.join("LICENSE"))?;
+        copy(manifest, staging_dir.join("manifest.json"))?;
+        copy(exe, staging_dir.join(app_name))?;
+        copy(license, staging_dir.join("LICENSE"))?;
 
         Ok(Self {
             staging_dir,
