@@ -96,6 +96,28 @@ run: apps/$(AXIS_PACKAGE)/LICENSE
 		--environment RUST_LOG_STYLE=always \
 		$(AXIS_PACKAGE)
 
+## Start gdbserver for <AXIS_PACKAGE> on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
+##
+## Prerequisites:
+##
+## * The app is installed on the device.
+## * The device has SSH enabled the ssh user root configured.
+## * `gdb-multiarch` has been installed e.g. using `apt-get`.
+##
+## Once started we can e.g. show the backtrace from a segfault:
+##
+## ```
+## gdb-multiarch
+## target remote <AXIS_DEVICE_IP>:1234
+## continue
+## backtrace
+## ```
+run_gdbserver: build/$(AXIS_DEVICE_ARCH)/gdb-out/_envoy
+	acap-ssh-utils run-other \
+		build/$(AXIS_DEVICE_ARCH)/gdb-out/gdb/gdbserver/gdbserver \
+		-- \
+		:1234 /usr/local/packages/$(AXIS_PACKAGE)/$(AXIS_PACKAGE)
+
 ## Build and execute unit tests for <AXIS_PACKAGE> on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 ##
 ## Prerequisites:
@@ -288,6 +310,29 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 
 apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
 	shasum $^ > $@
+
+build/aarch64/gdb-out/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa53-crypto-poky-linux
+build/armv7hf/gdb-out/_envoy: ENVIRONMENT_SETUP=environment-setup-cortexa9hf-neon-poky-linux-gnueabi
+build/$(AXIS_DEVICE_ARCH)/gdb-out/_envoy: build/gdb-src/configure
+	rm -r $(@D) ||:
+	mkdir -p $(@D)
+	. /opt/axis/acapsdk/$(ENVIRONMENT_SETUP) \
+	&& cd $(@D) \
+	&& $(CURDIR)/build/gdb-src/configure \
+      --host=$$($$CC -dumpmachine) \
+      --with-sysroot=$$SDKTARGETSYSROOT \
+	&& make
+	touch $@
+
+build/gdb-9.2.tar.gz:
+	mkdir -p $(@D)
+	curl -sSL https://ftp.gnu.org/gnu/gdb/gdb-9.2.tar.gz --output $@
+
+build/gdb-src/configure: build/gdb-9.2.tar.gz
+	rm -r $(@D) ||:
+	mkdir -p $(@D)
+	tar -xf $< -C $(@D) --strip-components=1
+	touch $@
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
