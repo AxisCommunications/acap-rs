@@ -12,8 +12,6 @@ use crate::commands::{
     test_command::TestCommand,
 };
 
-mod command_utils;
-
 mod commands;
 
 /// Tools for developing ACAP apps using Rust

@@ -11,7 +11,7 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_recursively(false)
         .layout_tests(false);
     for path in library.include_paths {
-        bindings = bindings.clang_args(&["-F", &path.to_str().unwrap()]);
+        bindings = bindings.clang_args(&["-F", path.to_str().unwrap()]);
     }
     bindings.generate().unwrap().write_to_file(dst).unwrap();
 }

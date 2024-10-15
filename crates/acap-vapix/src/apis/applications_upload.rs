@@ -123,13 +123,12 @@ impl<'a> UploadRequest<'a> {
             .post(PATH)
             .map_err(HttpRpcError::ParseUrl)?
             .replace_with(|b| {
-                dbg!(b
-                    .header(
-                        CONTENT_TYPE,
-                        "multipart/form-data; boundary=909c9a6bc15f00b579c6ceafa0daac3ec8989a59"
-                    )
-                    .header(CONTENT_LENGTH, form.len())
-                    .body(form))
+                b.header(
+                    CONTENT_TYPE,
+                    "multipart/form-data; boundary=909c9a6bc15f00b579c6ceafa0daac3ec8989a59",
+                )
+                .header(CONTENT_LENGTH, form.len())
+                .body(form)
             })
             .send()
             .await

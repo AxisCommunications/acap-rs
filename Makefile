@@ -21,6 +21,9 @@ export AXIS_DEVICE_USER ?= root
 # The password to use when interacting with the device.
 export AXIS_DEVICE_PASS ?= pass
 
+# Reproducible and stable results by default
+export SOURCE_DATE_EPOCH ?= 0
+
 # Other
 # -----
 
@@ -53,11 +56,17 @@ reinit:
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build: apps/$(AXIS_PACKAGE)/LICENSE
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
+	cargo-acap-build \
+		--target $(AXIS_DEVICE_ARCH) \
+		-- \
+		--package $(AXIS_PACKAGE) \
+		--profile app
 
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
-	cargo-acap-sdk install
+	cargo-acap-sdk install \
+	-- \
+	--profile app
 
 ## Remove <AXIS_PACKAGE> from <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS>
 remove:
@@ -115,7 +124,8 @@ install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo-acap-sdk install \
 		-- \
 		--package licensekey \
-		--package '*_*'
+		--package '*_*' \
+		--profile app
 
 ## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
@@ -146,14 +156,16 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace
 	cargo-acap-build \
-		--target aarch64 \
+		--target $(AXIS_DEVICE_ARCH) \
 		-- \
 		--exclude acap-ssh-utils \
 		--exclude cargo-acap-build \
 		--exclude cargo-acap-sdk \
 		--exclude device-manager \
+		--locked \
 		--workspace
 
 .PHONY: check_build
@@ -163,6 +175,7 @@ check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
+		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace
@@ -174,10 +187,18 @@ check_format:
 .PHONY: check_format
 
 ## Check that generated files are up to date
-check_generated_files: $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
+check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
+
+## Check that machine-dependent generated files are up to date
+##
+## Remember to fist build the apps and to make both targets in the dev-container.
+check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum
+	git update-index -q --refresh
+	git --no-pager diff --exit-code HEAD -- $^
+.PHONY: check_generated_files_container
 
 ## Check that the code is free of lints
 check_lint:
@@ -196,11 +217,13 @@ check_lint:
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace \
 		-- \
 		-Dwarnings
 	cargo clippy \
 		--all-targets \
+		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \
 		--workspace \
@@ -223,6 +246,7 @@ check_tests:
 		--exclude mdb \
 		--exclude mdb-sys \
 		--exclude send_event \
+		--locked \
 		--workspace
 .PHONY: check_tests
 
@@ -243,6 +267,9 @@ fix_lint:
 ## Nouns
 ## =====
 
+Cargo.lock: FORCE
+	cargo metadata > /dev/null
+
 .devhost/constraints.txt: .devhost/requirements.txt
 	pip-compile \
 		--allow-unsafe \
@@ -258,6 +285,9 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		--manifest-path apps/$*/Cargo.toml \
 		--output-file $@ \
 		about.hbs
+
+apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+	shasum $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
