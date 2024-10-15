@@ -282,6 +282,7 @@ Cargo.lock: FORCE
 # TODO: Find a convenient way to integrate this with cargo-acap-build
 apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 	cargo-about generate \
+		--fail \
 		--manifest-path apps/$*/Cargo.toml \
 		--output-file $@ \
 		about.hbs
