@@ -142,7 +142,7 @@ fn setup_disk_cb(storage: Result<Storage, Error>) {
     info!("Disk: {storage_id} has been setup in {path:?}");
 }
 
-fn subscribe_cb(mut storage_id: StorageId, error: Option<Error>) {
+fn subscribe_cb(storage_id: &mut StorageId, error: Option<Error>) {
     if let Some(e) = error {
         warn!("Failed to subscribe to {storage_id}. Error: {e:?}");
         return;

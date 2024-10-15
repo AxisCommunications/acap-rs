@@ -3,7 +3,8 @@ use std::{
     fmt::{Display, Formatter, Pointer},
     ptr,
 };
-
+use std::mem::ManuallyDrop;
+use std::ops::{Deref, DerefMut};
 use axstorage_sys::{
     ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id, ax_storage_get_type,
     ax_storage_list, ax_storage_release_async, ax_storage_setup_async, ax_storage_subscribe,
@@ -148,6 +149,7 @@ impl Drop for StorageId {
 unsafe impl Send for StorageId {}
 
 impl StorageId {
+    // TODO: Check if these really need exclusive reference to self
     pub fn get_status(&mut self, event: StatusEventId) -> Result<bool, Error> {
         unsafe {
             let mut error: *mut GError = ptr::null_mut();
@@ -196,7 +198,7 @@ impl StorageId {
 
     pub fn subscribe<F>(&mut self, callback: F) -> Result<SubscriptionId, Error>
     where
-        F: FnMut(StorageId, Option<Error>) + Send,
+        F: FnMut(&mut StorageId, Option<Error>) + Send,
     {
         unsafe {
             let callback = Box::into_raw(Box::new(callback)) as gpointer;
@@ -218,16 +220,16 @@ impl StorageId {
         user_data: gpointer,
         error: *mut GError,
     ) where
-        F: FnMut(StorageId, Option<Error>) + Send,
+        F: FnMut(&mut StorageId, Option<Error>) + Send,
     {
-        let storage_id = StorageId(storage_id as gpointer);
+        let mut storage_id = ManuallyDrop::new(StorageId(storage_id as gpointer));
         let error = if error.is_null() {
             None
         } else {
             Some(Error::from_glib_full(error))
         };
         let callback = &mut *(user_data as *mut F);
-        callback(storage_id, error);
+        callback(storage_id.deref_mut(), error);
     }
 }
 
