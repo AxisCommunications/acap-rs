@@ -195,7 +195,7 @@ check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard cra
 ## Check that machine-dependent generated files are up to date
 ##
 ## Remember to fist build the apps and to make both targets in the dev-container.
-check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum
+check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum apps-$(AXIS_DEVICE_ARCH).filesize
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files_container
@@ -282,12 +282,16 @@ Cargo.lock: FORCE
 # TODO: Find a convenient way to integrate this with cargo-acap-build
 apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 	cargo-about generate \
+		--fail \
 		--manifest-path apps/$*/Cargo.toml \
 		--output-file $@ \
 		about.hbs
 
 apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
 	shasum $^ > $@
+
+apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+	du $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@

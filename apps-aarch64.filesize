@@ -1,0 +1,10 @@
+2220	target/acap/bounding_box_example_0_0_0_aarch64.eap
+2088	target/acap/consume_analytics_metadata_0_0_0_aarch64.eap
+860	target/acap/embedded_web_page_0_0_0_aarch64.eap
+2008	target/acap/hello_world_0_0_0_aarch64.eap
+2140	target/acap/inspect_env_0_0_0_aarch64.eap
+2064	target/acap/licensekey_handler_0_0_0_aarch64.eap
+10424	target/acap/reverse_proxy_0_0_0_aarch64.eap
+4088	target/acap/send_event_1_0_0_aarch64.eap
+860	target/acap/using_a_build_script_0_0_0_aarch64.eap
+11356	target/acap/vapix_access_0_0_0_aarch64.eap
