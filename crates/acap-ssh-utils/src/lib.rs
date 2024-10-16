@@ -23,6 +23,7 @@ fn sshpass(pass: &str, program: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("sshpass");
     // TODO: Consider not passing the password as an argument
     cmd.arg(format!("-p{pass}"))
+        .arg("-v")
         .arg(program)
         // The ssh client will try keys until it finds one that works.
         // If it tries to many keys that fail it will be disconnected by the server.

@@ -167,6 +167,7 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     let mut sshpass = std::process::Command::new("sshpass");
     sshpass
         .arg(format!("-p{}", pass))
+        .arg("-v")
         .arg("ssh-copy-id")
         .args(["-o", "PubkeyAuthentication=no"])
         .args(["-o", "StrictHostKeyChecking=no"])
