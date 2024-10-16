@@ -12,6 +12,7 @@ use crate::command_utils::RunWith;
 
 mod manifest;
 
+// TODO: Find a better way to support reproducible builds
 fn copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> std::io::Result<u64> {
     let mut src = fs::File::open(src)?;
     let mut dst = fs::File::create(dst)?;
