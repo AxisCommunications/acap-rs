@@ -1,3 +1,4 @@
+use std::os::unix::fs::PermissionsExt;
 /// Wrapper around the ACAP SDK, in particular`acap-build`.
 use std::{
     fs,
@@ -62,8 +63,14 @@ impl AppBuilder {
         fs::create_dir(&staging_dir)?;
 
         copy(manifest, staging_dir.join("manifest.json"))?;
-        copy(exe, staging_dir.join(app_name))?;
         copy(license, staging_dir.join("LICENSE"))?;
+
+        let dst_exe = staging_dir.join(app_name);
+        copy(exe, &dst_exe)?;
+        let mut permissions = fs::metadata(&dst_exe)?.permissions();
+        let mode = permissions.mode();
+        permissions.set_mode(mode | 0o111);
+        fs::set_permissions(&dst_exe, permissions)?;
 
         Ok(Self {
             staging_dir,
