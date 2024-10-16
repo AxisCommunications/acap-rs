@@ -17,4 +17,5 @@ apt-get install \
   libssl-dev \
   pkg-config \
   python3-venv \
+  ssh \
   sshpass
