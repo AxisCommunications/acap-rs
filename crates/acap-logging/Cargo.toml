@@ -10,5 +10,8 @@ repository = "https://github.com/AxisCommunications/acap-rs"
 
 [dependencies]
 log = { workspace = true }
-env_logger = { workspace = true, features = ["auto-color"] }
+env_logger = { workspace = true }
 syslog = { workspace = true }
+
+[features]
+default = ["env_logger/auto-color"]
