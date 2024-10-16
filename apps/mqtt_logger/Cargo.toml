@@ -1,0 +1,18 @@
+[package]
+name = "mqtt_logger"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+paho-mqtt = "0.12.1"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tempfile = "3.5.0"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+acap-logging = { workspace = true }
+acap-dirs = { git = "https://github.com/AxisCommunications/acap-rs.git", rev = "82b12f37b0dd5c756a74851a949b1d5c3567ab1e" }
