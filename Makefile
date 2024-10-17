@@ -291,7 +291,7 @@ apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE
 	shasum $^ > $@
 
 apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
-	du $^ > $@
+	du --apparent-size $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
 	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
