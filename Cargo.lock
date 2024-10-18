@@ -186,6 +186,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "axstorage"
+version = "0.0.0"
+dependencies = [
+ "axstorage-sys",
+ "glib",
+ "glib-sys",
+]
+
+[[package]]
+name = "axstorage-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen",
+ "glib-sys",
+ "pkg-config",
+]
+
+[[package]]
+name = "axstorage_example"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "axstorage",
+ "glib",
+ "log",
+]
+
+[[package]]
 name = "axum"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
