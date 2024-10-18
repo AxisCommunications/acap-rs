@@ -1,6 +1,4 @@
 //! Bindings for the [Edge storage API](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axstorage/html/ax__storage_8h.html).
-use std::{any::Any, ffi::CString, ptr};
-
 use axstorage_sys::{
     ax_storage_error_quark, ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id,
     ax_storage_get_type, ax_storage_list, ax_storage_release_async, ax_storage_setup_async,
@@ -22,6 +20,7 @@ use glib::{
     GStringPtr, List, Quark,
 };
 use glib_sys::{gpointer, GTRUE};
+use std::{any::Any, ffi::CString, ptr};
 
 macro_rules! try_func {
     ($func:ident $(,$arg:expr)* $(,)?) => {{
@@ -204,8 +203,7 @@ unsafe extern "C" fn subscribe_callback_trampoline<F>(
 ) where
     F: FnMut(&GStringPtr, Option<glib::Error>) + Send + 'static,
 {
-    // Inspired by `glib::List`s implementation of `Iterator`.
-    let storage_id = &*(&(storage_id as gpointer) as *const gpointer as *const GStringPtr);
+    let storage_id = &*(&storage_id as *const *mut gchar as *const GStringPtr);
     let error = if error.is_null() {
         None
     } else {
@@ -346,10 +344,10 @@ pub fn get_status(storage_id: &GStringPtr, event: StatusEventId) -> Result<bool,
 pub fn get_storage_id(storage: &mut Storage) -> Result<GStringPtr, glib::Error> {
     // TODO: SAFETY
     unsafe {
-        let storage_id = try_func!(ax_storage_get_storage_id, storage.raw);
-        // Inspired by `glib::List`s implementation of `Iterator`.
-        let storage_id: *mut gpointer = &mut (storage_id as gpointer);
-        Ok(ptr::read(storage_id as *mut GStringPtr))
+        let mut storage_id = try_func!(ax_storage_get_storage_id, storage.raw);
+        Ok(ptr::read(
+            &mut storage_id as *mut *mut gchar as *mut GStringPtr,
+        ))
     }
 }
 
