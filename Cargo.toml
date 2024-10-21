@@ -33,6 +33,8 @@ acap-logging = { path = "crates/acap-logging" }
 acap-vapix = { path = "crates/acap-vapix" }
 axevent = { path = "crates/axevent" }
 axevent-sys = { path = "crates/axevent-sys" }
+axstorage = { path = "crates/axstorage" }
+axstorage-sys = { path = "crates/axstorage-sys" }
 bbox = { path = "crates/bbox" }
 bbox-sys = { path = "crates/bbox-sys" }
 licensekey = { path = "crates/licensekey" }

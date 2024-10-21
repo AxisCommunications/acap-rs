@@ -1,0 +1,10 @@
+[package]
+name = "axstorage"
+version = "0.0.0"
+edition.workspace = true
+license = "MIT"
+
+[dependencies]
+axstorage-sys = { workspace = true }
+glib = { workspace = true }
+glib-sys = { workspace = true }

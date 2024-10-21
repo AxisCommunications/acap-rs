@@ -4,6 +4,8 @@ build==1.0.3
     # via pip-tools
 click==8.1.7
     # via pip-tools
+fire==0.6.0
+    # via -r .devhost/requirements.txt
 jsonschema==3.2.0
     # via -r .devhost/requirements.txt
 packaging==23.2
@@ -15,7 +17,11 @@ pyproject-hooks==1.0.0
 pyrsistent==0.20.0
     # via jsonschema
 six==1.16.0
-    # via jsonschema
+    # via
+    #   fire
+    #   jsonschema
+termcolor==2.4.0
+    # via fire
 tomli==2.0.1
     # via
     #   build
