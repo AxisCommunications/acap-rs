@@ -83,7 +83,7 @@ fn free_disk_item() {
         if item.setup {
             match axstorage::flex::release_async(&mut item.storage.unwrap(), {
                 let storage_id = GString::from(item.storage_id.to_gstr());
-                move |r| release_disk_cb(&storage_id, r)
+                Some(move |r| release_disk_cb(&storage_id, r))
             }) {
                 Ok(()) => info!("Release of {} was successful", item.storage_id),
                 Err(e) => warn!("Failed to release {}. Error: {e:?}", item.storage_id),
@@ -202,7 +202,7 @@ fn subscribe_cb(storage_id: &mut GStringPtr, error: Option<Error>) {
         if disk.exiting && disk.setup {
             match axstorage::flex::release_async(disk.storage.as_mut().unwrap(), {
                 let storage_id = GString::from(storage_id.to_gstr());
-                move |r| release_disk_cb(&storage_id, r)
+                Some(move |r| release_disk_cb(&storage_id, r))
             }) {
                 Ok(()) => {
                     info!("Release of {storage_id} was successful");
@@ -212,7 +212,7 @@ fn subscribe_cb(storage_id: &mut GStringPtr, error: Option<Error>) {
             }
         } else if disk.writable && !disk.full && !disk.setup {
             info!("Setup {storage_id}");
-            match axstorage::flex::setup_async(storage_id, setup_disk_cb) {
+            match axstorage::flex::setup_async(storage_id, Some(setup_disk_cb)) {
                 Ok(()) => info!("Setup of {storage_id} was successful"),
                 Err(e) => warn!("Failed to setup {storage_id}, reason: {e:?}"),
             }
@@ -274,7 +274,6 @@ fn main() -> ExitCode {
     glib::unix_signal_add(SIGTERM, {
         let main_loop = main_loop.clone();
         move || {
-            println!("SIGTERM");
             main_loop.quit();
             ControlFlow::Continue
         }
@@ -282,7 +281,6 @@ fn main() -> ExitCode {
     glib::unix_signal_add(SIGINT, {
         let main_loop = main_loop.clone();
         move || {
-            println!("SIGINT");
             main_loop.quit();
             ControlFlow::Continue
         }

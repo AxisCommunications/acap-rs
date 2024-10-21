@@ -182,12 +182,12 @@ where
 {
     // TODO: SAFETY
     unsafe {
-        let callback = Box::into_raw(Box::new(callback)) as gpointer;
+        let callback = Box::into_raw(Box::new(callback));
         let id = try_func!(
             ax_storage_subscribe,
             to_mut_ptr(storage_id),
             Some(subscribe_callback_trampoline::<F>),
-            callback
+            callback as gpointer
         );
         debug_assert_ne!(id, 0);
 
@@ -235,18 +235,25 @@ pub fn unsubscribe(id: guint) -> Result<(), glib::Error> {
 /// # Parameters:
 /// - `storage_id`: ID of storage to set up.
 /// - `callback`: Closure called when the setup is done.
-pub fn setup_async<F>(storage_id: &mut GStringPtr, callback: F) -> Result<(), glib::Error>
+pub fn setup_async<F>(storage_id: &mut GStringPtr, callback: Option<F>) -> Result<(), glib::Error>
 where
     F: FnMut(Result<Storage, glib::Error>) + Send + 'static,
 {
     // TODO: SAFETY
     unsafe {
-        let callback = Box::into_raw(Box::new(callback)) as gpointer;
+        let callback = callback.map(|c| Box::into_raw(Box::new(c)));
         let success = try_func!(
             ax_storage_setup_async,
             to_mut_ptr(storage_id),
-            Some(setup_async_callback_trampoline::<F>),
-            callback
+            if callback.is_none() {
+                None
+            } else {
+                Some(setup_async_callback_trampoline::<F>)
+            },
+            match callback {
+                None => ptr::null_mut(),
+                Some(callback) => callback as gpointer,
+            }
         );
         debug_assert_eq!(success, GTRUE);
         Ok(())
@@ -281,18 +288,25 @@ unsafe extern "C" fn setup_async_callback_trampoline<F>(
 /// # Parameters:
 /// - `storage`: [`Storage`] to release.
 /// - `callback`: Called when the release is done.
-pub fn release_async<F>(storage: &mut Storage, callback: F) -> Result<(), glib::Error>
+pub fn release_async<F>(storage: &mut Storage, callback: Option<F>) -> Result<(), glib::Error>
 where
     F: FnMut(Option<glib::Error>) + Send + 'static,
 {
     // TODO: SAFETY
     unsafe {
-        let callback = Box::into_raw(Box::new(callback)) as gpointer;
+        let callback = callback.map(|c| Box::into_raw(Box::new(c)));
         let success = try_func!(
             ax_storage_release_async,
             storage.raw,
-            Some(release_async_trampoline::<F>),
-            callback
+            if callback.is_none() {
+                None
+            } else {
+                Some(release_async_trampoline::<F>)
+            },
+            match callback {
+                None => ptr::null_mut(),
+                Some(callback) => callback as gpointer,
+            }
         );
         debug_assert_eq!(success, GTRUE);
         Ok(())
