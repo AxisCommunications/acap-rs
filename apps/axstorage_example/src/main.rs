@@ -9,7 +9,7 @@ use std::{
     process::ExitCode,
 };
 
-use axstorage::{list, StatusEventId, Storage, SubscriptionId, Type};
+use axstorage::flex::{StatusEventId, Storage, Type};
 use glib::{ControlFlow, Error, GString, GStringPtr};
 use log::{error, info, warn};
 
@@ -23,7 +23,7 @@ struct DiskItem {
     storage_type: Option<Type>,
     storage_id: GStringPtr,
     storage_path: Option<CString>,
-    subscription_id: SubscriptionId,
+    subscription_id: u32,
     setup: bool,
     writable: bool,
     available: bool,
@@ -80,7 +80,7 @@ fn free_disk_item() {
     let mut disks_list = DISKS_LIST.take();
     for item in disks_list.drain(..) {
         if item.setup {
-            match axstorage::release_async(&mut item.storage.unwrap(), {
+            match axstorage::flex::release_async(&mut item.storage.unwrap(), {
                 let storage_id = GString::from(item.storage_id.to_gstr());
                 move |r| release_disk_cb(&storage_id, r)
             }) {
@@ -89,7 +89,7 @@ fn free_disk_item() {
             }
         }
 
-        match axstorage::unsubscribe(&item.subscription_id) {
+        match axstorage::flex::unsubscribe(item.subscription_id) {
             Ok(()) => info!(
                 "Unsubscribed events of {:?}",
                 item.storage_path.as_ref().unwrap()
@@ -111,7 +111,7 @@ fn setup_disk_cb(storage: Result<Storage, Error>) {
         }
     };
 
-    let storage_id = match axstorage::get_storage_id(&mut storage) {
+    let storage_id = match axstorage::flex::get_storage_id(&mut storage) {
         Ok(t) => t,
         Err(e) => {
             warn!("Failed to get storage_id. Error: {e:?}");
@@ -119,7 +119,7 @@ fn setup_disk_cb(storage: Result<Storage, Error>) {
         }
     };
 
-    let path = match axstorage::get_path(&mut storage) {
+    let path = match axstorage::flex::get_path(&mut storage) {
         Ok(t) => t,
         Err(e) => {
             warn!("Failed to get storage path. Error: {e:?}");
@@ -127,7 +127,7 @@ fn setup_disk_cb(storage: Result<Storage, Error>) {
         }
     };
 
-    let storage_type = match axstorage::get_type(&mut storage) {
+    let storage_type = match axstorage::flex::get_type(&mut storage) {
         Ok(t) => t,
         Err(e) => {
             warn!("Failed to get storage type. Error: {e:?}");
@@ -156,7 +156,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
     DISKS_LIST.with_borrow_mut(|disks_list| {
         let disk = find_disk_item(disks_list, storage_id).unwrap();
 
-        let exiting = match axstorage::get_status(storage_id, StatusEventId::Exiting) {
+        let exiting = match axstorage::flex::get_status(storage_id, StatusEventId::Exiting) {
             Ok(t) => t,
             Err(e) => {
                 warn!("Failed to get EXITING event for {storage_id}. Error: {e:?}");
@@ -164,7 +164,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
             }
         };
 
-        let available = match axstorage::get_status(storage_id, StatusEventId::Available) {
+        let available = match axstorage::flex::get_status(storage_id, StatusEventId::Available) {
             Ok(t) => t,
             Err(e) => {
                 warn!("Failed to get AVAILABLE event for {storage_id}. Error: {e:?}");
@@ -172,7 +172,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
             }
         };
 
-        let writable = match axstorage::get_status(storage_id, StatusEventId::Writable) {
+        let writable = match axstorage::flex::get_status(storage_id, StatusEventId::Writable) {
             Ok(t) => t,
             Err(e) => {
                 warn!("Failed to get WRITABLE event for {storage_id}. Error: {e:?}");
@@ -180,7 +180,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
             }
         };
 
-        let full = match axstorage::get_status(storage_id, StatusEventId::Full) {
+        let full = match axstorage::flex::get_status(storage_id, StatusEventId::Full) {
             Ok(t) => t,
             Err(e) => {
                 warn!("Failed to get FULL event for {storage_id}. Error: {e:?}");
@@ -202,7 +202,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
         );
 
         if disk.exiting && disk.setup {
-            match axstorage::release_async(disk.storage.as_mut().unwrap(), {
+            match axstorage::flex::release_async(disk.storage.as_mut().unwrap(), {
                 let storage_id = GString::from(storage_id.to_gstr());
                 move |r| release_disk_cb(&storage_id, r)
             }) {
@@ -214,7 +214,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
             }
         } else if disk.writable && !disk.full && !disk.setup {
             info!("Setup {storage_id}");
-            match axstorage::setup_async(storage_id, setup_disk_cb) {
+            match axstorage::flex::setup_async(storage_id, setup_disk_cb) {
                 Ok(()) => info!("Setup of {storage_id} was successful"),
                 Err(e) => warn!("Failed to setup {storage_id}, reason: {e:?}"),
             }
@@ -223,7 +223,7 @@ fn subscribe_cb(storage_id: &GStringPtr, error: Option<Error>) {
 }
 
 fn new_disk_item(mut storage_id: GStringPtr) -> Option<DiskItem> {
-    let subscription_id = match axstorage::subscribe(&mut storage_id, subscribe_cb) {
+    let subscription_id = match axstorage::flex::subscribe(&mut storage_id, subscribe_cb) {
         Ok(t) => t,
         Err(e) => {
             error!("Failed to subscribe to events of {storage_id}. Error: {e:?}");
@@ -249,7 +249,7 @@ fn new_disk_item(mut storage_id: GStringPtr) -> Option<DiskItem> {
 fn main() -> ExitCode {
     acap_logging::init_logger();
 
-    let disks = match list() {
+    let disks = match axstorage::flex::list() {
         Ok(t) => t,
         Err(e) => {
             warn!("Failed to list storage devices. Error: {e:?}");
