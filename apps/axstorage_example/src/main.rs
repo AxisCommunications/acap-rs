@@ -11,6 +11,7 @@ use std::{
 
 use axstorage::flex::{StatusEventId, Storage, Type};
 use glib::{ControlFlow, Error, GString, GStringPtr};
+use libc::{SIGINT, SIGTERM};
 use log::{error, info, warn};
 
 thread_local! {
@@ -90,13 +91,10 @@ fn free_disk_item() {
         }
 
         match axstorage::flex::unsubscribe(item.subscription_id) {
-            Ok(()) => info!(
-                "Unsubscribed events of {:?}",
-                item.storage_path.as_ref().unwrap()
-            ),
+            Ok(()) => info!("Unsubscribed events of {:?}", item.storage_id),
             Err(e) => warn!(
                 "Failed to unsubscribe event of {:?}. Error: {e:?}",
-                item.storage_path.as_ref().unwrap()
+                item.storage_id
             ),
         }
     }
@@ -273,6 +271,22 @@ fn main() -> ExitCode {
 
     glib::timeout_add_seconds(10, || write_data("file1"));
     glib::timeout_add_seconds(10, || write_data("file2"));
+    glib::unix_signal_add(SIGTERM, {
+        let main_loop = main_loop.clone();
+        move || {
+            println!("SIGTERM");
+            main_loop.quit();
+            ControlFlow::Continue
+        }
+    });
+    glib::unix_signal_add(SIGINT, {
+        let main_loop = main_loop.clone();
+        move || {
+            println!("SIGINT");
+            main_loop.quit();
+            ControlFlow::Continue
+        }
+    });
 
     main_loop.run();
 

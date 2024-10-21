@@ -211,6 +211,7 @@ dependencies = [
  "anyhow",
  "axstorage",
  "glib",
+ "libc",
  "log",
 ]
 
