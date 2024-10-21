@@ -1,7 +1,9 @@
+use std::{ffi::CString, mem, mem::ManuallyDrop, ptr};
+
 use axstorage_sys::{
     ax_storage_error_quark, ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id,
     ax_storage_get_type, ax_storage_list, ax_storage_release_async, ax_storage_setup_async,
-    ax_storage_subscribe, ax_storage_unsubscribe, gchar, AXStorage,
+    ax_storage_subscribe, ax_storage_unsubscribe, gchar, guint, AXStorage,
     AXStorageErrorCode_AX_STORAGE_ERROR_GENERIC,
     AXStorageErrorCode_AX_STORAGE_ERROR_INCOMPATIBLE_VALUE,
     AXStorageErrorCode_AX_STORAGE_ERROR_INVALID_ARGUMENT,
@@ -19,14 +21,22 @@ use glib::{
     GStringPtr, List, Quark,
 };
 use glib_sys::{gpointer, GTRUE};
-use std::{ffi::CString, ptr};
 
-pub use axstorage_sys::guint;
-// TODO: Don't leak callbacks
 // The documentation states that we are responsible for freeing the callbacks, but it does state
 // when it is safe to do so making it impossible to create a Rust abstraction that both:
 // - does not leak memory and
 // - is safe.
+// TODO: Don't leak callbacks
+
+// All C functions that take an `AXStorage` take it as a mutable pointer, even if it is used only to
+// retrieve the path. This seems needlessly restrictive.
+// TODO: Explore replacing `&mut Storage` with `&Storage`
+
+// All C functions that take a `storage_id` take it as a mutable pointer, even if it used only to
+// retrieve a status. This seems needlessly restrictive and forces the subscribe callback in the
+// example app to use an exclusive reference in order to set up the storage.
+// TODO: Explore replacing `&mut GStringPtr` with `&GStringPtr`
+
 macro_rules! try_func {
     ($func:ident $(,$arg:expr)* $(,)?) => {{
         let mut error: *mut GError = ptr::null_mut();
@@ -159,7 +169,6 @@ pub fn list() -> Result<List<GStringPtr>, glib::Error> {
     }
 }
 
-// TODO: Explore removing mut
 /// Subscribe to events.
 ///
 /// # Parameters:
@@ -169,18 +178,16 @@ pub fn list() -> Result<List<GStringPtr>, glib::Error> {
 ///   May be called even when no known event has changed state.
 pub fn subscribe<F>(storage_id: &mut GStringPtr, callback: F) -> Result<guint, glib::Error>
 where
-    F: FnMut(&GStringPtr, Option<glib::Error>) + Send + 'static,
+    F: FnMut(&mut GStringPtr, Option<glib::Error>) + Send + 'static,
 {
-    // SAFETY:
-    // - Casting `*const c_char` to `*mut gchar` is safe because it is never mutated by C.
-    // TODO: More SAFETY
+    // TODO: SAFETY
     unsafe {
-        let mut callback = Box::new(callback);
+        let callback = Box::into_raw(Box::new(callback)) as gpointer;
         let id = try_func!(
             ax_storage_subscribe,
-            storage_id.as_ptr() as *mut gchar,
+            to_mut_ptr(storage_id),
             Some(subscribe_callback_trampoline::<F>),
-            ptr::addr_of_mut!(*callback) as gpointer
+            callback
         );
         debug_assert_ne!(id, 0);
 
@@ -194,17 +201,16 @@ unsafe extern "C" fn subscribe_callback_trampoline<F>(
     user_data: gpointer,
     error: *mut GError,
 ) where
-    F: FnMut(&GStringPtr, Option<glib::Error>) + Send + 'static,
+    F: FnMut(&mut GStringPtr, Option<glib::Error>) + Send + 'static,
 {
-    let storage_id = &*(&storage_id as *const *mut gchar as *const GStringPtr);
+    let mut storage_id: ManuallyDrop<GStringPtr> = mem::transmute(storage_id);
     let error = if error.is_null() {
         None
     } else {
-        // FIXME: Verify that this error is owned
         Some(glib::Error::from_glib_full(error))
     };
     let callback = &mut *(user_data as *mut F);
-    callback(storage_id, error);
+    callback(&mut storage_id, error);
 }
 
 /// Stop subscribing to events.
@@ -229,7 +235,7 @@ pub fn unsubscribe(id: guint) -> Result<(), glib::Error> {
 /// # Parameters:
 /// - `storage_id`: ID of storage to set up.
 /// - `callback`: Closure called when the setup is done.
-pub fn setup_async<F>(storage_id: &GStringPtr, callback: F) -> Result<(), glib::Error>
+pub fn setup_async<F>(storage_id: &mut GStringPtr, callback: F) -> Result<(), glib::Error>
 where
     F: FnMut(Result<Storage, glib::Error>) + Send + 'static,
 {
@@ -238,7 +244,7 @@ where
         let callback = Box::into_raw(Box::new(callback)) as gpointer;
         let success = try_func!(
             ax_storage_setup_async,
-            storage_id.as_ptr() as *mut gchar,
+            to_mut_ptr(storage_id),
             Some(setup_async_callback_trampoline::<F>),
             callback
         );
@@ -260,14 +266,12 @@ unsafe extern "C" fn setup_async_callback_trampoline<F>(
         Ok(Storage { raw: storage })
     } else {
         debug_assert!(storage.is_null());
-        // FIXME: Verify that this error is owned
         Err(glib::Error::from_glib_full(error))
     };
     let callback = &mut *(user_data as *mut F);
     callback(result);
 }
 
-// TODO: Explore removing mut
 /// Release storage.
 ///
 /// This method should be called when done using the storage.
@@ -309,7 +313,6 @@ where
     callback(error);
 }
 
-// TODO: Explore removing mut
 /// Returns the location on the storage where the client should save its files.
 pub fn get_path(storage: &mut Storage) -> Result<CString, glib::Error> {
     // TODO: SAFETY
@@ -320,19 +323,18 @@ pub fn get_path(storage: &mut Storage) -> Result<CString, glib::Error> {
 }
 
 /// Returns the status of the provided event.
-pub fn get_status(storage_id: &GStringPtr, event: StatusEventId) -> Result<bool, glib::Error> {
+pub fn get_status(storage_id: &mut GStringPtr, event: StatusEventId) -> Result<bool, glib::Error> {
     // TODO: SAFETY
     unsafe {
         let status = try_func!(
             ax_storage_get_status,
-            storage_id.as_ptr() as *mut gchar,
+            to_mut_ptr(storage_id),
             event.into_raw()
         );
         Ok(status == GTRUE)
     }
 }
 
-// TODO: Explore removing mut
 /// Returns the storage ID.
 pub fn get_storage_id(storage: &mut Storage) -> Result<GStringPtr, glib::Error> {
     // TODO: SAFETY
@@ -344,7 +346,6 @@ pub fn get_storage_id(storage: &mut Storage) -> Result<GStringPtr, glib::Error> 
     }
 }
 
-// TODO: Explore removing mut
 /// Returns the storage type.
 pub fn get_type(storage: &mut Storage) -> Result<Type, glib::Error> {
     // TODO: SAFETY
@@ -353,4 +354,9 @@ pub fn get_type(storage: &mut Storage) -> Result<Type, glib::Error> {
         debug_assert_ne!(storage_type, AXStorageType_UNKNOWN_TYPE);
         Ok(Type::from_raw(storage_type))
     }
+}
+
+// TODO: Verify safety of passing the result of this to C
+fn to_mut_ptr(s: &mut GStringPtr) -> *mut gchar {
+    s.as_ptr() as *mut gchar
 }
