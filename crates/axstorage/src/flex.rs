@@ -104,14 +104,14 @@ impl Type {
 
 /// The errors reported by the library.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-// #[non_exhaustive]
+#[non_exhaustive]
 pub enum Error {
     /// The error does not fit into any category.
     Generic,
     /// An invalid argument was supplied.
-    IncompatibleValue,
-    /// The type of the supplied value does not match the type expected.
     InvalidArgument,
+    /// The type of the supplied value does not match the type expected.
+    IncompatibleValue,
     /// Something went wrong while subscribing for events.
     Subscription,
     /// Something went wrong while unsubscribing.
@@ -132,8 +132,8 @@ impl ErrorDomain for Error {
     fn code(self) -> i32 {
         let code = match self {
             Self::Generic => AXStorageErrorCode_AX_STORAGE_ERROR_GENERIC,
-            Self::IncompatibleValue => AXStorageErrorCode_AX_STORAGE_ERROR_INCOMPATIBLE_VALUE,
             Self::InvalidArgument => AXStorageErrorCode_AX_STORAGE_ERROR_INVALID_ARGUMENT,
+            Self::IncompatibleValue => AXStorageErrorCode_AX_STORAGE_ERROR_INCOMPATIBLE_VALUE,
             Self::Subscription => AXStorageErrorCode_AX_STORAGE_ERROR_SUBSCRIPTION,
             Self::Unsubscribe => AXStorageErrorCode_AX_STORAGE_ERROR_UNSUBSCRIBE,
             Self::Setup => AXStorageErrorCode_AX_STORAGE_ERROR_SETUP,
@@ -150,8 +150,8 @@ impl ErrorDomain for Error {
         let code = code as u32;
         Some(match code {
             AXStorageErrorCode_AX_STORAGE_ERROR_GENERIC => Self::Generic,
-            AXStorageErrorCode_AX_STORAGE_ERROR_INCOMPATIBLE_VALUE => Self::IncompatibleValue,
             AXStorageErrorCode_AX_STORAGE_ERROR_INVALID_ARGUMENT => Self::InvalidArgument,
+            AXStorageErrorCode_AX_STORAGE_ERROR_INCOMPATIBLE_VALUE => Self::IncompatibleValue,
             AXStorageErrorCode_AX_STORAGE_ERROR_SUBSCRIPTION => Self::Subscription,
             AXStorageErrorCode_AX_STORAGE_ERROR_UNSUBSCRIBE => Self::Unsubscribe,
             AXStorageErrorCode_AX_STORAGE_ERROR_SETUP => Self::Setup,
