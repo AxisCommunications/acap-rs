@@ -147,6 +147,9 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude axstorage \
+		--exclude axstorage-sys \
+		--exclude axstorage_example \
 		--exclude bbox \
 		--exclude bbox-sys \
 		--exclude bounding_box_example \
@@ -208,6 +211,9 @@ check_lint:
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude axstorage \
+		--exclude axstorage-sys \
+		--exclude axstorage_example \
 		--exclude bbox \
 		--exclude bbox-sys \
 		--exclude bounding_box_example \
@@ -237,6 +243,9 @@ check_tests:
 		--exclude consume_analytics_metadata \
 		--exclude axevent \
 		--exclude axevent-sys \
+		--exclude axstorage \
+		--exclude axstorage-sys \
+		--exclude axstorage_example \
 		--exclude bbox \
 		--exclude bbox-sys \
 		--exclude bounding_box_example \

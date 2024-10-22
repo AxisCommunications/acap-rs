@@ -1,0 +1,20 @@
+{
+    "schemaVersion": "1.7.0",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "axstorage_example",
+            "vendor": "Axis Communications",
+            "runMode": "never",
+            "version": "0.0.0"
+        }
+    },
+    "resources": {
+        "linux": {
+            "user": {
+                "groups": [
+                    "storage"
+                ]
+            }
+        }
+    }
+}
