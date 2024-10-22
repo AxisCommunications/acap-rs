@@ -1,5 +1,3 @@
-use std::{ffi::CString, mem, mem::ManuallyDrop, ptr};
-
 use axstorage_sys::{
     ax_storage_error_quark, ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id,
     ax_storage_get_type, ax_storage_list, ax_storage_release_async, ax_storage_setup_async,
@@ -14,13 +12,19 @@ use axstorage_sys::{
     AXStorageStatusEventId_AX_STORAGE_WRITABLE_EVENT, AXStorageType, AXStorageType_EXTERNAL_TYPE,
     AXStorageType_LOCAL_TYPE, AXStorageType_UNKNOWN_TYPE,
 };
+use glib::translate::{GlibPtrDefault, TransparentPtrType};
 use glib::{
     error::ErrorDomain,
+    ffi,
     ffi::GError,
     translate::{from_glib, FromGlibPtrFull},
-    GStringPtr, List, Quark,
+    GStr, List, Quark,
 };
-use glib_sys::{gpointer, GTRUE};
+use glib_sys::{g_strcmp0, gpointer, GTRUE};
+use std::cmp::Ordering;
+use std::ffi::CStr;
+use std::fmt::{Debug, Display, Formatter};
+use std::{ffi::CString, mem::ManuallyDrop, ptr};
 
 // The documentation states that we are responsible for freeing the callbacks, but it does state
 // when it is safe to do so making it impossible to create a Rust abstraction that both:
@@ -35,7 +39,7 @@ use glib_sys::{gpointer, GTRUE};
 // All C functions that take a `storage_id` take it as a mutable pointer, even if it used only to
 // retrieve a status. This seems needlessly restrictive and forces the subscribe callback in the
 // example app to use an exclusive reference in order to set up the storage.
-// TODO: Explore replacing `&mut GStringPtr` with `&GStringPtr`
+// TODO: Explore replacing `&mut StorageId` with `&StorageId`
 
 macro_rules! try_func {
     ($func:ident $(,$arg:expr)* $(,)?) => {{
@@ -56,6 +60,70 @@ pub struct Storage {
 
 // TODO: SAFETY
 unsafe impl Send for Storage {}
+
+pub struct StorageId(*mut gchar);
+
+impl Clone for StorageId {
+    fn clone(&self) -> Self {
+        // FIXME: SAFETY
+        unsafe { Self(ffi::g_strdup(self.0)) }
+    }
+}
+
+impl Debug for StorageId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // FIXME: SAFETY
+        let s = unsafe { CStr::from_ptr(self.0) };
+        <CStr as Debug>::fmt(s, f)
+    }
+}
+
+impl Display for StorageId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // FIXME: SAFETY
+        let s = unsafe { GStr::from_ptr(self.0) };
+        <GStr as Display>::fmt(s, f)
+    }
+}
+
+impl Drop for StorageId {
+    fn drop(&mut self) {
+        // FIXME: SAFETY
+        unsafe {
+            ffi::g_free(self.0 as gpointer);
+        }
+    }
+}
+
+impl Eq for StorageId {}
+
+impl GlibPtrDefault for StorageId {
+    type GlibType = *mut gchar;
+}
+
+impl PartialEq for StorageId {
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other) == Some(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for StorageId {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for StorageId {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // FIXME: SAFETY
+        unsafe { from_glib(g_strcmp0(self.0, other.0)) }
+    }
+}
+
+// FIXME: SAFETY
+unsafe impl Send for StorageId {}
+// FIXME: SAFETY
+unsafe impl TransparentPtrType for StorageId {}
 
 /// The ephemeral properties of a storage that can be observed.
 #[non_exhaustive]
@@ -161,7 +229,7 @@ impl ErrorDomain for Error {
 }
 
 /// Returns the IDs of all connected storages.
-pub fn list() -> Result<List<GStringPtr>, glib::Error> {
+pub fn list() -> Result<List<StorageId>, glib::Error> {
     // TODO: SAFETY
     unsafe {
         let list = try_func!(ax_storage_list);
@@ -176,9 +244,9 @@ pub fn list() -> Result<List<GStringPtr>, glib::Error> {
 /// - `storage_id`: ID of Storage to subscribe to events for.
 /// - `callback`: Closure called when an event changes state.
 ///   May be called even when no known event has changed state.
-pub fn subscribe<F>(storage_id: &mut GStringPtr, callback: F) -> Result<guint, glib::Error>
+pub fn subscribe<F>(storage_id: &mut StorageId, callback: F) -> Result<guint, glib::Error>
 where
-    F: FnMut(&mut GStringPtr, Option<glib::Error>) + Send + 'static,
+    F: FnMut(&mut StorageId, Option<glib::Error>) + Send + 'static,
 {
     // TODO: SAFETY
     unsafe {
@@ -201,9 +269,10 @@ unsafe extern "C" fn subscribe_callback_trampoline<F>(
     user_data: gpointer,
     error: *mut GError,
 ) where
-    F: FnMut(&mut GStringPtr, Option<glib::Error>) + Send + 'static,
+    F: FnMut(&mut StorageId, Option<glib::Error>) + Send + 'static,
 {
-    let mut storage_id: ManuallyDrop<GStringPtr> = mem::transmute(storage_id);
+    // FIXME: SAFETY
+    let mut storage_id = ManuallyDrop::new(StorageId(storage_id));
     let error = if error.is_null() {
         None
     } else {
@@ -235,7 +304,7 @@ pub fn unsubscribe(id: guint) -> Result<(), glib::Error> {
 /// # Parameters:
 /// - `storage_id`: ID of storage to set up.
 /// - `callback`: Closure called when the setup is done.
-pub fn setup_async<F>(storage_id: &mut GStringPtr, callback: Option<F>) -> Result<(), glib::Error>
+pub fn setup_async<F>(storage_id: &mut StorageId, callback: Option<F>) -> Result<(), glib::Error>
 where
     F: FnMut(Result<Storage, glib::Error>) + Send + 'static,
 {
@@ -337,7 +406,7 @@ pub fn get_path(storage: &mut Storage) -> Result<CString, glib::Error> {
 }
 
 /// Returns the status of the provided event.
-pub fn get_status(storage_id: &mut GStringPtr, event: StatusEventId) -> Result<bool, glib::Error> {
+pub fn get_status(storage_id: &mut StorageId, event: StatusEventId) -> Result<bool, glib::Error> {
     // TODO: SAFETY
     unsafe {
         let status = try_func!(
@@ -350,13 +419,11 @@ pub fn get_status(storage_id: &mut GStringPtr, event: StatusEventId) -> Result<b
 }
 
 /// Returns the storage ID.
-pub fn get_storage_id(storage: &mut Storage) -> Result<GStringPtr, glib::Error> {
-    // TODO: SAFETY
+pub fn get_storage_id(storage: &mut Storage) -> Result<StorageId, glib::Error> {
+    // FIXME: SAFETY
     unsafe {
-        let mut storage_id = try_func!(ax_storage_get_storage_id, storage.raw);
-        Ok(ptr::read(
-            &mut storage_id as *mut *mut gchar as *mut GStringPtr,
-        ))
+        let storage_id = try_func!(ax_storage_get_storage_id, storage.raw);
+        Ok(StorageId(storage_id))
     }
 }
 
@@ -370,7 +437,7 @@ pub fn get_type(storage: &mut Storage) -> Result<Type, glib::Error> {
     }
 }
 
-// TODO: Verify safety of passing the result of this to C
-fn to_mut_ptr(s: &mut GStringPtr) -> *mut gchar {
-    s.as_ptr() as *mut gchar
+// FIXME: Verify safety of passing the result of this to C
+fn to_mut_ptr(s: &mut StorageId) -> *mut gchar {
+    s.0
 }

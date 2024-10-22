@@ -9,8 +9,8 @@ use std::{
     process::ExitCode,
 };
 
-use axstorage::flex::{StatusEventId, Storage, Type};
-use glib::{ControlFlow, Error, GString, GStringPtr};
+use axstorage::flex::{StatusEventId, Storage, StorageId, Type};
+use glib::{ControlFlow, Error};
 use libc::{SIGINT, SIGTERM};
 use log::{error, info, warn};
 
@@ -22,7 +22,7 @@ thread_local! {
 struct DiskItem {
     storage: Option<Storage>,
     storage_type: Option<Type>,
-    storage_id: GStringPtr,
+    storage_id: StorageId,
     storage_path: Option<CString>,
     subscription_id: u32,
     setup: bool,
@@ -63,14 +63,14 @@ fn write_data(data: &str) -> ControlFlow {
 
 fn find_disk_item<'a>(
     disks_list: &'a mut [DiskItem],
-    storage_id: &GStringPtr,
+    storage_id: &StorageId,
 ) -> Option<&'a mut DiskItem> {
     disks_list
         .iter_mut()
         .find(|item| item.storage_id == *storage_id)
 }
 
-fn release_disk_cb(storage_id: &GString, result: Option<Error>) {
+fn release_disk_cb(storage_id: &StorageId, result: Option<Error>) {
     info!("Release of {storage_id}");
     if let Some(e) = result {
         warn!("Error while releasing {storage_id}: {e:?}")
@@ -82,7 +82,7 @@ fn free_disk_item() {
     for item in disks_list.drain(..) {
         if item.setup {
             match axstorage::flex::release_async(&mut item.storage.unwrap(), {
-                let storage_id = GString::from(item.storage_id.to_gstr());
+                let storage_id = item.storage_id.clone();
                 Some(move |r| release_disk_cb(&storage_id, r))
             }) {
                 Ok(()) => info!("Release of {} was successful", item.storage_id),
@@ -144,7 +144,7 @@ fn setup_disk_cb(storage: Result<Storage, Error>) {
     info!("Disk: {storage_id} has been setup in {path:?}");
 }
 
-fn subscribe_cb(storage_id: &mut GStringPtr, error: Option<Error>) {
+fn subscribe_cb(storage_id: &mut StorageId, error: Option<Error>) {
     if let Some(e) = error {
         warn!("Failed to subscribe to {storage_id}. Error: {e:?}");
         return;
@@ -201,7 +201,7 @@ fn subscribe_cb(storage_id: &mut GStringPtr, error: Option<Error>) {
 
         if disk.exiting && disk.setup {
             match axstorage::flex::release_async(disk.storage.as_mut().unwrap(), {
-                let storage_id = GString::from(storage_id.to_gstr());
+                let storage_id = storage_id.clone();
                 Some(move |r| release_disk_cb(&storage_id, r))
             }) {
                 Ok(()) => {
@@ -220,7 +220,7 @@ fn subscribe_cb(storage_id: &mut GStringPtr, error: Option<Error>) {
     })
 }
 
-fn new_disk_item(mut storage_id: GStringPtr) -> Option<DiskItem> {
+fn new_disk_item(mut storage_id: StorageId) -> Option<DiskItem> {
     let subscription_id = match axstorage::flex::subscribe(&mut storage_id, subscribe_cb) {
         Ok(t) => t,
         Err(e) => {
