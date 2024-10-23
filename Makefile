@@ -168,6 +168,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude cargo-acap-build \
 		--exclude cargo-acap-sdk \
 		--exclude device-manager \
+		--exclude fleet-manager \
 		--locked \
 		--workspace
 
