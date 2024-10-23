@@ -1,0 +1,13 @@
+[package]
+build = "build.rs"
+name = "axstorage-sys"
+version = "0.0.0"
+edition.workspace = true
+license = "MIT"
+
+[build-dependencies]
+bindgen = { workspace = true }
+pkg-config = { workspace = true }
+
+[dependencies]
+glib-sys = { workspace = true }

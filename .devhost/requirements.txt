@@ -1,3 +1,4 @@
+fire
 jsonschema ==3.2.0
 pip
 pip-tools
