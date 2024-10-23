@@ -9,6 +9,7 @@ use crate::database::Database;
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct AbandonCommand {
+    /// Glob pattern specifying which devices to operate on.
     #[clap(long, default_value = "*")]
     alias: String,
 }

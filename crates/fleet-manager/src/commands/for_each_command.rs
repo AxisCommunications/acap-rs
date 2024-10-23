@@ -16,10 +16,13 @@ use crate::database::Database;
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct ForEachCommand {
+    /// Glob pattern specifying which devices to operate on.
     #[clap(long, default_value = "*")]
     alias: String,
+    /// Run the command for each device in its own thread.
     #[clap(short, long, default_value = "false")]
     parallel: bool,
+    /// Program and arguments to run for each specified device.
     command: Vec<String>,
 }
 

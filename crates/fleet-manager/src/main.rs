@@ -59,19 +59,15 @@ enum Command {
     // Core commands
     /// Add a device to the chosen fleet.
     Adopt(AdoptCommand),
-    /// Restore selected device(s) and remove it from the chosen fleet.
+    /// Restore selected device(s) and remove from the chosen fleet.
     Abandon(AbandonCommand),
 
     // Generic commands enabling a wide range of use cases
     /// Run the provided command on selected devices, in parallel or in sequence.
-    ///
-    /// This generic command is a powerful integration point for other tools.
     ForEach(ForEachCommand),
 
     // Bespoke commands leveraging tight integration for a better user experience
     /// Restore and initialize selected device(s) to a known, useful state.
-    ///
-    /// This bespoke command makes this common workflow particularly easy and robust.
     Reinit(ReinitializeCommand),
 }
 
