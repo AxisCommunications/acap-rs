@@ -37,6 +37,8 @@ axstorage = { path = "crates/axstorage" }
 axstorage-sys = { path = "crates/axstorage-sys" }
 bbox = { path = "crates/bbox" }
 bbox-sys = { path = "crates/bbox-sys" }
+larod = { path = "crates/larod" }
+larod-sys = { path = "crates/larod-sys" }
 licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
 mdb = { path = "crates/mdb" }

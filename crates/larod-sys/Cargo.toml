@@ -1,0 +1,11 @@
+[package]
+build = "build.rs"
+name = "larod-sys"
+version = "0.1.0"
+edition.workspace = true
+
+[build-dependencies]
+bindgen = { workspace = true }
+pkg-config = { workspace = true }
+
+[dependencies]
