@@ -14,6 +14,12 @@ use url::Host;
 /// - enabled SSH on the device,
 /// - configured the SSH user with a password and the necessary permissions, and
 /// - installed any apps that will be impersonated.
+///
+/// # Warning
+///
+/// Neither the ability to patch an already installed app using SSH nor to run an installed app
+/// with stdout attached to the terminal are officially supported use cases. As such all commands
+/// provided by this program may stop working on future versions AXIS OS.
 #[derive(Clone, Debug, Parser)]
 #[clap(verbatim_doc_comment)]
 struct Cli {
