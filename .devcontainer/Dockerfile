@@ -2,12 +2,12 @@ ARG REPO=axisecp
 ARG SDK=acap-native-sdk
 ARG UBUNTU_VERSION=22.04
 # Keep in sync with `install-sdk.sh`.
-ARG VERSION=1.15
+ARG VERSION=1.3
 ARG BASE_IMAGE=debian:bookworm-20240423
 
-FROM --platform=linux/amd64 ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64
-FROM --platform=linux/amd64 ${REPO}/${SDK}:${VERSION}-armv7hf-ubuntu${UBUNTU_VERSION} AS sdk-armv7hf
-FROM --platform=linux/amd64 ${BASE_IMAGE}
+FROM --platform=linux/arm64 ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64
+FROM --platform=linux/arm64 ${REPO}/${SDK}:${VERSION}-armv7hf-ubuntu${UBUNTU_VERSION} AS sdk-armv7hf
+FROM --platform=linux/arm64 ${BASE_IMAGE}
 
 COPY --from=sdk-aarch64 /opt/axis/acapsdk/axis-acap-manifest-tools /opt/axis/acapsdk/axis-acap-manifest-tools
 COPY --from=sdk-aarch64 /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux /opt/axis/acapsdk/environment-setup-cortexa53-crypto-poky-linux
