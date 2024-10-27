@@ -140,47 +140,29 @@ test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 ## Checks
 ## ------
 
-## Run all other checks
-check_all: check_build check_docs check_format check_lint check_tests check_generated_files
-.PHONY: check_all
+## Run all checks that should pass in the containerized environment
+check_all_container: check_all_host check_generated_files_container
+.PHONY: check_all_container
+
+## Run all checks that should pass in any correct environment
+check_all_host: check_build check_docs check_format check_lint check_tests check_generated_files
+.PHONY: check_all_host
 
 ## Check that all crates can be built
-check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+check_build: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	cargo build \
-		--exclude consume_analytics_metadata \
-		--exclude axevent \
-		--exclude axevent-sys \
-		--exclude axstorage \
-		--exclude axstorage-sys \
-		--exclude axstorage_example \
-		--exclude bbox \
-		--exclude bbox-sys \
-		--exclude bounding_box_example \
-		--exclude licensekey \
-		--exclude licensekey-sys \
-		--exclude licensekey_handler \
-		--exclude mdb \
-		--exclude mdb-sys \
-		--exclude send_event \
+		--exclude '*_*' \
 		--locked \
 		--workspace
-	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build \
-		--target $(AXIS_DEVICE_ARCH) \
-		-- \
-		--exclude acap-ssh-utils \
-		--exclude cargo-acap-build \
-		--exclude cargo-acap-sdk \
-		--exclude device-manager \
-		--exclude fleet-manager \
-		--locked \
-		--workspace
-
 .PHONY: check_build
 
 ## Check that docs can be built
 check_docs:
-	RUSTDOCFLAGS="-Dwarnings" cargo doc
+	RUSTDOCFLAGS="-Dwarnings" cargo doc \
+		--document-private-items \
+		--locked \
+		--no-deps \
+		--workspace
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
@@ -213,23 +195,8 @@ check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum apps-$(AXIS_D
 check_lint:
 	cargo clippy \
 		--all-targets \
-		--no-deps \
-		--exclude consume_analytics_metadata \
-		--exclude axevent \
-		--exclude axevent-sys \
-		--exclude axstorage \
-		--exclude axstorage-sys \
-		--exclude axstorage_example \
-		--exclude bbox \
-		--exclude bbox-sys \
-		--exclude bounding_box_example \
-		--exclude licensekey \
-		--exclude licensekey-sys \
-		--exclude licensekey_handler \
-		--exclude mdb \
-		--exclude mdb-sys \
-		--exclude send_event \
 		--locked \
+		--no-deps \
 		--workspace \
 		-- \
 		-Dwarnings
@@ -247,21 +214,13 @@ check_lint:
 ## _
 check_tests:
 	cargo test \
-		--exclude consume_analytics_metadata \
+		--exclude '*_*' \
+		--exclude '*-sys' \
 		--exclude axevent \
-		--exclude axevent-sys \
 		--exclude axstorage \
-		--exclude axstorage-sys \
-		--exclude axstorage_example \
 		--exclude bbox \
-		--exclude bbox-sys \
-		--exclude bounding_box_example \
 		--exclude licensekey \
-		--exclude licensekey-sys \
-		--exclude licensekey_handler \
 		--exclude mdb \
-		--exclude mdb-sys \
-		--exclude send_event \
 		--locked \
 		--workspace
 .PHONY: check_tests
@@ -303,11 +262,20 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		--output-file $@ \
 		about.hbs
 
-apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap))
-	shasum $^ > $@
+apps-$(AXIS_DEVICE_ARCH).checksum: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
+	shasum $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap)) > $@
 
-apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap))
-	du --apparent-size $^ > $@
+apps-$(AXIS_DEVICE_ARCH).filesize: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
+	du --apparent-size $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap)) > $@
 
-crates/%-sys/src/bindings.rs: FORCE
-	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
+crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
+	cp --update $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
+
+target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
+	cargo-acap-build \
+		--target $(AXIS_DEVICE_ARCH) \
+		-- \
+		--package '*_*' \
+		--locked
+	touch $@
