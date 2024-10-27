@@ -300,10 +300,10 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		--output-file $@ \
 		about.hbs
 
-apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap))
 	shasum $^ > $@
 
-apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap))
 	du --apparent-size $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
