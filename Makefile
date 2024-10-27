@@ -56,6 +56,7 @@ reinit:
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build: apps/$(AXIS_PACKAGE)/LICENSE
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
@@ -89,6 +90,7 @@ stop:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 run: apps/$(AXIS_PACKAGE)/LICENSE
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
@@ -107,6 +109,7 @@ run: apps/$(AXIS_PACKAGE)/LICENSE
 test: apps/$(AXIS_PACKAGE)/LICENSE
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
 	acap-ssh-utils run-app \
