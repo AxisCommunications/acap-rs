@@ -6,4 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.79"
 log = "0.4.17"
+semver = "1.0.23"
 serde = { version = "1.0.197", features = ["derive"] }
+serde_json = { version = "1.0.127", features = ["preserve_order"] }
+tempfile = "3.10.1"
