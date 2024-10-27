@@ -161,6 +161,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude send_event \
 		--locked \
 		--workspace
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
@@ -177,6 +178,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 ## Check that docs can be built
 check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
 		--locked \
@@ -228,6 +230,7 @@ check_lint:
 		--workspace \
 		-- \
 		-Dwarnings
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo clippy \
 		--all-targets \
 		--locked \
@@ -304,4 +307,4 @@ apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE
 	du --apparent-size $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
-	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
+	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
