@@ -56,6 +56,7 @@ reinit:
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build: apps/$(AXIS_PACKAGE)/LICENSE
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
@@ -89,6 +90,7 @@ stop:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 run: apps/$(AXIS_PACKAGE)/LICENSE
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
@@ -107,6 +109,7 @@ run: apps/$(AXIS_PACKAGE)/LICENSE
 test: apps/$(AXIS_PACKAGE)/LICENSE
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
 	acap-ssh-utils run-app \
@@ -161,6 +164,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 		--exclude send_event \
 		--locked \
 		--workspace
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
@@ -177,6 +181,7 @@ check_build: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 ## Check that docs can be built
 check_docs:
 	RUSTDOCFLAGS="-Dwarnings" cargo doc
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	RUSTDOCFLAGS="-Dwarnings" cargo doc \
 		--document-private-items \
 		--locked \
@@ -228,6 +233,7 @@ check_lint:
 		--workspace \
 		-- \
 		-Dwarnings
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo clippy \
 		--all-targets \
 		--locked \
@@ -297,11 +303,11 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		--output-file $@ \
 		about.hbs
 
-apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+apps-$(AXIS_DEVICE_ARCH).checksum: $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap))
 	shasum $^ > $@
 
-apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target/acap/*_$(AXIS_DEVICE_ARCH).eap))
+apps-$(AXIS_DEVICE_ARCH).filesize: $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap))
 	du --apparent-size $^ > $@
 
 crates/%-sys/src/bindings.rs: FORCE
-	cp $(firstword $(wildcard target/*/*/build/$*-sys-*/out/bindings.rs)) $@
+	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
