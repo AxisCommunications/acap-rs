@@ -49,7 +49,7 @@ jobs:
           ./install-venv.sh venv ../init_env.sh
       - name: Shell setup
         # This step typically needs to be done once per shell session.
-        # To verify that the procedure has worked, the all checks are run as well.
+        # To verify that the procedure has worked, some checks are run as well.
         run: |
           source ./init_env.sh
-          make check_all_host
+          make check_generated_files

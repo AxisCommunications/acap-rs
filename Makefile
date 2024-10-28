@@ -126,7 +126,6 @@ test: apps/$(AXIS_PACKAGE)/LICENSE
 install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	cargo-acap-sdk install \
 		-- \
-		--package licensekey \
 		--package '*_*' \
 		--profile app
 
@@ -140,13 +139,9 @@ test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 ## Checks
 ## ------
 
-## Run all checks that should pass in the containerized environment
-check_all_container: check_all_host check_generated_files_container
-.PHONY: check_all_container
-
-## Run all checks that should pass in any correct environment
-check_all_host: check_build check_docs check_format check_lint check_tests check_generated_files
-.PHONY: check_all_host
+## Run all checks except generated files
+check_other: check_build check_docs check_format check_lint check_tests
+.PHONY: check_other
 
 ## Check that all crates can be built
 check_build: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
@@ -183,9 +178,7 @@ check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard cra
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
 
-## Check that machine-dependent generated files are up to date
-##
-## Remember to fist build the apps and to make both targets in the dev-container.
+## Check that generated files are up to date, including machine-dependent generated files.
 check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum apps-$(AXIS_DEVICE_ARCH).filesize
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
@@ -263,13 +256,13 @@ apps/%/LICENSE: apps/%/Cargo.toml about.hbs
 		about.hbs
 
 apps-$(AXIS_DEVICE_ARCH).checksum: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
-	shasum $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap)) > $@
+	find target-$(AXIS_DEVICE_ARCH)/acap/ -name '*.eap' | LC_ALL=C sort | xargs shasum > $@
 
 apps-$(AXIS_DEVICE_ARCH).filesize: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
-	du --apparent-size $(sort $(wildcard target-$(AXIS_DEVICE_ARCH)/acap/*.eap)) > $@
+	find target-$(AXIS_DEVICE_ARCH)/acap/ -name '*.eap' | LC_ALL=C sort | xargs du --apparent-size > $@
 
 crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
-	cp --update $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
+	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
 
 target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
@@ -279,3 +272,5 @@ target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/
 		--package '*_*' \
 		--locked
 	touch $@
+
+.PHONY: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
