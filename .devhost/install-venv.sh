@@ -21,15 +21,15 @@ PIP_CONSTRAINT=constraints.txt pip install --requirement requirements.txt
 # automatically.
 curl \
   --location \
-  --output /tmp/node-v18.16.1-linux-arm64.tar.gz \
-  "https://nodejs.org/dist/v18.16.1/node-v18.16.1-linux-arm64.tar.gz"
+  --output /tmp/node-v18.16.1-linux-x64.tar.gz \
+  "https://nodejs.org/dist/v18.16.1/node-v18.16.1-linux-x64.tar.gz"
 
-echo "555b5c521e068acc976e672978ba0f5b1a0c030192b50639384c88143f4460bc /tmp/node-v18.16.1-linux-arm64.tar.gz" \
+echo "59582f51570d0857de6333620323bdeee5ae36107318f86ce5eca24747cabf5b /tmp/node-v18.16.1-linux-x64.tar.gz" \
 | sha256sum -c -
 
-tar -xf "/tmp/node-v18.16.1-linux-arm64.tar.gz" --strip-components 1 -C "${VIRTUAL_ENV}"
+tar -xf "/tmp/node-v18.16.1-linux-x64.tar.gz" --strip-components 1 -C "${VIRTUAL_ENV}"
 
-rm /tmp/node-v18.16.1-linux-arm64.tar.gz
+rm /tmp/node-v18.16.1-linux-x64.tar.gz
 
 # Install `devcontainer` into venv
 npm install -g @devcontainers/cli@0.65.0
