@@ -1,5 +1,8 @@
 use larod_sys::*;
-use std::{ffi::CStr, ptr};
+use std::{
+    ffi::{CStr, CString},
+    ptr,
+};
 
 type Result<T> = std::result::Result<T, LarodError>;
 
@@ -68,16 +71,101 @@ impl From<larodErrorCode> for LarodErrorCode {
     }
 }
 
-fn create_map() -> Result<*mut larodMap> {
-    let mut error: *mut larodError = ptr::null_mut();
-    let map: *mut larodMap = unsafe { larodCreateMap(&mut error) };
-    println!("map is_null? {:?}", map.is_null());
-    println!("error is_null? {:?}", error.is_null());
-    let e: LarodError = error.into();
-    if !map.is_null() && matches!(e.code, LarodErrorCode::NONE) {
-        Ok(map)
-    } else {
-        Err(e)
+pub struct LarodMap {
+    raw: *mut larodMap,
+}
+
+impl LarodMap {
+    fn new() -> Result<Self> {
+        let mut error: *mut larodError = ptr::null_mut();
+        let map: *mut larodMap = unsafe { larodCreateMap(&mut error) };
+        println!("map is_null? {:?}", map.is_null());
+        println!("error is_null? {:?}", error.is_null());
+        let e: LarodError = error.into();
+        if !map.is_null() && matches!(e.code, LarodErrorCode::NONE) {
+            Ok(Self { raw: map })
+        } else {
+            Err(e)
+        }
+    }
+
+    fn set_string(&mut self, k: &str, v: &str) -> Result<()> {
+        let Ok(key_cstr) = CString::new(k.as_bytes()) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let Ok(value_cstr) = CString::new(v.as_bytes()) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string value CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let success =
+            unsafe { larodMapSetStr(self.raw, key_cstr.as_ptr(), value_cstr.as_ptr(), &mut error) };
+        if success {
+            Ok(())
+        } else {
+            Err(error.into())
+        }
+    }
+    fn set_int(&mut self, k: &str, v: i64) -> Result<()> {
+        let Ok(key_cstr) = CString::new(k.as_bytes()) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let success = unsafe { larodMapSetInt(self.raw, key_cstr.as_ptr(), v, &mut error) };
+        if success {
+            Ok(())
+        } else {
+            Err(error.into())
+        }
+    }
+    fn set_int_arr2(&mut self, k: &str, v: (i64, i64)) -> Result<()> {
+        let Ok(key_cstr) = CString::new(k.as_bytes()) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let success =
+            unsafe { larodMapSetIntArr2(self.raw, key_cstr.as_ptr(), v.0, v.1, &mut error) };
+        if success {
+            Ok(())
+        } else {
+            Err(error.into())
+        }
+    }
+    fn set_int_arr4(&mut self, k: &str, v: (i64, i64, i64, i64)) -> Result<()> {
+        let Ok(key_cstr) = CString::new(k.as_bytes()) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let success = unsafe {
+            larodMapSetIntArr4(self.raw, key_cstr.as_ptr(), v.0, v.1, v.2, v.3, &mut error)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(error.into())
+        }
+    }
+}
+
+impl std::ops::Drop for LarodMap {
+    fn drop(&mut self) {
+        unsafe {
+            larodDestroyMap(&mut self.raw);
+        }
     }
 }
 
@@ -88,6 +176,36 @@ mod tests {
 
     #[test]
     fn it_creates_larod_map() {
-        assert!(create_map().is_ok());
+        assert!(LarodMap::new().is_ok());
+    }
+
+    #[test]
+    fn it_drops_map() {
+        let map = LarodMap::new().unwrap();
+        std::mem::drop(map);
+    }
+
+    #[test]
+    fn larod_map_can_set_str() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_string("test_key", "test_value").unwrap();
+    }
+
+    #[test]
+    fn larod_map_can_set_int() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_int("test_key", 10).unwrap();
+    }
+
+    #[test]
+    fn larod_map_can_set_2_tuple() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_int_arr2("test_key", (1, 2)).unwrap();
+    }
+
+    #[test]
+    fn larod_map_can_set_4_tuple() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
     }
 }
