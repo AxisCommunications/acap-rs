@@ -137,7 +137,8 @@ impl AppBuilder {
     ///   This will also cause some build tools to be bypassed.
     pub fn build(&mut self, sdk_root: Option<PathBuf>) -> anyhow::Result<PathBuf> {
         if let Some(sdk_root) = sdk_root {
-            log::info!("Bypassing acap-build");
+            // TODO: Implement manifest validation
+            log::info!("Bypassing acap-build, manifest will not be validated");
             self.run_manifest2packageconf(sdk_root.deref())?;
             self.run_eap_create(sdk_root.deref())?;
         } else {
@@ -238,9 +239,9 @@ impl AppBuilder {
         if schema_version > semver::Version::new(1, 3, 0) {
             let setup = manifest
                 .get_mut("acapPackageConf")
-                .unwrap()
+                .context("no key acapPackageConf in manifest")?
                 .get_mut("setup")
-                .unwrap();
+                .context("no key setup in acapPackageConf")?;
             if let Some(a) = setup.get_mut("architecture") {
                 if a != "all" && a != self.arch.nickname() {
                     bail!(
@@ -272,7 +273,12 @@ impl AppBuilder {
         let native_sysroot = sysroots.join("x86_64-pokysdk-linux");
         let mut cmd = std::process::Command::new(native_sysroot.join("usr/bin/eap-create.sh"));
         cmd.arg("-m")
-            .arg(manifest_file.as_ref().file_name().unwrap())
+            .arg(
+                manifest_file
+                    .as_ref()
+                    .file_name()
+                    .expect("path is a regular file and does not end with .."),
+            )
             .arg("--no-validate")
             .env("OECORE_NATIVE_SYSROOT", native_sysroot)
             .env("SDKTARGETSYSROOT", target_sysroot)
