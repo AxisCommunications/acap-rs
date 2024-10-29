@@ -1,7 +1,8 @@
+use core::slice;
 use larod_sys::*;
 use std::{
     ffi::{CStr, CString},
-    ptr,
+    ptr::{self, slice_from_raw_parts},
 };
 
 type Result<T> = std::result::Result<T, LarodError>;
@@ -43,6 +44,7 @@ enum LarodErrorCode {
     VERSION_MISMATCH,
     ALLOC,
     POWER_NOT_AVAILABLE,
+    INVALID_TYPE,
     MAX_ERRNO,
 }
 
@@ -158,6 +160,95 @@ impl LarodMap {
         } else {
             Err(error.into())
         }
+    }
+
+    fn get_string(&self, k: &str) -> Result<String> {
+        let Ok(key_cstr) = CString::new(k) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let s = unsafe { CStr::from_ptr(larodMapGetStr(self.raw, key_cstr.as_ptr(), &mut error)) };
+        let Ok(rs) = s.to_str() else {
+            return Err(LarodError {
+                msg: String::from("Returned string is not valid UTF-8"),
+                code: LarodErrorCode::INVALID_TYPE,
+            });
+        };
+        Ok(String::from(rs))
+    }
+    fn get_int(&self, k: &str) -> Result<i64> {
+        let Ok(key_cstr) = CString::new(k) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let mut v: i64 = 0;
+        let success = unsafe { larodMapGetInt(self.raw, key_cstr.as_ptr(), &mut v, &mut error) };
+        if success {
+            Ok(v)
+        } else {
+            Err(error.into())
+        }
+    }
+    fn get_int_arr2(&self, k: &str) -> Result<&[i64; 2]> {
+        let Ok(key_cstr) = CString::new(k) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let maybe_int_arr = unsafe {
+            let ip = larodMapGetIntArr2(self.raw, key_cstr.as_ptr(), &mut error);
+            if ip.is_null() {
+                return Err(LarodError {
+                    msg: String::from("Could not get integer array from LarodMap"),
+                    code: LarodErrorCode::INVALID_TYPE,
+                });
+            } else {
+                slice::from_raw_parts(ip, 2).try_into()
+            }
+        };
+        let Ok(int_arr) = maybe_int_arr else {
+            return Err(LarodError {
+                msg: String::from("&[i64; 2] data stored in LarodMap is invalid."),
+                code: LarodErrorCode::INVALID_TYPE,
+            });
+        };
+        Ok(int_arr)
+    }
+
+    fn get_int_arr4(&self, k: &str) -> Result<&[i64; 4]> {
+        let Ok(key_cstr) = CString::new(k) else {
+            return Err(LarodError {
+                msg: String::from("Could not allocate set_string key CString"),
+                code: LarodErrorCode::ALLOC,
+            });
+        };
+        let mut error: *mut larodError = ptr::null_mut();
+        let maybe_int_arr = unsafe {
+            let ip = larodMapGetIntArr4(self.raw, key_cstr.as_ptr(), &mut error);
+            if ip.is_null() {
+                return Err(LarodError {
+                    msg: String::from("Could not get integer array from LarodMap"),
+                    code: LarodErrorCode::INVALID_TYPE,
+                });
+            } else {
+                slice::from_raw_parts(ip, 4).try_into()
+            }
+        };
+        let Ok(int_arr) = maybe_int_arr else {
+            return Err(LarodError {
+                msg: String::from("&[i64; 2] data stored in LarodMap is invalid."),
+                code: LarodErrorCode::INVALID_TYPE,
+            });
+        };
+        Ok(int_arr)
     }
 }
 
