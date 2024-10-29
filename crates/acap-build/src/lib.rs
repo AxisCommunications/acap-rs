@@ -1,15 +1,15 @@
+/// Wrapper around the ACAP SDK, in particular `acap-build`.
 use std::os::unix::fs::PermissionsExt;
-/// Wrapper around the ACAP SDK, in particular`acap-build`.
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Context};
+use command_utils::RunWith;
 use log::debug;
 
-use crate::command_utils::RunWith;
-
+mod command_utils;
 mod manifest;
 
 // TODO: Find a better way to support reproducible builds

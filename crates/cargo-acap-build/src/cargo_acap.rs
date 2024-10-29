@@ -5,13 +5,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use acap_build::AppBuilder;
 use anyhow::{bail, Context};
 use log::{debug, error, warn};
 
 use crate::{
-    acap::{AppBuilder, Architecture},
     cargo::{get_cargo_metadata, json_message::JsonMessage},
     command_utils::RunWith,
+    Architecture,
 };
 
 #[derive(Debug)]
