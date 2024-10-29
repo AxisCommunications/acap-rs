@@ -50,5 +50,6 @@ jobs:
         # This step typically needs to be done once per shell session.
         # To verify that the procedure has worked, some checks are run as well.
         run: |
+          export ACAP_SDK_LOCATION=$HOME/axis/
           source ./init_env.sh
-          ACAP_SDK_ROOT=$HOME/axis/acapsdk/ make check_generated_files
+          make check_generated_files

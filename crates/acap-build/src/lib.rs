@@ -196,9 +196,10 @@ impl AppBuilder {
     }
 
     fn run_manifest2packageconf(&self, sdk_root: &Path) -> anyhow::Result<()> {
-        let mut cmd = std::process::Command::new(
-            sdk_root.join("axis-acap-manifest-tools/manifest-generator/manifest2packageconf.py"),
-        );
+        let mut cmd =
+            std::process::Command::new(sdk_root.join(
+                "acapsdk/axis-acap-manifest-tools/manifest-generator/manifest2packageconf.py",
+            ));
 
         cmd.arg(self.manifest_file())
             .arg("--output")
@@ -266,7 +267,7 @@ impl AppBuilder {
         );
         manifest.serialize(&mut serializer)?;
 
-        let sysroots = sdk_root.join("sysroots");
+        let sysroots = sdk_root.join("acapsdk/sysroots");
         let target_sysroot = sysroots.join(self.arch.nickname());
         let native_sysroot = sysroots.join("x86_64-pokysdk-linux");
         let mut cmd = std::process::Command::new(native_sysroot.join("usr/bin/eap-create.sh"));
