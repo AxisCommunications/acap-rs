@@ -2,12 +2,15 @@
 use std::os::unix::fs::PermissionsExt;
 use std::{
     fs,
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Context};
 use command_utils::RunWith;
 use log::debug;
+use serde::Serialize;
+use serde_json::{ser::PrettyFormatter, Serializer, Value};
 
 mod command_utils;
 mod manifest;
@@ -63,9 +66,6 @@ impl AppBuilder {
     ) -> anyhow::Result<Self> {
         fs::create_dir(&staging_dir)?;
 
-        copy(manifest, staging_dir.join("manifest.json"))?;
-        copy(license, staging_dir.join("LICENSE"))?;
-
         let dst_exe = staging_dir.join(app_name);
         copy(exe, &dst_exe)?;
         let mut permissions = fs::metadata(&dst_exe)?.permissions();
@@ -73,11 +73,24 @@ impl AppBuilder {
         permissions.set_mode(mode | 0o111);
         fs::set_permissions(&dst_exe, permissions)?;
 
-        Ok(Self {
+        let builder = Self {
             staging_dir,
             arch,
             additional_files: Vec::new(),
-        })
+        };
+
+        copy(manifest, builder.manifest_file())?;
+        copy(license, builder.license_file())?;
+
+        Ok(builder)
+    }
+
+    fn license_file(&self) -> PathBuf {
+        self.staging_dir.join("LICENSE")
+    }
+
+    fn manifest_file(&self) -> PathBuf {
+        self.staging_dir.join("manifest.json")
     }
 
     pub fn additional(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
@@ -95,6 +108,7 @@ impl AppBuilder {
         }
         Ok(self)
     }
+
     pub fn lib(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
         let name = "lib";
         let dst = self.staging_dir.join(name);
@@ -115,13 +129,31 @@ impl AppBuilder {
         Ok(self)
     }
 
-    pub fn build(&self) -> anyhow::Result<PathBuf> {
+    /// Build EAP and return its path
+    ///
+    /// # Arguments
+    ///
+    /// - `sdk_root`: Use the SDK at this location instead of the default location.
+    ///   This will also cause some build tools to be bypassed.
+    pub fn build(&mut self, sdk_root: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+        if let Some(sdk_root) = sdk_root {
+            // TODO: Implement manifest validation
+            log::info!("Bypassing acap-build, manifest will not be validated");
+            self.run_manifest2packageconf(sdk_root.deref())?;
+            self.run_eap_create(sdk_root.deref())?;
+        } else {
+            debug!("Using acap-build");
+            self.run_acap_build()?;
+        }
+        self.eap()
+    }
+
+    fn run_acap_build(&self) -> anyhow::Result<()> {
         let Self {
             staging_dir,
+            arch,
             additional_files,
-            ..
         } = self;
-
         let mut acap_build = std::process::Command::new("acap-build");
         acap_build.args(["--build", "no-build"]);
         for file in additional_files {
@@ -134,7 +166,7 @@ impl AppBuilder {
         let mut sh = std::process::Command::new("sh");
         sh.current_dir(staging_dir);
 
-        let env_setup = match self.arch {
+        let env_setup = match arch {
             Architecture::Aarch64 => "environment-setup-cortexa53-crypto-poky-linux",
             Architecture::Armv7hf => "environment-setup-cortexa9hf-neon-poky-linux-gnueabi",
         };
@@ -142,9 +174,12 @@ impl AppBuilder {
             "-c",
             &format!(". /opt/axis/acapsdk/{env_setup} && {acap_build:?}"),
         ]);
-        sh.run_with_logged_stdout()?;
+        sh.run_with_logged_stdout()
+    }
+
+    fn eap(&self) -> anyhow::Result<PathBuf> {
         let mut apps = Vec::new();
-        for entry in fs::read_dir(staging_dir)? {
+        for entry in fs::read_dir(&self.staging_dir)? {
             let entry = entry?;
             let path = entry.path();
             if let Some(extension) = path.extension() {
@@ -159,6 +194,96 @@ impl AppBuilder {
             bail!("Built at least one unexpected .eap file {second:?}")
         }
         Ok(app)
+    }
+
+    fn run_manifest2packageconf(&self, sdk_root: &Path) -> anyhow::Result<()> {
+        let mut cmd =
+            std::process::Command::new(sdk_root.join(
+                "acapsdk/axis-acap-manifest-tools/manifest-generator/manifest2packageconf.py",
+            ));
+
+        cmd.arg(self.manifest_file())
+            .arg("--output")
+            .arg(&self.staging_dir)
+            .arg("--force")
+            .arg("--quiet");
+
+        if !self.additional_files.is_empty() {
+            cmd.arg("--additional-files");
+            cmd.args(&self.additional_files);
+        }
+
+        cmd.current_dir(&self.staging_dir);
+        cmd.run_with_logged_stdout()
+    }
+
+    fn run_eap_create(&self, sdk_root: &Path) -> anyhow::Result<()> {
+        let manifest = fs::read_to_string(self.manifest_file())?;
+
+        // This file is included in the eap so for as long as we want bit exact output we must
+        // take care to serialize the manifest the same way as the python implementation.
+        let mut manifest = serde_json::from_str::<Value>(&manifest).context(manifest)?;
+        let Value::String(mut schema_version) = manifest
+            .get("schemaVersion")
+            .context("schemaVersion")?
+            .clone()
+        else {
+            bail!("Expected schema version to be a string")
+        };
+
+        // Make it valid semver
+        for _ in 0..(2 - schema_version.chars().filter(|&c| c == '.').count()) {
+            schema_version.push_str(".0");
+        }
+        let schema_version = semver::Version::parse(&schema_version)?;
+        if schema_version > semver::Version::new(1, 3, 0) {
+            let setup = manifest
+                .get_mut("acapPackageConf")
+                .context("no key acapPackageConf in manifest")?
+                .get_mut("setup")
+                .context("no key setup in acapPackageConf")?;
+            if let Some(a) = setup.get_mut("architecture") {
+                if a != "all" && a != self.arch.nickname() {
+                    bail!(
+                        "Architecture in manifest ({a}) is not compatible with built target ({:?})",
+                        self.arch
+                    );
+                }
+            } else if let Value::Object(setup) = setup {
+                debug!("Architecture not set in manifest, using {:?}", &self.arch);
+                setup.insert(
+                    "architecture".to_string(),
+                    Value::String(self.arch.nickname().to_string()),
+                );
+            } else {
+                bail!("Expected setup to be an object")
+            }
+        }
+
+        let manifest_file = tempfile::NamedTempFile::new_in(&self.staging_dir)?;
+
+        let mut serializer = Serializer::with_formatter(
+            fs::File::create(manifest_file.path())?,
+            PrettyFormatter::with_indent(b"    "),
+        );
+        manifest.serialize(&mut serializer)?;
+
+        let sysroots = sdk_root.join("acapsdk/sysroots");
+        let target_sysroot = sysroots.join(self.arch.nickname());
+        let native_sysroot = sysroots.join("x86_64-pokysdk-linux");
+        let mut cmd = std::process::Command::new(native_sysroot.join("usr/bin/eap-create.sh"));
+        cmd.arg("-m")
+            .arg(
+                manifest_file
+                    .as_ref()
+                    .file_name()
+                    .expect("path is a regular file and does not end with .."),
+            )
+            .arg("--no-validate")
+            .env("OECORE_NATIVE_SYSROOT", native_sysroot)
+            .env("SDKTARGETSYSROOT", target_sysroot)
+            .current_dir(&self.staging_dir);
+        cmd.run_with_logged_stdout()
     }
 }
 

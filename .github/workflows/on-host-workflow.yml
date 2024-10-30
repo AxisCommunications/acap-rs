@@ -18,8 +18,8 @@ jobs:
     # 2. Local setup: Steps that have effects only in this project (and in caches).
     # 3. Shell setup: Steps that have effects only in the current shell.
     #
-    # These steps are only suggestions and readers are welcome install dependencies in a different
-    # way, or skip them entirely;
+    # These steps are only suggestions, and readers are welcome to install dependencies
+    # differently, or skip them entirely;
     # not every dependency is needed for every workflow and the way the `init_env.sh` file is
     # created should allow blending global and local installations as the user sees fit.
     steps:
@@ -29,17 +29,16 @@ jobs:
         # These steps typically need to be done once per machine, or when the project dependencies change.
         #
         # They are divided into multiple scripts to:
-        # - run only what is needed as root.
+        # - run only what is needed as root if the sdk is installed into `/opt/axis/`.
         # - give the user insight into and control over how their system is configured.
         #
-        # One prerequisite that is not documented explicitly below is Docker.
+        # One prerequisite not documented explicitly below is Docker.
         #
         # More information about what each script does and why may be found in the script itself.
         working-directory: .devhost
         run: |
-          sudo mkdir /opt/axis/
-          sudo chown $USER /opt/axis/
-          ./install-sdk.sh /opt/axis/
+          mkdir $HOME/axis/
+          ./install-sdk.sh $HOME/axis/
           sudo ./install-system-packages.sh
           ./install-rust.sh
       - name: Local setup
@@ -51,5 +50,6 @@ jobs:
         # This step typically needs to be done once per shell session.
         # To verify that the procedure has worked, some checks are run as well.
         run: |
+          export ACAP_SDK_LOCATION=$HOME/axis/
           source ./init_env.sh
           make check_generated_files
