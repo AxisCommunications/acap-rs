@@ -12,6 +12,10 @@
 //! to a larodError struct need to be dealocated. That is handled appropriately
 //! by copying the larodError data into a Rust LarodError struct and
 //! dealocating the larodError object if it is non-NULL.
+//!
+//! # TODOs:
+//! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
+//!     indicates it may fail to "kill a session." What are the implications if it fails to kill a session? Can we clear the sessions?
 
 use core::slice;
 use larod_sys::*;
@@ -339,6 +343,36 @@ impl std::ops::Drop for LarodMap {
     fn drop(&mut self) {
         unsafe {
             larodDestroyMap(&mut self.raw);
+        }
+    }
+}
+
+pub struct LarodClientBuilder {}
+
+impl LarodClientBuilder {
+    pub fn build() -> Result<LarodClient> {
+        let mut connection: *mut larodConnection = ptr::null_mut();
+        let (success, e): (bool, LarodError) = unsafe { try_func!(larodConnect, &mut connection) };
+        if success {
+            debug_assert!(
+                matches!(e.code, LarodErrorCode::NONE),
+                "larodConnect indicated success AND returned an error!"
+            );
+            Ok(LarodClient { connection })
+        } else {
+            Err(e)
+        }
+    }
+}
+
+pub struct LarodClient {
+    connection: *mut larodConnection,
+}
+
+impl std::ops::Drop for LarodClient {
+    fn drop(&mut self) {
+        unsafe {
+            try_func!(larodDisconnect, &mut self.connection);
         }
     }
 }
