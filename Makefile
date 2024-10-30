@@ -24,6 +24,8 @@ export AXIS_DEVICE_PASS ?= pass
 # Reproducible and stable results by default
 export SOURCE_DATE_EPOCH ?= 0
 
+ACAP_SDK_LOCATION ?= /opt/axis/
+
 # Other
 # -----
 
@@ -261,12 +263,35 @@ apps-$(AXIS_DEVICE_ARCH).checksum: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 apps-$(AXIS_DEVICE_ARCH).filesize: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	find target-$(AXIS_DEVICE_ARCH)/acap/ -name '*.eap' | LC_ALL=C sort | xargs du --apparent-size > $@
 
+build/acap-native-sdk-examples/_envoy:
+	mkdir -p $(@D)
+	git clone https://github.com/AxisCommunications/acap-native-sdk-examples.git $(@D)
+	cd $(@D) && git checkout 9b00b2fdf23672f8910421653706572201c2ed8b
+	touch $@
+
+build/py/%/_envoy: build/acap-native-sdk-examples/_envoy
+	rm -r $(@D) ||:
+	mkdir -p $(dir $(@D))
+	cp -r build/acap-native-sdk-examples/$*/app $(@D)
+	. $(ACAP_SDK_LOCATION)/acapsdk/environment-setup-cortexa53-crypto-poky-linux \
+	&& manifest2packageconf.py --output $(@D) $(@D)/manifest.json
+	touch $@
+
+build/rs/%/_envoy: build/acap-native-sdk-examples/_envoy target/debug/examples/manifest2packageconf
+	rm -r $(@D) ||:
+	mkdir -p $(dir $(@D))
+	cp -r build/acap-native-sdk-examples/$*/app $(@D)
+	./target/debug/examples/manifest2packageconf --output $(@D) $(@D)/manifest.json
+	touch $@
+
 crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
 
 target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+	rm -r $(@D) ||:
+	cargo build --bin cargo-acap-build
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build \
+	./target/debug/cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
 		--package '*_*' \
@@ -274,3 +299,8 @@ target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/
 	touch $@
 
 .PHONY: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
+
+target/debug/examples/manifest2packageconf:
+	cargo build --example manifest2packageconf
+
+.PHONY: target/debug/examples/manifest2packageconf

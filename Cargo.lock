@@ -7,7 +7,11 @@ name = "acap-build"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "clap",
+ "env_logger",
+ "glob",
  "log",
+ "regex",
  "semver",
  "serde",
  "serde_json",

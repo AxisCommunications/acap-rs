@@ -2,18 +2,26 @@
 use std::os::unix::fs::PermissionsExt;
 use std::{
     fs,
+    fs::File,
     ops::Deref,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Context};
 use command_utils::RunWith;
-use log::debug;
+use log::{debug, info};
 use serde::Serialize;
 use serde_json::{ser::PrettyFormatter, Serializer, Value};
 
+use crate::{
+    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
+};
+
+mod cgi_conf;
 mod command_utils;
 mod manifest;
+mod package_conf;
+mod param_conf;
 
 // TODO: Find a better way to support reproducible builds
 fn copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> std::io::Result<u64> {
@@ -139,7 +147,7 @@ impl AppBuilder {
         if let Some(sdk_root) = sdk_root {
             // TODO: Implement manifest validation
             log::info!("Bypassing acap-build, manifest will not be validated");
-            self.run_manifest2packageconf(sdk_root.deref())?;
+            self.bypass_manifest2packageconf()?;
             self.run_eap_create(sdk_root.deref())?;
         } else {
             debug!("Using acap-build");
@@ -196,25 +204,26 @@ impl AppBuilder {
         Ok(app)
     }
 
-    fn run_manifest2packageconf(&self, sdk_root: &Path) -> anyhow::Result<()> {
-        let mut cmd =
-            std::process::Command::new(sdk_root.join(
-                "acapsdk/axis-acap-manifest-tools/manifest-generator/manifest2packageconf.py",
-            ));
+    fn get_pre_uninstall_script(manifest: &Manifest) -> Option<String> {
+        manifest
+            .acap_package_conf
+            .uninstallation
+            .as_ref()?
+            .pre_uninstall_script
+            .clone()
+    }
 
-        cmd.arg(self.manifest_file())
-            .arg("--output")
-            .arg(&self.staging_dir)
-            .arg("--force")
-            .arg("--quiet");
+    fn bypass_manifest2packageconf(&self) -> anyhow::Result<()> {
+        let manifest_data = fs::read_to_string(self.manifest_file())?;
+        let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
-        if !self.additional_files.is_empty() {
-            cmd.arg("--additional-files");
-            cmd.args(&self.additional_files);
+        let mut additional_files = self.additional_files.clone();
+        if let Some(p) = Self::get_pre_uninstall_script(&manifest) {
+            additional_files.push(PathBuf::from(p));
         }
 
-        cmd.current_dir(&self.staging_dir);
-        cmd.run_with_logged_stdout()
+        manifest2packageconf(&self.manifest_file(), &self.staging_dir, &additional_files)?;
+        Ok(())
     }
 
     fn run_eap_create(&self, sdk_root: &Path) -> anyhow::Result<()> {
@@ -307,4 +316,47 @@ impl Architecture {
             Self::Armv7hf => "armv7hf",
         }
     }
+}
+
+pub fn manifest2packageconf(
+    manifest: &Path,
+    output: &Path,
+    additional_files: &[PathBuf],
+) -> anyhow::Result<Vec<PathBuf>> {
+    let mut created_files = Vec::new();
+
+    let additional_files = additional_files
+        .iter()
+        .map(|f| output.join(f))
+        .collect::<Vec<_>>();
+
+    let manifest: Value = serde_json::from_reader(File::open(manifest)?)?;
+    let package_conf = PackageConf::new_from_manifest(&manifest, output, &additional_files)?;
+    let p = output.join(PackageConf::file_name());
+    fs::write(&p, package_conf.to_string())?;
+    created_files.push(p);
+
+    let manifest = dbg!(serde_json::from_value::<Manifest>(manifest)?);
+    match ParamConf::from_manifest(&manifest) {
+        Ok(v) => {
+            let p = output.join(ParamConf::file_name());
+            fs::write(&p, v.to_string())?;
+            created_files.push(p);
+        }
+        Err(e) => {
+            info!("Could not create param.conf because {e:?}")
+        }
+    };
+    match CgiConf::from_manifest(&manifest) {
+        Ok(v) => {
+            let p = output.join(CgiConf::file_name());
+            fs::write(&p, v.to_string()).unwrap();
+            created_files.push(p);
+        }
+        Err(e) => {
+            info!("Could not create cgi.conf because {e:?}")
+        }
+    };
+
+    Ok(created_files)
 }
