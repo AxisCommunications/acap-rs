@@ -1288,6 +1288,7 @@ name = "larod"
 version = "0.1.0"
 dependencies = [
  "larod-sys",
+ "log",
 ]
 
 [[package]]
