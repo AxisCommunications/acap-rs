@@ -173,5 +173,11 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
         .arg(&format!("root@{}", host));
     log_stdout(sshpass)?;
 
+    info!("Allowing unsigned ACAPs...");
+    client
+        .get("/axis-cgi/applications/config.cgi?action=set&name=AllowUnsigned&value=true")?
+        .send()
+        .await?;
+
     Ok(client)
 }
