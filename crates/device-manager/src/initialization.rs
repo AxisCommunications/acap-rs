@@ -7,7 +7,6 @@ use std::{
 use acap_vapix::{parameter_management, systemready, HttpClient};
 use anyhow::Context;
 use log::{debug, info};
-use reqwest::StatusCode;
 use tokio::time::sleep;
 use url::{Host, Url};
 
