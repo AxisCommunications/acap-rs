@@ -7,6 +7,7 @@ use std::{
 use acap_vapix::{parameter_management, systemready, HttpClient};
 use anyhow::Context;
 use log::{debug, info};
+use reqwest::StatusCode;
 use tokio::time::sleep;
 use url::{Host, Url};
 
@@ -173,11 +174,14 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
         .arg(&format!("root@{}", host));
     log_stdout(sshpass)?;
 
-    info!("Allowing unsigned ACAPs...");
-    client
+    info!("Allowing unsigned ACAP applications...");
+    let resp = client
         .get("/axis-cgi/applications/config.cgi?action=set&name=AllowUnsigned&value=true")?
         .send()
         .await?;
+    if let Err(e) = resp.error_for_status() {
+        info!("Could not allow unsigned apps because {e} (this is expected on LTS2022 and earlier)")
+    }
 
     Ok(client)
 }
