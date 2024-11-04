@@ -275,14 +275,14 @@ fn main() -> ExitCode {
         let main_loop = main_loop.clone();
         move || {
             main_loop.quit();
-            ControlFlow::Continue
+            ControlFlow::Break
         }
     });
     glib::unix_signal_add(SIGINT, {
         let main_loop = main_loop.clone();
         move || {
             main_loop.quit();
-            ControlFlow::Continue
+            ControlFlow::Break
         }
     });
 
