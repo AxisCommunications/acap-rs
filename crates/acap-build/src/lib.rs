@@ -336,7 +336,7 @@ pub fn manifest2packageconf(
     fs::write(&p, package_conf.to_string())?;
     created_files.push(p);
 
-    let manifest = dbg!(serde_json::from_value::<Manifest>(manifest)?);
+    let manifest = serde_json::from_value::<Manifest>(manifest)?;
     match ParamConf::from_manifest(&manifest) {
         Ok(v) => {
             let p = output.join(ParamConf::file_name());

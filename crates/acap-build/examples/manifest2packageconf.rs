@@ -16,10 +16,10 @@ fn main() {
     debug!("Logging initialized");
     let Cli { manifest, output } = Cli::parse();
 
-    dbg!(acap_build::manifest2packageconf(
+    acap_build::manifest2packageconf(
         &manifest,
         &output.unwrap_or_else(|| env::current_dir().unwrap()),
         &Vec::new(),
     )
-    .unwrap());
+    .unwrap();
 }
