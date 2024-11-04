@@ -5,51 +5,66 @@
 pub struct larodDevice {
     _unused: [u8; 0],
 }
-pub const larodAccess_LAROD_ACCESS_INVALID: larodAccess = 0;
-pub const larodAccess_LAROD_ACCESS_PRIVATE: larodAccess = 1;
-pub const larodAccess_LAROD_ACCESS_PUBLIC: larodAccess = 2;
-pub type larodAccess = ::std::os::raw::c_uint;
-pub const larodErrorCode_LAROD_ERROR_NONE: larodErrorCode = 0;
-pub const larodErrorCode_LAROD_ERROR_JOB: larodErrorCode = -1;
-pub const larodErrorCode_LAROD_ERROR_LOAD_MODEL: larodErrorCode = -2;
-pub const larodErrorCode_LAROD_ERROR_FD: larodErrorCode = -3;
-pub const larodErrorCode_LAROD_ERROR_MODEL_NOT_FOUND: larodErrorCode = -4;
-pub const larodErrorCode_LAROD_ERROR_PERMISSION: larodErrorCode = -5;
-pub const larodErrorCode_LAROD_ERROR_CONNECTION: larodErrorCode = -6;
-pub const larodErrorCode_LAROD_ERROR_CREATE_SESSION: larodErrorCode = -7;
-pub const larodErrorCode_LAROD_ERROR_KILL_SESSION: larodErrorCode = -8;
-pub const larodErrorCode_LAROD_ERROR_INVALID_CHIP_ID: larodErrorCode = -9;
-pub const larodErrorCode_LAROD_ERROR_INVALID_ACCESS: larodErrorCode = -10;
-pub const larodErrorCode_LAROD_ERROR_DELETE_MODEL: larodErrorCode = -11;
-pub const larodErrorCode_LAROD_ERROR_TENSOR_MISMATCH: larodErrorCode = -12;
-pub const larodErrorCode_LAROD_ERROR_VERSION_MISMATCH: larodErrorCode = -13;
-pub const larodErrorCode_LAROD_ERROR_ALLOC: larodErrorCode = -14;
-pub const larodErrorCode_LAROD_ERROR_POWER_NOT_AVAILABLE: larodErrorCode = -15;
-pub const larodErrorCode_LAROD_ERROR_MAX_ERRNO: larodErrorCode = 1024;
-pub type larodErrorCode = ::std::os::raw::c_int;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_INVALID: larodTensorDataType = 0;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_UNSPECIFIED: larodTensorDataType = 1;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_BOOL: larodTensorDataType = 2;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_UINT8: larodTensorDataType = 3;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_INT8: larodTensorDataType = 4;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_UINT16: larodTensorDataType = 5;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_INT16: larodTensorDataType = 6;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_UINT32: larodTensorDataType = 7;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_INT32: larodTensorDataType = 8;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_UINT64: larodTensorDataType = 9;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_INT64: larodTensorDataType = 10;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_FLOAT16: larodTensorDataType = 11;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_FLOAT32: larodTensorDataType = 12;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_FLOAT64: larodTensorDataType = 13;
-pub const larodTensorDataType_LAROD_TENSOR_DATA_TYPE_MAX: larodTensorDataType = 14;
-pub type larodTensorDataType = ::std::os::raw::c_uint;
-pub const larodTensorLayout_LAROD_TENSOR_LAYOUT_INVALID: larodTensorLayout = 0;
-pub const larodTensorLayout_LAROD_TENSOR_LAYOUT_UNSPECIFIED: larodTensorLayout = 1;
-pub const larodTensorLayout_LAROD_TENSOR_LAYOUT_NHWC: larodTensorLayout = 2;
-pub const larodTensorLayout_LAROD_TENSOR_LAYOUT_NCHW: larodTensorLayout = 3;
-pub const larodTensorLayout_LAROD_TENSOR_LAYOUT_420SP: larodTensorLayout = 4;
-pub const larodTensorLayout_LAROD_TENSOR_LAYOUT_MAX: larodTensorLayout = 5;
-pub type larodTensorLayout = ::std::os::raw::c_uint;
+#[repr(u32)]
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum larodAccess {
+    LAROD_ACCESS_INVALID = 0,
+    LAROD_ACCESS_PRIVATE = 1,
+    LAROD_ACCESS_PUBLIC = 2,
+}
+#[repr(i32)]
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum larodErrorCode {
+    LAROD_ERROR_NONE = 0,
+    LAROD_ERROR_JOB = -1,
+    LAROD_ERROR_LOAD_MODEL = -2,
+    LAROD_ERROR_FD = -3,
+    LAROD_ERROR_MODEL_NOT_FOUND = -4,
+    LAROD_ERROR_PERMISSION = -5,
+    LAROD_ERROR_CONNECTION = -6,
+    LAROD_ERROR_CREATE_SESSION = -7,
+    LAROD_ERROR_KILL_SESSION = -8,
+    LAROD_ERROR_INVALID_CHIP_ID = -9,
+    LAROD_ERROR_INVALID_ACCESS = -10,
+    LAROD_ERROR_DELETE_MODEL = -11,
+    LAROD_ERROR_TENSOR_MISMATCH = -12,
+    LAROD_ERROR_VERSION_MISMATCH = -13,
+    LAROD_ERROR_ALLOC = -14,
+    LAROD_ERROR_MAX_ERRNO = 1024,
+}
+#[repr(u32)]
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum larodTensorDataType {
+    LAROD_TENSOR_DATA_TYPE_INVALID = 0,
+    LAROD_TENSOR_DATA_TYPE_UNSPECIFIED = 1,
+    LAROD_TENSOR_DATA_TYPE_BOOL = 2,
+    LAROD_TENSOR_DATA_TYPE_UINT8 = 3,
+    LAROD_TENSOR_DATA_TYPE_INT8 = 4,
+    LAROD_TENSOR_DATA_TYPE_UINT16 = 5,
+    LAROD_TENSOR_DATA_TYPE_INT16 = 6,
+    LAROD_TENSOR_DATA_TYPE_UINT32 = 7,
+    LAROD_TENSOR_DATA_TYPE_INT32 = 8,
+    LAROD_TENSOR_DATA_TYPE_UINT64 = 9,
+    LAROD_TENSOR_DATA_TYPE_INT64 = 10,
+    LAROD_TENSOR_DATA_TYPE_FLOAT16 = 11,
+    LAROD_TENSOR_DATA_TYPE_FLOAT32 = 12,
+    LAROD_TENSOR_DATA_TYPE_FLOAT64 = 13,
+    LAROD_TENSOR_DATA_TYPE_MAX = 14,
+}
+#[repr(u32)]
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum larodTensorLayout {
+    LAROD_TENSOR_LAYOUT_INVALID = 0,
+    LAROD_TENSOR_LAYOUT_UNSPECIFIED = 1,
+    LAROD_TENSOR_LAYOUT_NHWC = 2,
+    LAROD_TENSOR_LAYOUT_NCHW = 3,
+    LAROD_TENSOR_LAYOUT_420SP = 4,
+    LAROD_TENSOR_LAYOUT_MAX = 5,
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct larodError {
