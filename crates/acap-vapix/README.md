@@ -30,9 +30,15 @@ async fn main() {
 Bindings are typically implemented as they are needed.
 This table is an attempt at providing an overview of what exists and how usable it is.
 
-| Name                           | Methods | Status       |
-|--------------------------------|---------|--------------|
-| Basic device information       | 2/4     | Experimental |
-| Event streaming over WebSocket | 1/1     | Experimental |
-| Parameter management           | 2/5     | Experimental |
-| Systemready                    | 1/2     | Experimental |
+- Basic device information
+  - Status: ⚠️ Experimental
+  - Methods: 2/4
+- Event streaming over WebSocket
+  - Status: ⚠️ Experimental
+  - Methods: 1/1
+- Parameter management
+  - Status: ⚠️ Experimental
+  - Methods: 2/5
+- Systemready
+  - Status: ⚠️ Experimental
+  - Methods: 1/2
