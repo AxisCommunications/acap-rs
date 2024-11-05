@@ -1,6 +1,6 @@
 [package]
 name = "acap-logging"
-version = "0.0.1"
+version = "0.1.0"
 edition.workspace = true
 description = "Logging utilities for ACAP applications"
 license = "MIT"
@@ -12,3 +12,6 @@ repository = "https://github.com/AxisCommunications/acap-rs"
 log = { workspace = true }
 env_logger = { workspace = true }
 syslog = { workspace = true }
+
+[features]
+default = ["env_logger/auto-color"]

@@ -264,6 +264,9 @@ pub fn patch_package(package: &Path, user: &str, pass: &str, host: &Host) -> any
     let package_dir = PathBuf::from("/usr/local/packages").join(app_name);
     // TODO: Copy only files that have been updated, e.g. as as decided by comparing the `mtime`.
     // TODO: Remove files that are no longer relevant.
+    // Currently the error when an app is not installed is not very helpful:
+    // tar: can't change directory to '/usr/local/packages/<APP_NAME>': No such file or directory
+    // TODO: Better error when application is not installed
     let mut ssh_tar = ssh(user, pass, host);
     ssh_tar.args(["tar", "-xvC", package_dir.to_str().unwrap()]);
 

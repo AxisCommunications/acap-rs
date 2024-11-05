@@ -2,16 +2,18 @@
 /// conventions detailed in [`crate`].
 use std::{
     collections::HashMap,
+    env,
     path::{Path, PathBuf},
 };
 
+use acap_build::AppBuilder;
 use anyhow::{bail, Context};
 use log::{debug, error, warn};
 
 use crate::{
-    acap::{AppBuilder, Architecture},
     cargo::{get_cargo_metadata, json_message::JsonMessage},
     command_utils::RunWith,
+    Architecture,
 };
 
 #[derive(Debug)]
@@ -156,7 +158,7 @@ fn pack(
         app_builder.html(&d)?;
     }
 
-    app_builder.build()
+    app_builder.build(env::var_os("ACAP_SDK_LOCATION").map(PathBuf::from))
 }
 
 fn exactly_one(
@@ -170,7 +172,7 @@ fn exactly_one(
         manifest_file.exists(),
         out_file.as_ref().map(|f| f.exists()).unwrap_or(false),
     ) {
-        (false, false) => bail!("{file_name:?} exists neither {manifest_dir:?} nor {out_dir:?}"),
+        (false, false) => bail!("{file_name:?} exists neither in manifest dir {manifest_dir:?} nor in out dir {out_dir:?}"),
         (false, true) => Ok(out_file.expect("checked above")),
         (true, false) => Ok(manifest_file),
         (true, true) => bail!("{file_name:?} exist in both {manifest_dir:?} and {out_dir:?}"),

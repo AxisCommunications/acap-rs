@@ -1,0 +1,6 @@
+[workspace]
+members = ["the_app", "the_lib"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"

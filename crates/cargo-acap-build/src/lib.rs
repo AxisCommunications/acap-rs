@@ -6,12 +6,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use acap::Architecture;
+pub use acap_build::Architecture;
 pub use cargo::get_cargo_metadata;
 pub use cargo_acap::Artifact;
 use log::debug;
-
-mod acap;
 mod cargo;
 mod cargo_acap;
 mod command_utils;
@@ -98,8 +96,13 @@ fn copy_final_artifacts(artifacts: &[Artifact], acap_dir: &Path) -> anyhow::Resu
             debug!("Skipping artifact that is not an EAP: {artifact:?}");
             continue;
         };
-        let dst = acap_dir.join(name);
-        debug!("Copying `.eap` from {src:?} to {dst:?}");
+        // Multiple artifacts can have the same name e.g. when building with `--tests`.
+        // TODO: Consider using the stem of the artifact built by cargo to avoid collisions.
+        let dst = acap_dir.join(
+            src.file_name()
+                .expect("cargo_acap::pack returns the path to a regular file"),
+        );
+        debug!("Copying {name}` from {src:?} to {dst:?}");
         fs::copy(src, dst)?;
     }
     Ok(())

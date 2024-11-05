@@ -1,4 +1,4 @@
+fire
 jsonschema ==3.2.0
-mkhelp
 pip
 pip-tools

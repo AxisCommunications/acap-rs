@@ -31,9 +31,22 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use acap_vapix::{
-        basic_device_info, parameter_management, systemready, ws_data_stream,
+        applications_control, basic_device_info, parameter_management, systemready, ws_data_stream,
         ws_data_stream::{ContentFilter, TopicFilter},
     };
+
+    #[tokio::test]
+    async fn smoke_test_applications_control() {
+        let client = acap_vapix::local_client().unwrap();
+        let e = applications_control::control(applications_control::Action::Start, "foo")
+            .execute(&client)
+            .await
+            .unwrap_err();
+        let e = e.downcast::<applications_control::Error>().unwrap();
+        let applications_control::Error::NotFound = e else {
+            panic!("{e:?}")
+        };
+    }
 
     #[tokio::test]
     async fn smoke_test_basic_device_info() {

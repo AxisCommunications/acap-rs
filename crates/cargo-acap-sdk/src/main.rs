@@ -1,5 +1,6 @@
-use std::{ffi::OsString, fs::File};
+use std::{ffi::OsString, fs::File, str::FromStr};
 
+use acap_vapix::{applications_control, basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use log::debug;
@@ -7,10 +8,9 @@ use url::Host;
 
 use crate::commands::{
     build_command::BuildCommand, completions_command::CompletionsCommand,
-    install_command::InstallCommand, run_command::RunCommand, test_command::TestCommand,
+    control_command::ControlCommand, install_command::InstallCommand, run_command::RunCommand,
+    test_command::TestCommand,
 };
-
-mod command_utils;
 
 mod commands;
 
@@ -24,13 +24,20 @@ struct Cli {
 }
 
 impl Cli {
-    pub fn exec(self) -> anyhow::Result<()> {
+    pub async fn exec(self) -> anyhow::Result<()> {
         match self.command {
             Commands::Build(cmd) => cmd.exec()?,
-            Commands::Install(cmd) => cmd.exec()?,
-            Commands::Run(cmd) => cmd.exec()?,
-            Commands::Test(cmd) => cmd.exec()?,
+            Commands::Install(cmd) => cmd.exec().await?,
+            Commands::Run(cmd) => cmd.exec().await?,
+            Commands::Test(cmd) => cmd.exec().await?,
             Commands::Completions(cmd) => cmd.exec(Cli::command())?,
+            Commands::Start(cmd) => cmd.exec(applications_control::Action::Start).await?,
+            Commands::Stop(cmd) => cmd.exec(applications_control::Action::Stop).await?,
+            Commands::Restart(cmd) => cmd.exec(applications_control::Action::Restart).await?,
+            // The Cargo command `remove` is not the inverse of `install`, instead it is the inverse
+            // of `add`. Furthermore `install` maps to the verb _upload_ in VAPIX.
+            // TODO: Consider renaming this and other commands for consistency.
+            Commands::Remove(cmd) => cmd.exec(applications_control::Action::Remove).await?,
         }
         Ok(())
     }
@@ -46,6 +53,14 @@ enum Commands {
     Test(TestCommand),
     /// Build app(s) with release profile and install on the device.
     Install(InstallCommand),
+    /// Start app on device.
+    Start(ControlCommand),
+    /// Stop app on device.
+    Stop(ControlCommand),
+    /// Restart app on device.
+    Restart(ControlCommand),
+    /// Remove app form device.
+    Remove(ControlCommand),
     /// Print shell completion script for this program
     ///
     /// In `zsh` this can be used to enable completions in the current shell like
@@ -56,7 +71,30 @@ enum Commands {
 // TODO: Include package selection for better completions and help messages.
 #[derive(clap::Args, Debug, Clone)]
 struct BuildOptions {
-    // TODO: Query the device for its architecture.
+    /// Pass additional arguments to `cargo build`.
+    ///
+    /// Beware that not all incompatible arguments have been documented.
+    args: Vec<String>,
+}
+
+impl BuildOptions {
+    async fn resolve(self, deploy_options: &DeployOptions) -> anyhow::Result<ResolvedBuildOptions> {
+        let Self { args } = self;
+        // TODO: Consider using `get_properties` instead.
+        let target = basic_device_info::Client::new(&deploy_options.http_client().await?)
+            .get_all_properties()
+            .send()
+            .await?
+            .property_list
+            .restricted
+            .architecture
+            .parse()?;
+        Ok(ResolvedBuildOptions { target, args })
+    }
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct ResolvedBuildOptions {
     /// Architecture of the device to build for.
     #[arg(long, env = "AXIS_DEVICE_ARCH")]
     target: ArchAbi,
@@ -84,6 +122,22 @@ struct DeployOptions {
     pass: String,
 }
 
+impl DeployOptions {
+    pub async fn http_client(&self) -> anyhow::Result<HttpClient> {
+        // This takes about 200ms on my setup. It's not terrible since successful requests to
+        // applications control take on the order of seconds, but it is a bit annoying on failing
+        // requests that take 200-500ms. But since `from_host` tries more secure configurations
+        // first this will probably improve as https and digest support are added and
+        // `device-manager` is changed to set up the devices accordingly.
+        // TODO: Consider allowing the resolved settings to be cached or configured
+        let Self { host, user, pass } = self;
+        HttpClient::from_host(host)
+            .await?
+            .automatic_auth(user, pass)
+            .await
+    }
+}
+
 // TODO: Figure out what to call this.
 // This is sometimes called just "architecture" but in other contexts arch refers to the first
 // part: https://clang.llvm.org/docs/CrossCompilation.html#target-triple
@@ -91,6 +145,18 @@ struct DeployOptions {
 enum ArchAbi {
     Aarch64,
     Armv7hf,
+}
+
+impl FromStr for ArchAbi {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aarch64" => Ok(Self::Aarch64),
+            "armv7hf" => Ok(Self::Armv7hf),
+            _ => Err(anyhow::anyhow!("Unrecognized variant {s}")),
+        }
+    }
 }
 
 impl From<ArchAbi> for Architecture {
@@ -112,7 +178,8 @@ fn normalized_args() -> Vec<OsString> {
     args
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let log_file = if std::env::var_os("RUST_LOG").is_none() {
         if let Some(runtime_dir) = dirs::runtime_dir() {
             let path = runtime_dir.join("cargo-acap-sdk.log");
@@ -130,7 +197,7 @@ fn main() -> anyhow::Result<()> {
     };
     debug!("Logging initialized");
 
-    match Cli::parse_from(normalized_args()).exec() {
+    match Cli::parse_from(normalized_args()).exec().await {
         Ok(()) => Ok(()),
         Err(e) => {
             if let Some(log_file) = log_file {

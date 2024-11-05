@@ -4,17 +4,17 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.79"
-clap = { version = "4.5.1", features = ["derive", "env"] }
-dirs = "3.0.2"
-env_logger = "0.11.3"
-log = "0.4.22"
-regex = "1.7.2"
-reqwest = "0.12.4"
-serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-thiserror = "1.0.61"
-tokio = { version = "1.36.0", features = ["full"] }
-url = "2.5.0"
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+dirs = { workspace = true }
+env_logger = { workspace = true, default-features = true }
+log = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true, default-features = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
 
 acap-vapix = { workspace = true }
