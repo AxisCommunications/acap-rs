@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, bypass-eap-create ]
   pull_request:
 
 jobs:
@@ -18,6 +18,6 @@ jobs:
       - name: Update generated files
         run: devcontainer exec --workspace-folder . make --always-make check_generated_files check_generated_files_container
       - name: Update generated without acap-build
-        run: devcontainer exec --remote-env ACAP_SDK_LOCATION=/opt/axis/ --workspace-folder . make check_generated_files_container
+        run: devcontainer exec --remote-env RUST_ACAP_BUILD=1 --workspace-folder . make check_generated_files_container
       - name: Run other checks
         run: devcontainer exec --workspace-folder . make check_other
