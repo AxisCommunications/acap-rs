@@ -8,9 +8,8 @@ _Easy and safe [ACAP] apps using [Rust]_
 > unmaintained in the future.
 > Your contributions are appreciated, and feel free to fork and continue the journey if needed.
 
-This repo is home to a mixture of developer tools, libraries, and documentation.
-To simply get started with a new app, please
-see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
+This repository provides the developer tools, libraries, and documentation that form ACAP for Rust platform.
+To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
 
 ## Table of Contents
 
@@ -18,10 +17,10 @@ see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-tem
   - [Dev container](#dev-container)
   - [Non-dev container](#non-dev-container)
   - [Without container](#without-container)
-- [**Binary crates**](#binary-crates)
+- [**Developer tools**](#developer-tools)
   - [Porcelain programs](#porcelain-programs)
   - [Plumbing programs](#plumbing-programs)
-- [**Library crates**](#library-crates)
+- [**Libraries**](#libraries)
   - [ACAP Native API bindings](#acap-native-api-bindings)
   - [VAPIX API bindings](#vapix-api-bindings)
   - [Other library crates](#other-library-crates)
@@ -30,6 +29,8 @@ see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-tem
 - [**Troubleshooting**](#troubleshooting)
 
 ## Getting started
+
+There are multiple ways to set up a development environment, but the recommended way is using a dev container.
 
 ### Dev container
 
@@ -72,18 +73,29 @@ Development environments outside containers are more difficult to reproduce and 
 Should it nonetheless be of interest, one procedure is documented
 in [this workflow](.github/workflows/on-host-workflow.yml).
 
-## Binary crates
+## Developer tools
 
-Tools for developing ACAP apps are provided primarily as the following binary crates:.
+Tools for developing ACAP apps are provided primarily as binary crates.
 The tools can be roughly divided into low level _plumbing_ and high level _porcelain_.
 
+All of these tools are installed in the dev container of this project.
+To install them in another project before they are released, use the `--git` option e.g. like:
+
+```sh
+cargo install --locked --git https://github.com/AxisCommunications/acap-rs.git cargo-acap-sdk
+```
+
 ### Porcelain programs
+
+The focus of these tools are to make common things easy.
 
 - `cargo-acap-sdk` - Automation of common development workflows.
   - Status: ⚠️ Alpha
   - Documentation: [README](crates/cargo-acap-sdk/README.md)
 
 ### Plumbing programs
+
+The focus of these tools are to make less common things possible.
 
 - `acap-ssh-utils` - Utilities for interacting with Axis devices over SSH.
   - Status: ⚠️ Alpha
@@ -102,7 +114,7 @@ These can be installed independently and are provided as library crates too for 
 to write their own,
 tailored tools.
 
-## Library crates
+## Libraries
 
 To make it easier to relate the Rust offering to the official offering, the library crates are
 grouped in a similar way as in the ACAP Native SDK APIs documentation.
@@ -112,7 +124,8 @@ grouped in a similar way as in the ACAP Native SDK APIs documentation.
 
 ### ACAP Native API bindings
 
-Idiomatic and safe bindings for official APIs.
+These are idiomatic and safe bindings for the C APIs.
+Each crate has a corresponding `*-sys`, which is omitted for brevity.
 
 - `axevent`: Bindings for the Event API.
   - Status: ⚠️ Alpha
@@ -126,6 +139,8 @@ Idiomatic and safe bindings for official APIs.
   - Status: ⚠️ Alpha
 
 ### VAPIX API bindings
+
+All the VAPIX APIs are provided by a single crate:
 
 - `acap-vapix`: Bindings for various VAPIX APIs + credentials lookup.
   - Status: ⚠️ Alpha
@@ -164,7 +179,7 @@ by this project.
   - Status: ⚠️ Alpha
   - [Source code](apps/embedded_web_page/src/main.rs)
 - `hello_world`:Sets up and uses logging using common functions and `acap-logging`.
-  - Status: 🚧 Beta
+  - Status: ⚠️ Alpha
   - [Source code](apps/hello_world/src/main.rs)
 - `licensekey_handler`:Checks if an app is licensed using `licensekey`.
   - Status: ⚠️ Alpha
