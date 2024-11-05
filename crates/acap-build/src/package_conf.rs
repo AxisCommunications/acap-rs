@@ -4,22 +4,27 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::Architecture;
 use anyhow::bail;
 use log::debug;
 use semver::Version;
 use serde_json::Value;
 
 #[derive(Clone, Debug)]
-pub(crate) struct PackageConf(Vec<(String, String)>);
+pub(crate) struct PackageConf {
+    pub(crate) parameters: Vec<(String, String)>,
+    default_arch: Architecture,
+}
 impl PackageConf {
     fn push(&mut self, key: impl ToString, value: impl ToString) {
-        self.0.push((key.to_string(), value.to_string()));
+        self.parameters.push((key.to_string(), value.to_string()));
     }
 
     pub fn new_from_manifest(
         manifest: &Value,
         outpath: &Path,
         otherfiles: &[PathBuf],
+        arch: Architecture,
     ) -> anyhow::Result<PackageConf> {
         let aliases: HashMap<_, _> = [
             ("acapPackageConf.setup.user.group", "APPGRP"),
@@ -56,7 +61,10 @@ impl PackageConf {
         .collect();
 
         let parameters = stringify(manifest);
-        let mut entries = Self(Vec::new());
+        let mut entries = Self {
+            parameters: Vec::new(),
+            default_arch: arch,
+        };
         let mut cgi_parsed = false;
         for (key, value) in parameters {
             let Value::String(value) = value else {
@@ -103,7 +111,11 @@ impl PackageConf {
         if !otherfiles.is_empty() {
             let mut relpaths = Vec::new();
             for file in otherfiles {
-                relpaths.push(file.strip_prefix(outpath)?.to_string_lossy().to_string());
+                let relpath = match file.is_absolute() {
+                    true => file.strip_prefix(outpath)?,
+                    false => file,
+                };
+                relpaths.push(relpath.to_string_lossy().to_string());
             }
             entries.push("OTHERFILES", relpaths.join(" "));
         }
@@ -116,14 +128,84 @@ impl PackageConf {
     }
 }
 
+// PACKAGENAME
+// MENUNAME
+// APPTYPE
+// APPNAME
+// APPID
+// LICENSENAME
+// LICENSEPAGE
+// LICENSE_CHECK_ARGS
+// VENDOR
+// REQEMBDEVVERSION
+// APPMAJORVERSION
+// APPMINORVERSION
+// APPMICROVERSION
+// APPGRP
+// APPUSR
+// APPOPTS
+// OTHERFILES
+// SETTINGSPAGEFILE
+// SETTINGSPAGETEXT
+// VENDORHOMEPAGELINK
+// PREUPGRADESCRIPT
+// POSTINSTALLSCRIPT
+// STARTMODE
+// HTTPCGIPATHS
+
+// Fusion of eap-create.sh and package-conf-parameters.cfg
+const PARAMETERS: [(&str, Option<&str>); 25] = [
+    ("PACKAGENAME", Some("")),
+    ("MENUNAME", None),
+    ("APPTYPE", Some("")),
+    ("APPNAME", Some("")),
+    ("APPID", Some("")),
+    ("LICENSENAME", Some("Available")),
+    ("LICENSEPAGE", Some("none")),
+    ("LICENSE_CHECK_ARGS", None),
+    ("VENDOR", Some("-")),
+    ("REQEMBDEVVERSION", Some("2.0")),
+    ("APPMAJORVERSION", Some("1")),
+    ("APPMINORVERSION", Some("0")),
+    ("APPMICROVERSION", Some("0")),
+    ("APPGRP", Some("sdk")),
+    ("APPUSR", Some("sdk")),
+    ("APPOPTS", Some("")),
+    ("OTHERFILES", Some("")),
+    ("SETTINGSPAGEFILE", Some("")),
+    ("SETTINGSPAGETEXT", Some("")),
+    ("VENDORHOMEPAGELINK", Some("")),
+    ("PREUPGRADESCRIPT", Some("")),
+    ("POSTINSTALLSCRIPT", Some("")),
+    ("STARTMODE", Some("never")),
+    ("HTTPCGIPATHS", Some("")),
+    ("AUTOSTART", None),
+];
+
 impl Display for PackageConf {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (key, value) in self.0.iter() {
-            if value.contains('"') {
-                assert!(!value.contains('\''));
-                writeln!(f, r#"{key}='{value}'"#)?;
-            } else {
-                writeln!(f, r#"{key}="{value}""#)?;
+        dbg!(self);
+        let default_arch = self.default_arch.nickname();
+        let lut: HashMap<_, _> = self
+            .parameters
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        for (key, default) in PARAMETERS {
+            let value = match lut.get(key) {
+                Some(v) => Some(v),
+                None => match key {
+                    "PACKAGENAME" => lut.get("APPNAME"),
+                    "APPTYPE" => Some(&default_arch),
+                    _ => default.as_ref(),
+                },
+            };
+            if let Some(value) = value {
+                if key == "VENDORHOMEPAGELINK" {
+                    writeln!(f, r#"{key}='{value}'"#)?;
+                } else {
+                    writeln!(f, r#"{key}="{value}""#)?;
+                }
             }
         }
         Ok(())

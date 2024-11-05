@@ -1,21 +1,21 @@
+use crate::{
+    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
+};
+use anyhow::{anyhow, bail, Context};
+use command_utils::RunWith;
+use log::{debug, info};
+use serde::Serialize;
+use serde_json::{ser::PrettyFormatter, Serializer, Value};
 /// Wrapper around the ACAP SDK, in particular `acap-build`.
 use std::os::unix::fs::PermissionsExt;
+use std::process::Command;
 use std::{
     env, fs,
     fs::File,
     path::{Path, PathBuf},
     str::FromStr,
 };
-
-use anyhow::{bail, Context};
-use command_utils::RunWith;
-use log::{debug, info};
-use serde::Serialize;
-use serde_json::{ser::PrettyFormatter, Serializer, Value};
-
-use crate::{
-    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
-};
+use tempfile::NamedTempFile;
 
 mod cgi_conf;
 mod command_utils;
@@ -155,6 +155,10 @@ impl AppBuilder {
         if use_rust_acap_build.unwrap_or(cfg!(feature = "rust")) {
             // TODO: Implement manifest validation
             info!("Bypassing acap-build, manifest will not be validated");
+            // Porting these would be a horrendous task if their full interface had to be
+            // implemented,
+            // so I think what I will do is merge them and pitch the program comprehensible as
+            // a value add.
             self.bypass_manifest2packageconf()?;
             self.bypass_eap_create()?;
         } else {
@@ -169,6 +173,7 @@ impl AppBuilder {
             staging_dir,
             arch,
             additional_files,
+            ..
         } = self;
         let mut acap_build = std::process::Command::new("acap-build");
         acap_build.args(["--build", "no-build"]);
@@ -230,15 +235,128 @@ impl AppBuilder {
             additional_files.push(PathBuf::from(p));
         }
 
-        manifest2packageconf(&self.manifest_file(), &self.staging_dir, &additional_files)?;
+        manifest2packageconf(
+            &self.manifest_file(),
+            &self.staging_dir,
+            &additional_files,
+            self.arch,
+        )?;
+        Ok(())
+    }
+
+    fn create_package_conf(&self) -> anyhow::Result<()> {
+        let param_conf = self.staging_dir.join(ParamConf::file_name());
+        if !param_conf.exists() {
+            fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&param_conf)?;
+            info!("Created an empty {:?}", param_conf);
+        }
+
+        // info!("Saving backup of package.conf");
+        // let package_conf = self.staging_dir.join(PackageConf::file_name());
+        // if package_conf.exists() {
+        //     fs::rename(&param_conf, &package_conf.with_extension("conf.orig"))?;
+        // }
+
+        // TODO: More stuff
+
+        Ok(())
+    }
+
+    fn do_make_the_tar(&self) -> anyhow::Result<()> {
+        let mtime = match env::var_os("SOURCE_DATE_EPOCH") {
+            Some(v) => v.into_string().map_err(|e| anyhow!("{e:?}"))?,
+            None => String::from_utf8(Command::new("date").arg("+%s").output()?.stdout)?,
+        };
+
+        let manifest_data = fs::read_to_string(self.manifest_file())?;
+        let manifest: Manifest = serde_json::from_str(&manifest_data)?;
+
+        let app_name = &manifest.acap_package_conf.setup.app_name;
+        let version = manifest.acap_package_conf.setup.version.replace('.', "_");
+        let arch = self.arch.nickname();
+        let tarb = format!("{app_name}_{version}_{arch}.eap");
+
+        // let manifest_file_name = self
+        //     .manifest_file()
+        //     .file_name()
+        //     .unwrap()
+        //     .to_str()
+        //     .unwrap()
+        //     .to_string();
+
+        let mut other_files = dbg!(self.additional_files.clone());
+        if let Some(p) = Self::get_pre_uninstall_script(&manifest) {
+            other_files.push(PathBuf::from(p));
+        }
+
+        let package_conf = PackageConf::new_from_manifest(
+            &serde_json::from_str::<Value>(&manifest_data)?,
+            &self.staging_dir,
+            &other_files,
+            self.arch,
+        )?;
+
+        let manifest_file = self.create_temporary_manifest()?;
+        let manifest_file_name = manifest_file
+            .path()
+            .strip_prefix(&self.staging_dir)?
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        let mut tar = Command::new("tar");
+        tar.arg("--use-compress-program=gzip --no-name -9")
+            .arg("--sort=name")
+            .arg(format!("--mtime=@{mtime}"))
+            .arg("--owner=0")
+            .arg("--group=0")
+            .arg("--numeric-owner")
+            .arg("--create")
+            .args(["--file", &tarb])
+            .arg("--exclude-vcs")
+            .arg("--exclude=*~")
+            .arg("--format=gnu")
+            .arg(format!(
+                "--transform=flags=r;s|{manifest_file_name}|manifest.json|"
+            ))
+            .arg(app_name)
+            .arg(PackageConf::file_name())
+            .arg(ParamConf::file_name())
+            .arg(self.license_file().file_name().unwrap().to_str().unwrap())
+            .arg(manifest_file_name);
+        // TODO: Pre upgrade script
+        // TODO: Post install script
+        tar.args(other_files);
+        // TODO: httpd.conf.local.*
+        // TODO: mime.types.local.*
+
+        for dir in ["html", "declarations", "lib"] {
+            if self.staging_dir.join(dir).exists() {
+                tar.arg(dir);
+            }
+        }
+
+        for (k, v) in package_conf.parameters {
+            if k == "HTTPCGIPATHS" {
+                tar.arg(v);
+            }
+        }
+        tar.arg("--verbose");
+        tar.current_dir(&self.staging_dir);
+        dbg!(tar).run_with_logged_stdout()?;
         Ok(())
     }
 
     fn bypass_eap_create(&self) -> anyhow::Result<()> {
-        todo!()
+        self.create_package_conf()?;
+        self.do_make_the_tar()?;
+        Ok(())
     }
 
-    fn _run_eap_create(&self, sdk_root: &Path) -> anyhow::Result<()> {
+    fn create_temporary_manifest(&self) -> anyhow::Result<NamedTempFile> {
         let manifest = fs::read_to_string(self.manifest_file())?;
 
         // This file is included in the eap so for as long as we want bit exact output we must
@@ -288,23 +406,7 @@ impl AppBuilder {
             PrettyFormatter::with_indent(b"    "),
         );
         manifest.serialize(&mut serializer)?;
-
-        let sysroots = sdk_root.join("acapsdk/sysroots");
-        let target_sysroot = sysroots.join(self.arch.nickname());
-        let native_sysroot = sysroots.join("x86_64-pokysdk-linux");
-        let mut cmd = std::process::Command::new(native_sysroot.join("usr/bin/eap-create.sh"));
-        cmd.arg("-m")
-            .arg(
-                manifest_file
-                    .as_ref()
-                    .file_name()
-                    .expect("path is a regular file and does not end with .."),
-            )
-            .arg("--no-validate")
-            .env("OECORE_NATIVE_SYSROOT", native_sysroot)
-            .env("SDKTARGETSYSROOT", target_sysroot)
-            .current_dir(&self.staging_dir);
-        cmd.run_with_logged_stdout()
+        Ok(manifest_file)
     }
 }
 
@@ -346,6 +448,7 @@ pub fn manifest2packageconf(
     manifest: &Path,
     output: &Path,
     additional_files: &[PathBuf],
+    arch: Architecture,
 ) -> anyhow::Result<Vec<PathBuf>> {
     let mut created_files = Vec::new();
 
@@ -355,7 +458,7 @@ pub fn manifest2packageconf(
         .collect::<Vec<_>>();
 
     let manifest: Value = serde_json::from_reader(File::open(manifest)?)?;
-    let package_conf = PackageConf::new_from_manifest(&manifest, output, &additional_files)?;
+    let package_conf = PackageConf::new_from_manifest(&manifest, output, &additional_files, arch)?;
     let p = output.join(PackageConf::file_name());
     fs::write(&p, package_conf.to_string())?;
     created_files.push(p);
