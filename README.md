@@ -35,7 +35,7 @@ see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-tem
 
 The quickest way to build the `hello_world` example is to launch the dev container and
 run `make build AXIS_PACKAGE=hello_world`.
-Once it completes there should be two `.eap` files in `target/acap`:
+Once it completes there should be an `.eap` file in `target/acap`:
 
 ```console
 $ ls -1 target/acap
@@ -80,20 +80,23 @@ The tools can be roughly divided into low level _plumbing_ and high level _porce
 ### Porcelain programs
 
 - `cargo-acap-sdk` - Automation of common development workflows.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - Documentation: [README](crates/cargo-acap-sdk/README.md)
 
 ### Plumbing programs
 
 - `acap-ssh-utils` - Utilities for interacting with Axis devices over SSH.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - Documentation: [README](crates/acap-ssh-utils/README.md)
 - `cargo-acap-build`: Build utilities for ACAP apps and other executables deployed to Axis devices.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - Documentation: [README](crates/cargo-acap-build/README.md)
-- `device-manager`: Utilities for manipulating Axis devices.
-  - Status: ⚠️ Experimental
+- `device-manager`: Utilities for manipulating a single Axis device.
+  - Status: ⚠️ Alpha
   - Documentation: [README](crates/device-manager/README.md)
+- `fleet-manager`: Utilities for manipulating multiple Axis devices.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/fleet-manager/README.md)
 
 These can be installed independently and are provided as library crates too for developers who want
 to write their own,
@@ -112,17 +115,20 @@ grouped in a similar way as in the ACAP Native SDK APIs documentation.
 Idiomatic and safe bindings for official APIs.
 
 - `axevent`: Bindings for the Event API.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
+- `axstorage`: Bindings for the Edge Storage API.
+  - Status: ⚠️ Alpha
+- `bbox`: Bindings for the Bounding Box API.
+  - Status: ⚠️ Alpha
 - `licensekey`: Bindings for the License Key API.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
 - `mdb`: Bindings for the Message Broker API.
-  - Status: ⚠️ Experimental
-  - License Key API:
+  - Status: ⚠️ Alpha
 
 ### VAPIX API bindings
 
 - `acap-vapix`: Bindings for various VAPIX APIs + credentials lookup.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - Documentation: [README](crates/acap-vapix/README.md)
 
 ### Other library crates
@@ -130,7 +136,7 @@ Idiomatic and safe bindings for official APIs.
 These are not closely related to any official APIs but may nonetheless be helpful in their own way:
 
 - `acap-logging`: Logging utilities for ACAP applications
-  - Status: 🚧 Unstable
+  - Status: 🚧 Beta
   - Documentation: [Docs.rs](https://docs.rs/acap-logging/latest/acap_logging/)
 
 ## Documentation
@@ -145,30 +151,38 @@ by this project.
 
 ### Example applications
 
+- `axstorage_example`: Writes data to files on all connected storages.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/axstorage_example/src/main.rs)
+- `bounding_box_example`: Draws simple overlays in video streams.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/bounding_box_example/src/main.rs)
 - `consume_analytics_metadata`: Subscribes to _analytics scene description_ data using `mdb`.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/consume_analytics_metadata/src/main.rs)
 - `embedded_web_page`: Bundles an embedded web page.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/embedded_web_page/src/main.rs)
 - `hello_world`:Sets up and uses logging using common functions and `acap-logging`.
-  - Status: ⚠️ Experimental
+  - Status: 🚧 Beta
   - [Source code](apps/hello_world/src/main.rs)
 - `licensekey_handler`:Checks if an app is licensed using `licensekey`.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/licensekey_handler/src/main.rs)
 - `reverse_proxy`: Exposes HTTP and WebSocket APIs using a `axum` and reverse proxy configuration.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/reverse_proxy/src/main.rs)
 - `send_event`: Sends events using `axevent`.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/send_event/src/main.rs)
 - `using_a_build_script`: Generates html, lib and app manifest files using a build script.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/using_a_build_script/src/main.rs)
 - `vapix_access`: Accesses VAPIX APIs using `acap-vapix`.
-  - Status: ⚠️ Experimental
+  - Status: ⚠️ Alpha
   - [Source code](apps/vapix_access/src/main.rs)
+
+<!-- inspect_env is omitted because it is intended primarily as a test -->
 
 ## Troubleshooting
 
