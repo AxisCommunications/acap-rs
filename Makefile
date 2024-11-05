@@ -267,6 +267,7 @@ crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 target-$(AXIS_DEVICE_ARCH)/acap/_envoy: target/debug/cargo-acap-build $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
 	rm -r $(@D) ||:
 	cargo build --bin cargo-acap-build
+	ACAP_BUILD_RUST=1 \
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	./target/debug/cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \

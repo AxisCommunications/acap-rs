@@ -2,7 +2,6 @@
 /// conventions detailed in [`crate`].
 use std::{
     collections::HashMap,
-    env,
     path::{Path, PathBuf},
 };
 
@@ -158,7 +157,7 @@ fn pack(
         app_builder.html(&d)?;
     }
 
-    app_builder.build(env::var_os("ACAP_SDK_LOCATION").map(PathBuf::from))
+    app_builder.build()
 }
 
 fn exactly_one(

@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AcapPackageConf {
-    pub(crate) setup: Setup,
+pub struct AcapPackageConf {
+    pub setup: Setup,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) configuration: Option<Configuration>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -60,9 +60,9 @@ pub(crate) struct LinuxUser {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Manifest {
+pub struct Manifest {
     pub(crate) schema_version: String,
-    pub(crate) acap_package_conf: AcapPackageConf,
+    pub acap_package_conf: AcapPackageConf,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) resources: Option<Resources>,
 }
@@ -95,8 +95,8 @@ pub(crate) struct ReverseProxy {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Setup {
-    pub(crate) app_name: String,
+pub struct Setup {
+    pub app_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) app_id: Option<String>,
     pub(crate) vendor: String,

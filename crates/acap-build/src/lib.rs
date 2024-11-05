@@ -1,10 +1,10 @@
 /// Wrapper around the ACAP SDK, in particular `acap-build`.
 use std::os::unix::fs::PermissionsExt;
 use std::{
-    fs,
+    env, fs,
     fs::File,
-    ops::Deref,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use anyhow::{bail, Context};
@@ -19,7 +19,7 @@ use crate::{
 
 mod cgi_conf;
 mod command_utils;
-mod manifest;
+pub mod manifest;
 mod package_conf;
 mod param_conf;
 
@@ -101,18 +101,25 @@ impl AppBuilder {
         self.staging_dir.join("manifest.json")
     }
 
+    pub fn additional_file(&mut self, src: &Path) -> anyhow::Result<&mut Self> {
+        let dst = self.staging_dir.join(src.file_name().unwrap());
+        if dst.exists() {
+            bail!(
+                "{} already exists",
+                src.file_name().unwrap().to_string_lossy()
+            );
+        }
+        copy_recursively(src, &dst)?;
+        self.additional_files
+            .push(PathBuf::from(src.file_name().unwrap()));
+
+        Ok(self)
+    }
+
     pub fn additional(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
         let entries = fs::read_dir(dir)?;
         for entry in entries {
-            let entry = entry?;
-            let src = entry.path();
-            let dst = self.staging_dir.join(entry.file_name());
-            if dst.exists() {
-                bail!("{} already exists", entry.file_name().to_string_lossy());
-            }
-            copy_recursively(&src, &dst)?;
-            self.additional_files
-                .push(src.strip_prefix(dir)?.to_path_buf());
+            self.additional_file(&entry?.path())?;
         }
         Ok(self)
     }
@@ -138,17 +145,18 @@ impl AppBuilder {
     }
 
     /// Build EAP and return its path
-    ///
-    /// # Arguments
-    ///
-    /// - `sdk_root`: Use the SDK at this location instead of the default location.
-    ///   This will also cause some build tools to be bypassed.
-    pub fn build(&mut self, sdk_root: Option<PathBuf>) -> anyhow::Result<PathBuf> {
-        if let Some(sdk_root) = sdk_root {
+    pub fn build(&mut self) -> anyhow::Result<PathBuf> {
+        let use_rust_acap_build = match env::var_os("ACAP_BUILD_RUST") {
+            Some(v) if v.to_string_lossy() == "0" => Some(false),
+            Some(v) if v.to_string_lossy() == "1" => Some(true),
+            Some(v) => bail!("Expected ACAP_BUILD_RUST to be 0 or 1, but found {v:?}"),
+            None => None,
+        };
+        if use_rust_acap_build.unwrap_or(cfg!(feature = "rust")) {
             // TODO: Implement manifest validation
-            log::info!("Bypassing acap-build, manifest will not be validated");
+            info!("Bypassing acap-build, manifest will not be validated");
             self.bypass_manifest2packageconf()?;
-            self.run_eap_create(sdk_root.deref())?;
+            self.bypass_eap_create()?;
         } else {
             debug!("Using acap-build");
             self.run_acap_build()?;
@@ -226,7 +234,11 @@ impl AppBuilder {
         Ok(())
     }
 
-    fn run_eap_create(&self, sdk_root: &Path) -> anyhow::Result<()> {
+    fn bypass_eap_create(&self) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    fn _run_eap_create(&self, sdk_root: &Path) -> anyhow::Result<()> {
         let manifest = fs::read_to_string(self.manifest_file())?;
 
         // This file is included in the eap so for as long as we want bit exact output we must
@@ -314,6 +326,18 @@ impl Architecture {
         match self {
             Self::Aarch64 => "aarch64",
             Self::Armv7hf => "armv7hf",
+        }
+    }
+}
+
+impl FromStr for Architecture {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aarch64" => Ok(Self::Aarch64),
+            "arm" => Ok(Self::Armv7hf),
+            _ => Err(anyhow::anyhow!("Unrecognized variant {s}")),
         }
     }
 }
