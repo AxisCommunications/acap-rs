@@ -10,3 +10,7 @@ log.workspace = true
 
 [features]
 device-tests = []
+
+[[example]]
+name = "basic"
+crate-type = ["bin"]

@@ -2,16 +2,22 @@
 //!
 //! # Gotchas
 //! Many of the C functions return either a bool or a pointer to some object.
-//! Additionally, one of the out arguments is the pointer to the larodError
-//! struct. If the normal return type is true, or not NULL in the case of a
+//! Additionally, one of the out arguments is a pointer to a larodError
+//! object. If the normal return type is true, or not NULL in the case of a
 //! pointer, the pointer to the larodError struct is expected to be NULL. This
 //! represents two potentially conflicting indicators of whether the function
 //! succeeded.
 //!
 //! Crucially, objects pointed to by returned pointers *AND* a non-NULL pointer
 //! to a larodError struct need to be dealocated. That is handled appropriately
-//! by copying the larodError data into a Rust LarodError struct and
-//! dealocating the larodError object if it is non-NULL.
+//! by constructing the LarodError struct if the larodError pointer is non-NULL
+//! and the impl Drop for LarodError will dealocate the object appropriately.
+//!
+//! Example
+//! ```rust
+//! let session = Session::new();
+//! let devices = session.devices();
+//! ```
 //!
 //! # TODOs:
 //! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
@@ -26,139 +32,143 @@ use std::{
     slice::from_raw_parts,
 };
 
-type Result<T> = std::result::Result<T, LarodError>;
+type Result<T> = std::result::Result<T, Error>;
 
 macro_rules! try_func {
     ($func:ident $(,)?) => {{
         let mut error: *mut larodError = ptr::null_mut();
         let success = $func(&mut error);
-        (success, LarodError::from(error))
+        if error.is_null() {
+            (success, None)
+        } else {
+            (success, Some(Error::LarodError(LarodError{inner: error})))
+        }
     }};
     ($func:ident, $($arg:expr),+ $(,)?) => {{
         let mut error: *mut larodError = ptr::null_mut();
         let success = $func($( $arg ),+, &mut error);
-        (success, LarodError::from(error))
+        if error.is_null() {
+            (success, None)
+        } else {
+            (success, Some(Error::LarodError(LarodError{inner: error})))
+        }
+
     }}
 }
 
-// Define our error types. These may be customized for our error handling cases.
-// Now we will be able to write our own errors, defer to an underlying error
-// implementation, or do something in between.
-#[derive(Debug, Clone, Default)]
+// Most larod functions require a `NULL`` pointer to a larodError AND may
+// produce either a `NULL`` output pointer or `false` if an error occurs. This
+// results in two potential indicators of whether the function succeeded. If we
+// get a`true` output, we expect the larodError to be a pointer to `NULL` still.
+// In the possibly rare event that a function succeeds but the larodError
+// pointer is not `NULL`, we need to deallocate that memory by calling
+// `larodClearError`. The `try_func` macro always checks to see if the
+// larodError pointer is `NULL` and return a `LarodError` if not. Doing so will
+// call `larodClearError` when it is ultimately dropped.
+#[derive(Debug)]
 pub struct LarodError {
-    pub msg: String,
-    pub code: LarodErrorCode,
+    inner: *mut larodError,
 }
 
 impl LarodError {
-    /// Convert from liblarod larodError to LarodError
-    /// If larodError is not NULL, it must be dealocated by calling larodClearError
-    fn from(e: *mut larodError) -> Self {
-        if e.is_null() {
-            Self::default()
+    pub fn msg(&self) -> Result<String> {
+        if self.inner.is_null() {
+            Err(Error::NullLarodPointer)
         } else {
-            let le = unsafe { *e };
-            let msg: String = unsafe {
-                CStr::from_ptr(le.msg)
-                    .to_str()
-                    .unwrap_or("Error message invalid")
-                    .into()
-            };
-            let code: LarodErrorCode = le.code.into();
-            // unsafe {
-            //     larodClearError(&mut e);
-            // }
-            Self { msg, code }
+            let msg_slice = unsafe { CStr::from_ptr((*self.inner).msg).to_str() };
+            match msg_slice {
+                Ok(m) => Ok(m.into()),
+                Err(e) => {
+                    log::error!("larodError.msg contained invalid UTF-8: {:?}", e);
+                    Err(Error::InvalidLarodMessage)
+                }
+            }
+        }
+    }
+
+    pub fn code(&self) -> larodErrorCode {
+        unsafe { (*self.inner).code }
+    }
+}
+
+impl Drop for LarodError {
+    fn drop(&mut self) {
+        if !self.inner.is_null() {
+            unsafe { larodClearError(&mut self.inner) }
         }
     }
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
-enum LarodErrorCode {
-    NONE,
-    JOB,
-    LOAD_MODEL,
-    FD,
-    MODEL_NOT_FOUND,
-    PERMISSION,
-    CONNECTION,
-    CREATE_SESSION,
-    KILL_SESSION,
-    INVALID_CHIP_ID,
-    INVALID_ACCESS,
-    DELETE_MODEL,
-    TENSOR_MISMATCH,
-    VERSION_MISMATCH,
-    ALLOC,
-    POWER_NOT_AVAILABLE,
-    INVALID_TYPE,
-    MAX_ERRNO,
+#[derive(Debug)]
+pub enum Error {
+    LarodError(LarodError),
+    NullLarodPointer,
+    InvalidLarodMessage,
+    PointerToInvalidData,
+    CStringAllocation,
+    MissingLarodError,
 }
 
-impl Default for LarodErrorCode {
-    fn default() -> Self {
-        LarodErrorCode::NONE
-    }
-}
+// impl LarodError {
+//     /// Convert from liblarod larodError to LarodError
+//     /// If larodError is not NULL, it must be dealocated by calling larodClearError
+//     fn from(e: *mut larodError) -> Self {
+//         if e.is_null() {
+//             Self::default()
+//         } else {
+//             let le = unsafe { *e };
+//             let msg: String = unsafe {
+//                 CStr::from_ptr(le.msg)
+//                     .to_str()
+//                     .unwrap_or("Error message invalid")
+//                     .into()
+//             };
+//             let code: LarodErrorCode = le.code.into();
+//             // unsafe {
+//             //     larodClearError(&mut e);
+//             // }
+//             Self { msg, code }
+//         }
+//     }
+// }
 
-impl From<larodErrorCode> for LarodErrorCode {
-    fn from(code: larodErrorCode) -> LarodErrorCode {
-        match code {
-            larodErrorCode_LAROD_ERROR_NONE => LarodErrorCode::NONE,
-            larodErrorCode_LAROD_ERROR_JOB => LarodErrorCode::JOB,
-            larodErrorCode_LAROD_ERROR_LOAD_MODEL => LarodErrorCode::LOAD_MODEL,
-            larodErrorCode_LAROD_ERROR_FD => LarodErrorCode::FD,
-            larodErrorCode_LAROD_ERROR_MODEL_NOT_FOUND => LarodErrorCode::MODEL_NOT_FOUND,
-            larodErrorCode_LAROD_ERROR_PERMISSION => LarodErrorCode::PERMISSION,
-            larodErrorCode_LAROD_ERROR_CONNECTION => LarodErrorCode::CONNECTION,
-            larodErrorCode_LAROD_ERROR_CREATE_SESSION => LarodErrorCode::CREATE_SESSION,
-            larodErrorCode_LAROD_ERROR_KILL_SESSION => LarodErrorCode::KILL_SESSION,
-            larodErrorCode_LAROD_ERROR_INVALID_CHIP_ID => LarodErrorCode::INVALID_CHIP_ID,
-            larodErrorCode_LAROD_ERROR_INVALID_ACCESS => LarodErrorCode::INVALID_ACCESS,
-            larodErrorCode_LAROD_ERROR_DELETE_MODEL => LarodErrorCode::DELETE_MODEL,
-            larodErrorCode_LAROD_ERROR_TENSOR_MISMATCH => LarodErrorCode::TENSOR_MISMATCH,
-            larodErrorCode_LAROD_ERROR_VERSION_MISMATCH => LarodErrorCode::VERSION_MISMATCH,
-            larodErrorCode_LAROD_ERROR_ALLOC => LarodErrorCode::ALLOC,
-            larodErrorCode_LAROD_ERROR_POWER_NOT_AVAILABLE => LarodErrorCode::POWER_NOT_AVAILABLE,
-            larodErrorCode_LAROD_ERROR_MAX_ERRNO => LarodErrorCode::MAX_ERRNO,
-            _ => unreachable!(),
-        }
-    }
-}
-
+/// A type representing a larodMap.
 pub struct LarodMap {
     raw: *mut larodMap,
 }
 
 impl LarodMap {
-    fn new() -> Result<Self> {
-        let (map, e): (*mut larodMap, LarodError) = unsafe { try_func!(larodCreateMap) };
-        if map.is_null() {
-            Err(e)
-        } else {
+    /// Create a new larodMap object
+    pub fn new() -> Result<Self> {
+        let (map, maybe_error): (*mut larodMap, Option<Error>) =
+            unsafe { try_func!(larodCreateMap) };
+        if !map.is_null() {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodCreateMap allocated a map AND returned an error!"
             );
             Ok(Self { raw: map })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
-    fn set_string(&mut self, k: &str, v: &str) -> Result<()> {
+    /// Add a string to a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_string("key", "value").expect("Error setting string value for larodMap");
+    /// ```
+    pub fn set_string(&mut self, k: &str, v: &str) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
         let Ok(value_cstr) = CString::new(v.as_bytes()) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string value CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (success, e): (bool, LarodError) = unsafe {
+        let (success, maybe_error): (bool, Option<Error>) = unsafe {
             try_func!(
                 larodMapSetStr,
                 self.raw,
@@ -168,61 +178,79 @@ impl LarodMap {
         };
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapSetStr indicated success AND returned an error!"
             );
             Ok(())
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    fn set_int(&mut self, k: &str, v: i64) -> Result<()> {
+
+    /// Add an integer to a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_int("key", 45).expect("Error setting integer value for larodMap");
+    /// ```
+    pub fn set_int(&mut self, k: &str, v: i64) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (success, e): (bool, LarodError) =
+        let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodMapSetInt, self.raw, key_cstr.as_ptr(), v) };
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapSetInt indicated success AND returned an error!"
             );
             Ok(())
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    fn set_int_arr2(&mut self, k: &str, v: (i64, i64)) -> Result<()> {
+
+    /// Add an integer array of two items to a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_int_arr2("key", (45, 64)).expect("Error setting integer array for larodMap");
+    /// ```
+    pub fn set_int_arr2(&mut self, k: &str, v: (i64, i64)) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (success, e): (bool, LarodError) =
+        let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodMapSetIntArr2, self.raw, key_cstr.as_ptr(), v.0, v.1) };
 
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapSetIntArr2 indicated success AND returned an error!"
             );
             Ok(())
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    fn set_int_arr4(&mut self, k: &str, v: (i64, i64, i64, i64)) -> Result<()> {
+
+    /// Add an integer array of 4 items to a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_int_arr4("key", (45, 64, 36, 23)).expect("Error setting integer array for larodMap");
+    /// ```
+    pub fn set_int_arr4(&mut self, k: &str, v: (i64, i64, i64, i64)) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (success, e): (bool, LarodError) = unsafe {
+        let (success, maybe_error): (bool, Option<Error>) = unsafe {
             try_func!(
                 larodMapSetIntArr4,
                 self.raw,
@@ -236,107 +264,126 @@ impl LarodMap {
 
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapSetIntArr4 indicated success AND returned an error!"
             );
             Ok(())
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
-    fn get_string(&self, k: &str) -> Result<String> {
+    /// Get a string from a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_string("key", "value").expect("Error setting string value for larodMap");
+    /// let returned_string = map.get_string("key").expect("Unable to return value for \"key\"");
+    /// ```
+    pub fn get_string(&self, k: &str) -> Result<String> {
         let Ok(key_cstr) = CString::new(k) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (c_str_ptr, e): (*const c_char, LarodError) =
+        let (c_str_ptr, maybe_error): (*const c_char, Option<Error>) =
             unsafe { try_func!(larodMapGetStr, self.raw, key_cstr.as_ptr()) };
         let c_str = unsafe { CStr::from_ptr(c_str_ptr) };
         if let Ok(rs) = c_str.to_str() {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapGetStr returned a string AND returned an error!"
             );
             Ok(String::from(rs))
         } else {
-            return Err(LarodError {
-                msg: String::from("Returned string is not valid UTF-8"),
-                code: LarodErrorCode::INVALID_TYPE,
-            });
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    fn get_int(&self, k: &str) -> Result<i64> {
+
+    /// Get an integer array of 4 items from a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_int("key", 45).expect("Error setting integer array for larodMap");
+    /// let value = map.get_int("key").expect("Unable to get array values for \"key\"");
+    /// ```
+    pub fn get_int(&self, k: &str) -> Result<i64> {
         let Ok(key_cstr) = CString::new(k) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
         let mut v: i64 = 0;
-        let (success, e): (bool, LarodError) =
+        let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodMapGetInt, self.raw, key_cstr.as_ptr(), &mut v) };
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapGetInt indicated success AND returned an error!"
             );
             Ok(v)
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    fn get_int_arr2(&self, k: &str) -> Result<&[i64; 2]> {
+
+    /// Get an integer array of 4 items from a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_int_arr2("key", (45, 64)).expect("Error setting integer array for larodMap");
+    /// let returned_array = map.get_int_arr2("key").expect("Unable to get array values for \"key\"");
+    /// ```
+    pub fn get_int_arr2(&self, k: &str) -> Result<&[i64; 2]> {
         let Ok(key_cstr) = CString::new(k) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (out_arr, e) = unsafe { try_func!(larodMapGetIntArr2, self.raw, key_cstr.as_ptr()) };
-        if out_arr.is_null() {
-            Err(e)
-        } else {
+        let (out_arr, maybe_error) =
+            unsafe { try_func!(larodMapGetIntArr2, self.raw, key_cstr.as_ptr()) };
+        if !out_arr.is_null() {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapGetInt indicated success AND returned an error!"
             );
             unsafe {
                 slice::from_raw_parts(out_arr, 2)
                     .try_into()
-                    .or(Err(LarodError {
-                        msg: String::from("&[i64; 2] data stored in LarodMap is invalid."),
-                        code: LarodErrorCode::INVALID_TYPE,
-                    }))
+                    .or(Err(Error::PointerToInvalidData))
             }
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
-    fn get_int_arr4(&self, k: &str) -> Result<&[i64; 4]> {
+    /// Get an integer array of 4 items from a larodMap object.
+    /// Example
+    /// ```rust
+    /// use larod::LarodMap;
+    ///
+    /// let map = LarodMap::new().expect("Error creating map");
+    /// map.set_int_arr4("key", (45, 64, 36, 23)).expect("Error setting integer array for larodMap");
+    /// let returned_array = map.get_int_arr4("key").expect("Unable to get array values for \"key\"");
+    /// ```
+    pub fn get_int_arr4(&self, k: &str) -> Result<&[i64; 4]> {
         let Ok(key_cstr) = CString::new(k) else {
-            return Err(LarodError {
-                msg: String::from("Could not allocate set_string key CString"),
-                code: LarodErrorCode::ALLOC,
-            });
+            return Err(Error::CStringAllocation);
         };
-        let (out_arr, e) = unsafe { try_func!(larodMapGetIntArr4, self.raw, key_cstr.as_ptr()) };
-        if out_arr.is_null() {
-            Err(e)
-        } else {
+        let (out_arr, maybe_error) =
+            unsafe { try_func!(larodMapGetIntArr4, self.raw, key_cstr.as_ptr()) };
+        if !out_arr.is_null() {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodMapGetIntArr4 indicated success AND returned an error!"
             );
             unsafe {
                 slice::from_raw_parts(out_arr, 4)
                     .try_into()
-                    .or(Err(LarodError {
-                        msg: String::from("&[i64; 2] data stored in LarodMap is invalid."),
-                        code: LarodErrorCode::INVALID_TYPE,
-                    }))
+                    .or(Err(Error::PointerToInvalidData))
             }
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 }
@@ -349,36 +396,45 @@ impl std::ops::Drop for LarodMap {
     }
 }
 
+/// A type representing a larodDevice.
 #[derive(Debug)]
 pub struct LarodDevice {
+    // The caller does not get ownership of the returned pointer and must not
+    // attempt to free it. The lifetime of the memory pointed to expires when
+    // conn closes.
     ptr: *const larodDevice,
     name: String,
     id: u32,
 }
 
 impl LarodDevice {
+    /// Get the name of a larodDevice.
     pub fn get_name(&self) -> &str {
         &self.name
     }
 
+    /// Get the instance of a larodDevice.
+    /// From the larod documentation
+    /// > *In case there are multiple identical devices that are available in the service, they are distinguished by an instance number, with the first instance starting from zero.*
+    pub fn get_instance(&self) -> u32 {
+        self.id
+    }
+
     fn larod_get_name(pointer: *const larodDevice) -> Result<String> {
         unsafe {
-            let (c_char_ptr, error) = try_func!(larodGetDeviceName, pointer);
-            if c_char_ptr.is_null() {
-                Err(error)
-            } else {
+            let (c_char_ptr, maybe_error) = try_func!(larodGetDeviceName, pointer);
+            if !c_char_ptr.is_null() {
                 debug_assert!(
-                    matches!(error.code, LarodErrorCode::NONE),
+                    maybe_error.is_none(),
                     "larodGetDeviceName returned an object pointer AND returned an error!"
                 );
                 let c_name = CStr::from_ptr(c_char_ptr);
                 c_name
                     .to_str()
                     .map(|n| String::from(n))
-                    .map_err(|e| LarodError {
-                        msg: String::from("Returned string is not valid UTF-8"),
-                        code: LarodErrorCode::INVALID_TYPE,
-                    })
+                    .map_err(|e| Error::InvalidLarodMessage)
+            } else {
+                Err(maybe_error.unwrap_or(Error::MissingLarodError))
             }
         }
     }
@@ -386,22 +442,22 @@ impl LarodDevice {
     fn larod_get_instance(pointer: *const larodDevice) -> Result<u32> {
         unsafe {
             let mut instance: u32 = 0;
-            let (success, error) = try_func!(larodGetDeviceInstance, pointer, &mut instance);
+            let (success, maybe_error) = try_func!(larodGetDeviceInstance, pointer, &mut instance);
             if success {
                 debug_assert!(
-                    matches!(error.code, LarodErrorCode::NONE),
+                    maybe_error.is_none(),
                     "larodGetDeviceInstance returned success AND returned an error!"
                 );
                 Ok(instance)
             } else {
-                Err(error)
+                Err(maybe_error.unwrap_or(Error::MissingLarodError))
             }
         }
     }
 }
 
 impl TryFrom<*const larodDevice> for LarodDevice {
-    type Error = LarodError;
+    type Error = Error;
     fn try_from(value: *const larodDevice) -> Result<Self> {
         let name = LarodDevice::larod_get_name(value)?;
         let id = LarodDevice::larod_get_instance(value)?;
@@ -421,27 +477,32 @@ impl SessionBuilder {
     }
     pub fn build(&self) -> Result<Session> {
         let mut conn: *mut larodConnection = ptr::null_mut();
-        let (success, e): (bool, LarodError) = unsafe { try_func!(larodConnect, &mut conn) };
+        let (success, maybe_error): (bool, Option<Error>) =
+            unsafe { try_func!(larodConnect, &mut conn) };
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodConnect indicated success AND returned an error!"
             );
             Ok(Session {
                 conn,
                 model_map: HashMap::new(),
-                devices: Vec::new(),
             })
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
+    }
+}
+
+impl Default for SessionBuilder {
+    fn default() -> Self {
+        SessionBuilder::new()
     }
 }
 
 pub struct Session {
     conn: *mut larodConnection,
     model_map: HashMap<String, u64>,
-    devices: Vec<larodDevice>,
 }
 
 // Using a session builder might not be necessary.
@@ -460,47 +521,57 @@ impl Session {
         SessionBuilder::new()
     }
     pub fn disconnect(&mut self) -> Result<()> {
-        let (success, e): (bool, LarodError) =
+        let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodDisconnect, &mut self.conn) };
         if success {
             debug_assert!(
-                matches!(e.code, LarodErrorCode::NONE),
+                maybe_error.is_none(),
                 "larodDisconnect indicated success AND returned an error!"
             );
             Ok(())
         } else {
-            Err(e)
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
     pub fn num_sessions() -> Result<()> {
         Ok(())
     }
-    pub fn device() -> Result<()> {
-        Ok(())
-    }
+
+    /// Returns a reference to an available device
+    // pub fn get_device(&self, name: &str) -> Option<&LarodDevice> {
+    //     self.devices.get(name)
+    // }
+
     pub fn list_chips() -> Result<()> {
         Ok(())
     }
-    pub fn list_devices(&mut self) -> Result<Vec<LarodDevice>> {
+
+    /// Get a reference to a HashMap of name LarodDevice pairs.
+    pub fn get_devices(&self) -> Result<Vec<LarodDevice>> {
         let mut num_devices: usize = 0;
-        let (d, e) = unsafe {
-            let (dev_ptr, e) = try_func!(larodListDevices, self.conn, &mut num_devices);
-            if dev_ptr.is_null() {
-                return Err(e);
+        let (dev_ptr, maybe_error) =
+            unsafe { try_func!(larodListDevices, self.conn, &mut num_devices) };
+        if dev_ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::MissingLarodError));
+        }
+        let raw_devices = unsafe { slice::from_raw_parts(dev_ptr, num_devices) };
+
+        let devices: Vec<LarodDevice> = raw_devices.iter().enumerate().filter_map(|(idx, raw_d)| {
+            match LarodDevice::try_from(*raw_d) {
+                Ok(d) => Some(d),
+                Err(Error::LarodError(e)) => {
+                    let error_message = e.msg().unwrap_or(String::from("Error reading error message"));
+                    log::error!("Could not identify larodDevice {} of {} returned from larodListDevices.\n{}", idx, num_devices, &error_message);
+                    None
+                },
+                Err(e) => {
+                    log::error!("Could not identify larodDevice {} of {} returned from larodListDevices.\n{:?}", idx, num_devices, e);
+                    None
+                },
             }
-            let raw_devices = unsafe { slice::from_raw_parts(dev_ptr, num_devices) };
-            let mut devices: Vec<LarodDevice> = Vec::with_capacity(num_devices);
-            for (idx, raw_device) in raw_devices.into_iter().enumerate() {
-                let device = LarodDevice::try_from(*raw_device);
-                match device {
-                    Ok(d) => devices.push(d),
-                    Err(conv_error) =>
-                    log::error!("Could not identify larodDevice {} of {} returned from larodListDevices.\n{}", idx, num_devices, conv_error.msg),
-                }
-            }
-            (devices, e)
-        };
-        Ok(d)
+        }).collect();
+
+        Ok(devices)
     }
 
     // Overloaded need to check that.
@@ -546,6 +617,14 @@ impl Session {
     }
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        SessionBuilder::default()
+            .build()
+            .expect("Session::default()")
+    }
+}
+
 impl std::ops::Drop for Session {
     fn drop(&mut self) {
         unsafe {
@@ -554,7 +633,7 @@ impl std::ops::Drop for Session {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_arch = "aarch64", feature = "device-tests"))]
 mod tests {
     use super::*;
     use std::ptr;
@@ -577,9 +656,25 @@ mod tests {
     }
 
     #[test]
+    fn larod_map_can_get_str() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_string("test_key", "this_value").unwrap();
+        let s = map.get_string("test_key").unwrap();
+        assert_eq!(s, String::from("this_value"));
+    }
+
+    #[test]
     fn larod_map_can_set_int() {
         let mut map = LarodMap::new().unwrap();
         map.set_int("test_key", 10).unwrap();
+    }
+
+    #[test]
+    fn larod_map_can_get_int() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_int("test_key", 9).unwrap();
+        let i = map.get_int("test_key").unwrap();
+        assert_eq!(i, 9);
     }
 
     #[test]
@@ -587,10 +682,48 @@ mod tests {
         let mut map = LarodMap::new().unwrap();
         map.set_int_arr2("test_key", (1, 2)).unwrap();
     }
+    #[test]
+    fn larod_map_can_get_2_tuple() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_int_arr2("test_key", (5, 6)).unwrap();
+        let arr = map.get_int_arr2("test_key").unwrap();
+        assert_eq!(arr[0], 5);
+        assert_eq!(arr[1], 6);
+    }
 
     #[test]
     fn larod_map_can_set_4_tuple() {
         let mut map = LarodMap::new().unwrap();
         map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
+    }
+
+    #[test]
+    fn larod_map_can_get_4_tuple() {
+        let mut map = LarodMap::new().unwrap();
+        map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
+        let arr = map.get_int_arr4("test_key").unwrap();
+        assert_eq!(arr[0], 1);
+        assert_eq!(arr[1], 2);
+        assert_eq!(arr[2], 3);
+        assert_eq!(arr[3], 4);
+    }
+
+    #[test]
+    fn it_establishes_session() {
+        let sess = Session::new();
+    }
+
+    #[test]
+    fn it_lists_devices() {
+        let sess = Session::new();
+        let devices = sess.devices().unwrap();
+        for device in devices {
+            println!(
+                "device: {}, id: {}, addr: {:?}",
+                device.get_name(),
+                device.id,
+                unsafe { std::ptr::addr_of!(*device.ptr) },
+            );
+        }
     }
 }
