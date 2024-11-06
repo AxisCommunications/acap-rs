@@ -6,4 +6,6 @@ if [ -n "${CARGO_TEST_CAMERA}" ]; then
     # echo $f
     ssh $CARGO_TEST_CAMERA "chmod +x /root/$f" 
     ssh $CARGO_TEST_CAMERA "/root/$f"
+else 
+    $1
 fi
