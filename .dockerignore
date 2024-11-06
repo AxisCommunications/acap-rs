@@ -5,3 +5,4 @@
 !/apps/
 !/crates/
 !/rust-toolchain.toml
+!/target/debug/acap-build

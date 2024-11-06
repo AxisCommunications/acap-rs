@@ -4,5 +4,7 @@
 /init_env.sh
 /target/
 /target-*/
+/docker/py
+/docker/rs
 /workspaces/*/target/
 /apps/*/LICENSE

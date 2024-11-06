@@ -4,11 +4,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::Architecture;
 use anyhow::bail;
 use log::debug;
 use semver::Version;
 use serde_json::Value;
+
+use crate::Architecture;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PackageConf {

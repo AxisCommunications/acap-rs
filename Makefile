@@ -278,7 +278,109 @@ target-$(AXIS_DEVICE_ARCH)/acap/_envoy: target/debug/cargo-acap-build $(patsubst
 
 .PHONY: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 
+target/debug/acap-build:
+	cargo build --bin acap-build
+
+.PHONY: target/debug/acap-build
+
 target/debug/cargo-acap-build:
 	cargo build --bin cargo-acap-build
 
 .PHONY: target/debug/cargo-acap-build
+
+APPS := \
+	utility-libraries/openssl_curl_example \
+	using-opencv \
+	web-server \
+	axevent/send_event \
+	axevent/subscribe_to_event \
+	axevent/subscribe_to_events \
+	axoverlay \
+	axparameter \
+	axserialport \
+	axstorage \
+	curl-openssl \
+	hello-world \
+	licensekey \
+	reproducible-package \
+	shell-script-example \
+	utility-libraries/custom_lib_example \
+	vapix \
+	vdo-opencl-filtering \
+	web-server-using-fastcgi \
+	bounding-box \
+	message-broker/consume-scene-metadata \
+	remote-debug-example
+
+
+ARCH ?= armv7hf
+VERSION ?= 12.0.0
+UBUNTU_VERSION ?= 24.04
+REPO ?= axisecp
+SDK ?= acap-native-sdk
+
+build/_envoy: build/py/_envoy build/rs/_envoy
+
+build/acap-native-sdk-examples/_envoy:
+	mkdir -p $(@D)
+	git clone https://github.com/AxisCommunications/acap-native-sdk-examples.git $(@D)
+	cd $(@D) && git checkout 9b00b2fdf23672f8910421653706572201c2ed8b
+	touch $@
+
+docker/rs: target/debug/acap-build
+docker/%: docker/%.Dockerfile
+	docker build --build-arg ARCH --tag $(REPO)/$*-$(SDK):$(VERSION)-$(ARCH)-ubuntu$(UBUNTU_VERSION) -f docker/$*.Dockerfile .
+	touch $@
+
+build/py/_envoy: $(patsubst %,build/py/%/_envoy,$(APPS))
+	touch $@
+
+build/py/web-server/_envoy: build/acap-native-sdk-examples/_envoy docker/py
+	# Copy source
+	rm -r $(@D) ||:
+	mkdir -p $(dir $(@D))
+	cp -r build/acap-native-sdk-examples/web-server $(@D)
+	# Build app
+	cd $(@D) \
+	&& docker build --build-arg ARCH=$(ARCH) --build-arg SDK=py-$(SDK) --tag web-server . \
+	&& docker cp $$(docker create web-server):/opt/monkey/examples ./build
+	touch $@
+
+build/py/reproducible-package/_envoy: TIMESTAMP=--build-arg TIMESTAMP=0
+build/py/%/_envoy: build/acap-native-sdk-examples/_envoy docker/py
+	# Copy source
+	rm -r $(@D) ||:
+	mkdir -p $(dir $(@D))
+	cp -r build/acap-native-sdk-examples/$* $(@D)
+	# Build app
+	cd $(@D) \
+	&& docker build $(TIMESTAMP) --build-arg ARCH=$(ARCH) --build-arg SDK=py-$(SDK) --tag $(notdir $*) . \
+	&& docker cp $$(docker create $(notdir $*)):/opt/app ./build
+	touch $@
+
+build/rs/_envoy: $(patsubst %,build/rs/%/_envoy,$(APPS))
+	touch $@
+
+build/rs/web-server/_envoy: build/acap-native-sdk-examples/_envoy docker/rs
+	# Copy source
+	rm -r $(@D) ||:
+	mkdir -p $(dir $(@D))
+	cp -r build/acap-native-sdk-examples/web-server $(@D)
+	# Build app
+	cd $(@D) \
+	&& docker build --build-arg ARCH=$(ARCH) --build-arg SDK=rs-$(SDK) --tag web-server . \
+	&& docker cp $$(docker create web-server):/opt/monkey/examples ./build
+	touch $@
+
+build/rs/reproducible-package/_envoy: TIMESTAMP=--build-arg TIMESTAMP=0
+build/rs/%/_envoy: build/acap-native-sdk-examples/_envoy docker/rs
+	# Copy source
+	rm -r $(@D) ||:
+	mkdir -p $(dir $(@D))
+	cp -r build/acap-native-sdk-examples/$* $(@D)
+	# Build app
+	cd $(@D) \
+	&& docker build $(TIMESTAMP) --build-arg ARCH=$(ARCH) --build-arg SDK=rs-$(SDK) --tag $(notdir $*) . \
+	&& docker cp $$(docker create $(notdir $*)):/opt/app ./build
+	touch $@
+

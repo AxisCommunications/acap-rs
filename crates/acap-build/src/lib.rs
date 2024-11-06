@@ -1,21 +1,24 @@
-use crate::{
-    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
+/// Wrapper around the ACAP SDK, in particular `acap-build`.
+use std::os::unix::fs::{symlink, PermissionsExt};
+use std::{
+    env, fs,
+    fs::File,
+    path::{Path, PathBuf},
+    process::Command,
+    str::FromStr,
 };
+use std::io::Write;
+use std::os::unix::ffi::OsStrExt;
 use anyhow::{anyhow, bail, Context};
 use command_utils::RunWith;
 use log::{debug, info};
 use serde::Serialize;
 use serde_json::{ser::PrettyFormatter, Serializer, Value};
-/// Wrapper around the ACAP SDK, in particular `acap-build`.
-use std::os::unix::fs::PermissionsExt;
-use std::process::Command;
-use std::{
-    env, fs,
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
 use tempfile::NamedTempFile;
+
+use crate::{
+    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
+};
 
 mod cgi_conf;
 mod command_utils;
@@ -24,18 +27,35 @@ mod package_conf;
 mod param_conf;
 
 // TODO: Find a better way to support reproducible builds
-fn copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> std::io::Result<u64> {
-    let mut src = fs::File::open(src)?;
-    let mut dst = fs::File::create(dst)?;
-    std::io::copy(&mut src, &mut dst)
+fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
+    src: P,
+    dst: Q,
+    copy_permissions: bool,
+) -> anyhow::Result<()> {
+    let src = src.as_ref();
+    if src.is_symlink() {
+        // FIXME: Copy symlink in Rust
+        if !dbg!(Command::new("cp").arg("-d").arg(src.as_os_str()).arg(dst.as_ref().as_os_str())).status()?.success() {
+            bail!("Failed to copy symlink: {}", src.display());
+        }
+    } else {
+        if copy_permissions {
+            fs::copy(src, dst)?;
+        } else {
+            let mut src = fs::File::open(src)?;
+            let mut dst = fs::File::create(dst)?;
+            std::io::copy(&mut src, &mut dst)?;
+        }
+    }
+    Ok(())
 }
 
-fn copy_recursively(src: &Path, dst: &Path) -> anyhow::Result<()> {
+fn copy_recursively(src: &Path, dst: &Path, copy_permissions: bool) -> anyhow::Result<()> {
     if src.is_file() {
         if dst.exists() {
             bail!("Path already exists {dst:?}");
         }
-        copy(src, dst)?;
+        copy(src, dst, copy_permissions)?;
         debug!("Created reg {dst:?}");
         return Ok(());
     }
@@ -52,7 +72,11 @@ fn copy_recursively(src: &Path, dst: &Path) -> anyhow::Result<()> {
     }?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
-        copy_recursively(&entry.path(), &dst.join(entry.file_name()))?;
+        copy_recursively(
+            &entry.path(),
+            &dst.join(entry.file_name()),
+            copy_permissions,
+        )?;
     }
     Ok(())
 }
@@ -61,6 +85,7 @@ pub struct AppBuilder {
     staging_dir: PathBuf,
     arch: Architecture,
     additional_files: Vec<PathBuf>,
+    copy_permissions: bool,
 }
 
 impl AppBuilder {
@@ -71,11 +96,14 @@ impl AppBuilder {
         manifest: &Path,
         exe: &Path,
         license: &Path,
+        copy_permissions: bool,
     ) -> anyhow::Result<Self> {
-        fs::create_dir(&staging_dir)?;
+        fs::create_dir(&staging_dir).with_context(|| format!("{staging_dir:?}"))?;
 
         let dst_exe = staging_dir.join(app_name);
-        copy(exe, &dst_exe)?;
+
+        copy(exe, &dst_exe, copy_permissions)?;
+
         let mut permissions = fs::metadata(&dst_exe)?.permissions();
         let mode = permissions.mode();
         permissions.set_mode(mode | 0o111);
@@ -85,10 +113,11 @@ impl AppBuilder {
             staging_dir,
             arch,
             additional_files: Vec::new(),
+            copy_permissions,
         };
 
-        copy(manifest, builder.manifest_file())?;
-        copy(license, builder.license_file())?;
+        copy(manifest, builder.manifest_file(), copy_permissions)?;
+        copy(license, builder.license_file(), copy_permissions)?;
 
         Ok(builder)
     }
@@ -109,7 +138,7 @@ impl AppBuilder {
                 src.file_name().unwrap().to_string_lossy()
             );
         }
-        copy_recursively(src, &dst)?;
+        copy_recursively(src, &dst, self.copy_permissions)?;
         self.additional_files
             .push(PathBuf::from(src.file_name().unwrap()));
 
@@ -130,7 +159,7 @@ impl AppBuilder {
         if dst.exists() {
             bail!("{name} already exists");
         }
-        copy_recursively(dir, &dst)?;
+        copy_recursively(dir, &dst, self.copy_permissions)?;
         Ok(self)
     }
 
@@ -140,7 +169,7 @@ impl AppBuilder {
         if dst.exists() {
             bail!("{name} already exists");
         }
-        copy_recursively(dir, &dst)?;
+        copy_recursively(dir, &dst, self.copy_permissions)?;
         Ok(self)
     }
 

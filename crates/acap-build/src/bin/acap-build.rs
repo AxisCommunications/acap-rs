@@ -1,19 +1,17 @@
-//! Wrapper over the lib exposing backwards compatible interface
-// Having this increases the probability of upstreaming this rewrite, which I think should be a
-// prerequisite for using it; we don't want to maintain our own fork of non-trivial tools that
-// exist also in the official ACAP SDK.
+//! A drop-in replacement for the acap-build python script
 use std::{
     env,
     fmt::{Display, Formatter},
     fs,
     fs::File,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 use acap_build::{manifest::Manifest, AppBuilder, Architecture};
 use anyhow::Context;
 use clap::{Parser, ValueEnum};
-use log::debug;
+use log::{debug, warn};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, ValueEnum)]
 #[clap(rename_all = "kebab-case")]
@@ -38,12 +36,14 @@ impl Display for BuildOption {
 #[derive(Clone, Debug, Parser)]
 #[clap(verbatim_doc_comment)]
 struct Cli {
+    path: PathBuf,
+    /// Build tool, if any, to run before packaging.
     #[clap(default_value_t, long, short)]
     build: BuildOption,
     // TODO: Look into mimicking the original interface exactly.
     /// Note: can be used more than once.
     #[clap(long)]
-    meson_cross_file: Vec<PathBuf>,
+    meson_cross_files: Vec<PathBuf>,
     #[clap(long, short)]
     manifest: Option<PathBuf>,
     /// Note: can be used more than once.
@@ -53,7 +53,6 @@ struct Cli {
     disable_manifest_validation: bool,
     #[clap(long)]
     disable_package_creation: bool,
-    path: PathBuf,
 }
 
 impl Cli {
@@ -63,20 +62,43 @@ impl Cli {
         Ok(manifest.acap_package_conf.setup.app_name)
     }
     fn exec(self) -> anyhow::Result<()> {
+        let Self {
+            path,
+            build,
+            meson_cross_files,
+            manifest,
+            additional_file,
+            disable_manifest_validation,
+            disable_package_creation,
+        } = self;
+        if !meson_cross_files.is_empty() {
+            todo!()
+        }
+        if !disable_manifest_validation {
+            warn!("Manifest validation is not implemented and will be skipped")
+        }
+        if disable_package_creation {
+            todo!()
+        }
+        match dbg!(build) {
+            BuildOption::Make => assert!(dbg!(Command::new("make")).status().unwrap().success()),
+            BuildOption::Meson => todo!(),
+            BuildOption::NoBuild => todo!(),
+        }
+
         let arch: Architecture = env::var("OECORE_TARGET_ARCH")?.parse()?;
         // let staging_dir = TempDir::new("acap-build")?;
-        let staging_dir = env::current_dir().unwrap().with_extension("tmp");
+        let staging_dir = env::current_dir().unwrap().join("tmp");
         if staging_dir.exists() {
             fs::remove_dir_all(&staging_dir)?;
         }
-        fs::create_dir(&staging_dir)?;
-        let manifest = match self.manifest {
-            None => self.path.join("manifest.json"),
-            Some(m) => self.path.join(m),
+        let manifest = match manifest {
+            None => path.join("manifest.json"),
+            Some(m) => path.join(m),
         };
         let app_name = Self::read_app_name(&manifest)?;
-        let exe = self.path.join(&app_name);
-        let license = self.path.join("LICENSE");
+        let exe = path.join(&app_name);
+        let license = path.join("LICENSE");
         let mut builder = AppBuilder::new(
             // staging_dir.path().to_path_buf(),
             staging_dir,
@@ -85,20 +107,21 @@ impl Cli {
             &manifest,
             &exe,
             &license,
+            true,
         )?;
 
-        let lib = self.path.join("lib");
+        let lib = path.join("lib");
         if lib.exists() {
             builder.lib(&lib)?;
         }
 
-        let html = self.path.join("html");
+        let html = path.join("html");
         if html.exists() {
             builder.html(&html)?;
         }
 
-        for additional_file in self.additional_file {
-            builder.additional_file(&self.path.join(additional_file))?;
+        for additional_file in additional_file {
+            builder.additional_file(&path.join(additional_file))?;
         }
 
         let path = builder.build()?;
@@ -122,8 +145,14 @@ impl Cli {
             "package.conf.orig",
             "param.conf",
         ] {
-            fs::copy(src.join(file_name), dst.join(file_name))
-                .with_context(|| format!("{file_name}: {src:?} -> {dst:?}"))?;
+            match fs::copy(src.join(file_name), dst.join(file_name)) {
+                Ok(n) => {
+                    debug!("Copied {n} bytes of {file_name} from {src:?} to {dst:?}")
+                }
+                Err(e) => {
+                    warn!("{file_name}: {src:?} -> {dst:?} because {e:?}")
+                }
+            }
         }
         Ok(())
     }
