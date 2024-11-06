@@ -716,7 +716,7 @@ mod tests {
     #[test]
     fn it_lists_devices() {
         let sess = Session::new();
-        let devices = sess.devices().unwrap();
+        let devices = sess.get_devices().unwrap();
         for device in devices {
             println!(
                 "device: {}, id: {}, addr: {:?}",
