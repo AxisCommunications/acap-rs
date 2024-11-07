@@ -28,6 +28,7 @@ use larod_sys::*;
 use std::{
     collections::HashMap,
     ffi::{c_char, c_int, CStr, CString},
+    marker::PhantomData,
     ptr::{self, slice_from_raw_parts},
     slice::from_raw_parts,
 };
@@ -397,17 +398,31 @@ impl std::ops::Drop for LarodMap {
 }
 
 /// A type representing a larodDevice.
+/// The lifetime of LarodDevice is explicitly tied to the lifetime of a
+/// [Session]. So using a LarodDevice after the Session it was acquired from
+/// will cause compilation to fail.
+/// ```compile_fail
+/// let sess = Session::new();
+/// let first_device = sess
+///     .get_devices()
+///     .expect("unable to get devices")
+///     .pop()
+///     .expect("empty devices list!");
+/// drop(sess);
+/// println!("{:?}", first_device.get_name());
+/// ```
 #[derive(Debug)]
-pub struct LarodDevice {
+pub struct LarodDevice<'a> {
     // The caller does not get ownership of the returned pointer and must not
     // attempt to free it. The lifetime of the memory pointed to expires when
     // conn closes.
     ptr: *const larodDevice,
     name: String,
     id: u32,
+    phantom: PhantomData<&'a Session<'a>>,
 }
 
-impl LarodDevice {
+impl<'a> LarodDevice<'a> {
     /// Get the name of a larodDevice.
     pub fn get_name(&self) -> &str {
         &self.name
@@ -456,7 +471,7 @@ impl LarodDevice {
     }
 }
 
-impl TryFrom<*const larodDevice> for LarodDevice {
+impl<'a> TryFrom<*const larodDevice> for LarodDevice<'a> {
     type Error = Error;
     fn try_from(value: *const larodDevice) -> Result<Self> {
         let name = LarodDevice::larod_get_name(value)?;
@@ -465,6 +480,7 @@ impl TryFrom<*const larodDevice> for LarodDevice {
             ptr: value,
             name,
             id,
+            phantom: PhantomData,
         })
     }
 }
@@ -475,7 +491,7 @@ impl SessionBuilder {
     pub fn new() -> SessionBuilder {
         SessionBuilder {}
     }
-    pub fn build(&self) -> Result<Session> {
+    pub fn build(&self) -> Result<Session<'static>> {
         let mut conn: *mut larodConnection = ptr::null_mut();
         let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodConnect, &mut conn) };
@@ -487,6 +503,7 @@ impl SessionBuilder {
             Ok(Session {
                 conn,
                 model_map: HashMap::new(),
+                phantom: PhantomData,
             })
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
@@ -500,21 +517,22 @@ impl Default for SessionBuilder {
     }
 }
 
-pub struct Session {
+pub struct Session<'a> {
     conn: *mut larodConnection,
     model_map: HashMap<String, u64>,
+    phantom: PhantomData<&'a larodConnection>,
 }
 
 // Using a session builder might not be necessary.
 // There's little to configure when starting a session.
-impl Session {
+impl<'a> Session<'a> {
     /// Constructs a new `Session`.
     ///
     /// # Panics
     ///
     /// Use `Session::builder()` if you wish to handle the failure as an `Error`
     /// instead of panicking.
-    pub fn new() -> Session {
+    pub fn new() -> Session<'a> {
         SessionBuilder::new().build().expect("Session::new()")
     }
     pub fn builder() -> SessionBuilder {
@@ -538,9 +556,22 @@ impl Session {
     }
 
     /// Returns a reference to an available device
-    // pub fn get_device(&self, name: &str) -> Option<&LarodDevice> {
-    //     self.devices.get(name)
-    // }
+    pub fn get_device(&self, name: &str, instance: u32) -> Result<LarodDevice> {
+        let Ok(name_cstr) = CString::new(name) else {
+            return Err(Error::CStringAllocation);
+        };
+        let (device_ptr, maybe_error) =
+            unsafe { try_func!(larodGetDevice, self.conn, name_cstr.as_ptr(), instance) };
+        if !device_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetDevice indicated success AND returned an error!"
+            );
+            Ok(LarodDevice::try_from(device_ptr)?)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
 
     pub fn list_chips() -> Result<()> {
         Ok(())
@@ -617,7 +648,7 @@ impl Session {
     }
 }
 
-impl Default for Session {
+impl<'a> Default for Session<'a> {
     fn default() -> Self {
         SessionBuilder::default()
             .build()
@@ -625,7 +656,7 @@ impl Default for Session {
     }
 }
 
-impl std::ops::Drop for Session {
+impl<'a> std::ops::Drop for Session<'a> {
     fn drop(&mut self) {
         unsafe {
             try_func!(larodDisconnect, &mut self.conn);
