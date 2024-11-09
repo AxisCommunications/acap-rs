@@ -720,12 +720,12 @@ mod tests {
     #[test]
     fn it_lists_devices() {
         let sess = Session::new();
-        let devices = sess.get_devices().unwrap();
+        let devices = sess.devices().unwrap();
         for device in devices {
             println!(
                 "device: {}, id: {}, addr: {:?}",
-                device.get_name().unwrap(),
-                device.get_instance().unwrap(),
+                device.name().unwrap(),
+                device.instance().unwrap(),
                 unsafe { std::ptr::addr_of!(*device.ptr) },
             );
         }
