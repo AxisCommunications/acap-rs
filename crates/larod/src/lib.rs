@@ -727,7 +727,7 @@ mod tests {
             println!(
                 "device: {}, id: {}, addr: {:?}",
                 device.get_name().unwrap(),
-                device.id,
+                device.get_instance().unwrap(),
                 unsafe { std::ptr::addr_of!(*device.ptr) },
             );
         }
