@@ -25,11 +25,15 @@
 //!     indicates it may fail to "kill a session." What are the implications if it fails to kill a session? Can we clear the sessions?
 
 use core::slice;
+pub use larod_sys::larodAccess as LarodAccess;
 use larod_sys::*;
 use std::{
     collections::HashMap,
     ffi::{c_char, CStr, CString},
+    fs::File,
     marker::PhantomData,
+    os::fd::AsRawFd,
+    path::Path,
     ptr::{self},
 };
 
@@ -108,6 +112,7 @@ pub enum Error {
     PointerToInvalidData,
     CStringAllocation,
     MissingLarodError,
+    IOError(std::io::Error),
 }
 
 // impl LarodError {
@@ -462,6 +467,49 @@ impl<'a> LarodDevice<'a> {
     }
 }
 
+pub struct LarodModel {
+    ptr: *mut larodModel,
+}
+
+impl LarodModel {
+    pub fn id() -> Result<()> {
+        Ok(())
+    }
+    pub fn chip() -> Result<()> {
+        Ok(())
+    }
+    pub fn device() -> Result<()> {
+        Ok(())
+    }
+    pub fn size() -> Result<()> {
+        Ok(())
+    }
+    pub fn name() -> Result<()> {
+        Ok(())
+    }
+    pub fn access() -> Result<()> {
+        Ok(())
+    }
+    pub fn num_inputs() -> Result<()> {
+        Ok(())
+    }
+    pub fn num_outputs() -> Result<()> {
+        Ok(())
+    }
+    pub fn create_model_inputs() -> Result<()> {
+        Ok(())
+    }
+    pub fn create_model_outputs() -> Result<()> {
+        Ok(())
+    }
+}
+
+impl Drop for LarodModel {
+    fn drop(&mut self) {
+        unsafe { larodDestroyModel(&mut self.ptr) };
+    }
+}
+
 pub struct SessionBuilder {}
 
 impl SessionBuilder {
@@ -580,20 +628,53 @@ impl<'a> Session<'a> {
     }
 
     // Overloaded need to check that.
-    pub fn load_model(&mut self) -> Result<()> {
-        // let model_fd: c_int = 0;
-        // let (m, e) = unsafe {
-        //     try_func!(larodLoadModel, &mut self.conn, model_fd, )
-        // }
+    pub fn load_model<T: AsRef<Path>>(
+        &self,
+        path: T,
+        name: &str,
+        device: &LarodDevice,
+        access: &LarodAccess,
+        params: &LarodMap,
+    ) -> Result<LarodModel> {
+        let file = File::open(path).map_err(Error::IOError)?;
+        let name_cstr = CString::new(name).map_err(|_e| Error::CStringAllocation)?;
+        let (model_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodLoadModel,
+                self.conn,
+                file.as_raw_fd(),
+                device.ptr,
+                *access,
+                name_cstr.as_ptr(),
+                params.raw
+            )
+        };
+        if !model_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodLoadModel indicated success AND returned an error!"
+            );
+            Ok(LarodModel { ptr: model_ptr })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+    pub fn get_model(&self, model_id: u64) -> Result<LarodModel> {
+        let (model_ptr, maybe_error) = unsafe { try_func!(larodGetModel, self.conn, model_id) };
+        if !model_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModel indicated success AND returned an error!"
+            );
+            Ok(LarodModel { ptr: model_ptr })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+    pub fn models() -> Result<()> {
         Ok(())
     }
-    pub fn get_model() -> Result<()> {
-        Ok(())
-    }
-    pub fn get_models() -> Result<()> {
-        Ok(())
-    }
-    pub fn delete_model() -> Result<()> {
+    pub fn delete_model(&self) -> Result<()> {
         Ok(())
     }
     pub fn alloc_model_inputs() -> Result<()> {
