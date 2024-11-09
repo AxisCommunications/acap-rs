@@ -24,14 +24,13 @@
 //! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
 //!     indicates it may fail to "kill a session." What are the implications if it fails to kill a session? Can we clear the sessions?
 
-use core::{num, slice};
+use core::slice;
 use larod_sys::*;
 use std::{
     collections::HashMap,
-    ffi::{c_char, c_int, CStr, CString},
+    ffi::{c_char, CStr, CString},
     marker::PhantomData,
-    ptr::{self, slice_from_raw_parts},
-    slice::from_raw_parts,
+    ptr::{self},
 };
 
 type Result<T> = std::result::Result<T, Error>;
@@ -424,7 +423,7 @@ pub struct LarodDevice<'a> {
 
 impl<'a> LarodDevice<'a> {
     /// Get the name of a larodDevice.
-    fn get_name(&self) -> Result<String> {
+    pub fn get_name(&self) -> Result<String> {
         unsafe {
             let (c_char_ptr, maybe_error) = try_func!(larodGetDeviceName, self.ptr);
             if !c_char_ptr.is_null() {
@@ -435,8 +434,8 @@ impl<'a> LarodDevice<'a> {
                 let c_name = CStr::from_ptr(c_char_ptr);
                 c_name
                     .to_str()
-                    .map(|n| String::from(n))
-                    .map_err(|e| Error::InvalidLarodMessage)
+                    .map(String::from)
+                    .map_err(|_e| Error::InvalidLarodMessage)
             } else {
                 Err(maybe_error.unwrap_or(Error::MissingLarodError))
             }
@@ -446,7 +445,7 @@ impl<'a> LarodDevice<'a> {
     /// Get the instance of a larodDevice.
     /// From the larod documentation
     /// > *In case there are multiple identical devices that are available in the service, they are distinguished by an instance number, with the first instance starting from zero.*
-    fn get_instance(&self) -> Result<u32> {
+    pub fn get_instance(&self) -> Result<u32> {
         unsafe {
             let mut instance: u32 = 0;
             let (success, maybe_error) = try_func!(larodGetDeviceInstance, self.ptr, &mut instance);
@@ -642,7 +641,6 @@ impl<'a> std::ops::Drop for Session<'a> {
 #[cfg(all(test, target_arch = "aarch64", feature = "device-tests"))]
 mod tests {
     use super::*;
-    use std::ptr;
 
     #[test]
     fn it_creates_larod_map() {
