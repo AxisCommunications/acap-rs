@@ -15,6 +15,7 @@
 //!
 //! Example
 //! ```rust
+//! use larod::Session;
 //! let session = Session::new();
 //! let devices = session.devices();
 //! ```
@@ -402,6 +403,7 @@ impl std::ops::Drop for LarodMap {
 /// [Session]. So using a LarodDevice after the Session it was acquired from
 /// will cause compilation to fail.
 /// ```compile_fail
+/// use larod::Session;
 /// let sess = Session::new();
 /// let first_device = sess
 ///     .get_devices()
@@ -417,27 +419,14 @@ pub struct LarodDevice<'a> {
     // attempt to free it. The lifetime of the memory pointed to expires when
     // conn closes.
     ptr: *const larodDevice,
-    name: String,
-    id: u32,
     phantom: PhantomData<&'a Session<'a>>,
 }
 
 impl<'a> LarodDevice<'a> {
     /// Get the name of a larodDevice.
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
-
-    /// Get the instance of a larodDevice.
-    /// From the larod documentation
-    /// > *In case there are multiple identical devices that are available in the service, they are distinguished by an instance number, with the first instance starting from zero.*
-    pub fn get_instance(&self) -> u32 {
-        self.id
-    }
-
-    fn larod_get_name(pointer: *const larodDevice) -> Result<String> {
+    fn get_name(&self) -> Result<String> {
         unsafe {
-            let (c_char_ptr, maybe_error) = try_func!(larodGetDeviceName, pointer);
+            let (c_char_ptr, maybe_error) = try_func!(larodGetDeviceName, self.ptr);
             if !c_char_ptr.is_null() {
                 debug_assert!(
                     maybe_error.is_none(),
@@ -454,10 +443,13 @@ impl<'a> LarodDevice<'a> {
         }
     }
 
-    fn larod_get_instance(pointer: *const larodDevice) -> Result<u32> {
+    /// Get the instance of a larodDevice.
+    /// From the larod documentation
+    /// > *In case there are multiple identical devices that are available in the service, they are distinguished by an instance number, with the first instance starting from zero.*
+    fn get_instance(&self) -> Result<u32> {
         unsafe {
             let mut instance: u32 = 0;
-            let (success, maybe_error) = try_func!(larodGetDeviceInstance, pointer, &mut instance);
+            let (success, maybe_error) = try_func!(larodGetDeviceInstance, self.ptr, &mut instance);
             if success {
                 debug_assert!(
                     maybe_error.is_none(),
@@ -468,20 +460,6 @@ impl<'a> LarodDevice<'a> {
                 Err(maybe_error.unwrap_or(Error::MissingLarodError))
             }
         }
-    }
-}
-
-impl<'a> TryFrom<*const larodDevice> for LarodDevice<'a> {
-    type Error = Error;
-    fn try_from(value: *const larodDevice) -> Result<Self> {
-        let name = LarodDevice::larod_get_name(value)?;
-        let id = LarodDevice::larod_get_instance(value)?;
-        Ok(Self {
-            ptr: value,
-            name,
-            id,
-            phantom: PhantomData,
-        })
     }
 }
 
@@ -567,7 +545,10 @@ impl<'a> Session<'a> {
                 maybe_error.is_none(),
                 "larodGetDevice indicated success AND returned an error!"
             );
-            Ok(LarodDevice::try_from(device_ptr)?)
+            Ok(LarodDevice {
+                ptr: device_ptr,
+                phantom: PhantomData,
+            })
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
@@ -585,22 +566,16 @@ impl<'a> Session<'a> {
         if dev_ptr.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingLarodError));
         }
-        let raw_devices = unsafe { slice::from_raw_parts(dev_ptr, num_devices) };
+        let raw_devices =
+            unsafe { slice::from_raw_parts::<'a, *const larodDevice>(dev_ptr, num_devices) };
 
-        let devices: Vec<LarodDevice> = raw_devices.iter().enumerate().filter_map(|(idx, raw_d)| {
-            match LarodDevice::try_from(*raw_d) {
-                Ok(d) => Some(d),
-                Err(Error::LarodError(e)) => {
-                    let error_message = e.msg().unwrap_or(String::from("Error reading error message"));
-                    log::error!("Could not identify larodDevice {} of {} returned from larodListDevices.\n{}", idx, num_devices, &error_message);
-                    None
-                },
-                Err(e) => {
-                    log::error!("Could not identify larodDevice {} of {} returned from larodListDevices.\n{:?}", idx, num_devices, e);
-                    None
-                },
-            }
-        }).collect();
+        let devices: Vec<LarodDevice> = raw_devices
+            .iter()
+            .map(|ptr| LarodDevice {
+                ptr: *ptr,
+                phantom: PhantomData,
+            })
+            .collect();
 
         Ok(devices)
     }
@@ -751,7 +726,7 @@ mod tests {
         for device in devices {
             println!(
                 "device: {}, id: {}, addr: {:?}",
-                device.get_name(),
+                device.get_name().unwrap(),
                 device.id,
                 unsafe { std::ptr::addr_of!(*device.ptr) },
             );
