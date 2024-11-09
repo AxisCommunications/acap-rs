@@ -405,12 +405,12 @@ impl std::ops::Drop for LarodMap {
 /// use larod::Session;
 /// let sess = Session::new();
 /// let first_device = sess
-///     .get_devices()
+///     .devices()
 ///     .expect("unable to get devices")
 ///     .pop()
 ///     .expect("empty devices list!");
 /// drop(sess);
-/// println!("{:?}", first_device.get_name());
+/// println!("{:?}", first_device.name());
 /// ```
 #[derive(Debug)]
 pub struct LarodDevice<'a> {
@@ -423,7 +423,7 @@ pub struct LarodDevice<'a> {
 
 impl<'a> LarodDevice<'a> {
     /// Get the name of a larodDevice.
-    pub fn get_name(&self) -> Result<String> {
+    pub fn name(&self) -> Result<String> {
         unsafe {
             let (c_char_ptr, maybe_error) = try_func!(larodGetDeviceName, self.ptr);
             if !c_char_ptr.is_null() {
@@ -445,7 +445,7 @@ impl<'a> LarodDevice<'a> {
     /// Get the instance of a larodDevice.
     /// From the larod documentation
     /// > *In case there are multiple identical devices that are available in the service, they are distinguished by an instance number, with the first instance starting from zero.*
-    pub fn get_instance(&self) -> Result<u32> {
+    pub fn instance(&self) -> Result<u32> {
         unsafe {
             let mut instance: u32 = 0;
             let (success, maybe_error) = try_func!(larodGetDeviceInstance, self.ptr, &mut instance);
@@ -533,7 +533,7 @@ impl<'a> Session<'a> {
     }
 
     /// Returns a reference to an available device
-    pub fn get_device(&self, name: &str, instance: u32) -> Result<LarodDevice> {
+    pub fn device(&self, name: &str, instance: u32) -> Result<LarodDevice> {
         let Ok(name_cstr) = CString::new(name) else {
             return Err(Error::CStringAllocation);
         };
@@ -558,7 +558,7 @@ impl<'a> Session<'a> {
     }
 
     /// Get a reference to a HashMap of name LarodDevice pairs.
-    pub fn get_devices(&self) -> Result<Vec<LarodDevice>> {
+    pub fn devices(&self) -> Result<Vec<LarodDevice>> {
         let mut num_devices: usize = 0;
         let (dev_ptr, maybe_error) =
             unsafe { try_func!(larodListDevices, self.conn, &mut num_devices) };

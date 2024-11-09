@@ -2,7 +2,7 @@ use larod::{Error, Session};
 
 fn main() -> Result<(), Error> {
     let session = Session::new();
-    let devices = match session.get_devices() {
+    let devices = match session.devices() {
         Ok(d) => d,
         Err(Error::LarodError(e)) => {
             if let Ok(msg) = e.msg() {
@@ -19,7 +19,11 @@ fn main() -> Result<(), Error> {
     };
     println!("Devices:");
     for d in devices {
-        println!("{} ({})", d.get_name(), d.get_instance());
+        println!(
+            "{} ({})",
+            d.name().expect("Couldn't get device name"),
+            d.instance().expect("Couldn't get device instance")
+        );
     }
     Ok(())
 }
