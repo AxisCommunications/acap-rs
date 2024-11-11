@@ -3,6 +3,7 @@ accepted = [
     "Apache-2.0",
     "BSD-3-Clause",
     "Unicode-DFS-2016",
+    "Unicode-3.0", # FIXME: Justify
 ]
 ignore-build-dependencies = true
 ignore-dev-dependencies = true
