@@ -1,5 +1,7 @@
 [package]
 name = "acap-build"
+# This can never become 1.0 as long as `Manifest` is exposed because the version indicates when
+# a validator may break a producer of schemas, not the other way around.
 version = "0.0.0"
 edition = "2021"
 

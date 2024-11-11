@@ -1,4 +1,9 @@
+use crate::Architecture;
+use anyhow::bail;
+use log::debug;
+use semver::Version;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +102,8 @@ pub(crate) struct ReverseProxy {
 #[serde(rename_all = "camelCase")]
 pub struct Setup {
     pub app_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) friendly_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) app_id: Option<String>,
     pub(crate) vendor: String,

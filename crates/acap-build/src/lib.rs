@@ -303,18 +303,10 @@ impl AppBuilder {
         let manifest_data = fs::read_to_string(self.manifest_file())?;
         let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
-        let app_name = &manifest.acap_package_conf.setup.app_name;
+        let package_name = manifest.acap_package_conf.setup.friendly_name.as_ref().unwrap_or(&manifest.acap_package_conf.setup.app_name).replace(' ', "_");
         let version = manifest.acap_package_conf.setup.version.replace('.', "_");
-        let arch = self.arch.nickname();
-        let tarb = format!("{app_name}_{version}_{arch}.eap");
-
-        // let manifest_file_name = self
-        //     .manifest_file()
-        //     .file_name()
-        //     .unwrap()
-        //     .to_str()
-        //     .unwrap()
-        //     .to_string();
+        let arch = manifest.acap_package_conf.setup.architecture.as_deref().unwrap_or(self.arch.nickname());
+        let tarb = format!("{package_name}_{version}_{arch}.eap");
 
         let mut other_files = dbg!(self.additional_files.clone());
         if let Some(p) = Self::get_pre_uninstall_script(&manifest) {
@@ -351,7 +343,7 @@ impl AppBuilder {
             .arg(format!(
                 "--transform=flags=r;s|{manifest_file_name}|manifest.json|"
             ))
-            .arg(app_name)
+            .arg(&manifest.acap_package_conf.setup.app_name)
             .arg(PackageConf::file_name())
             .arg(ParamConf::file_name())
             .arg(self.license_file().file_name().unwrap().to_str().unwrap())
