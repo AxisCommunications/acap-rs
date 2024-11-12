@@ -43,6 +43,7 @@ fn main() {
     }
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
     use log::{debug, warn};

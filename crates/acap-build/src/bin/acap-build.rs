@@ -9,7 +9,6 @@ use std::{
 };
 
 use acap_build::{manifest::Manifest, AppBuilder, Architecture};
-use anyhow::Context;
 use clap::{Parser, ValueEnum};
 use log::{debug, warn};
 
@@ -80,8 +79,8 @@ impl Cli {
         if disable_package_creation {
             todo!()
         }
-        match dbg!(build) {
-            BuildOption::Make => assert!(dbg!(Command::new("make")).status().unwrap().success()),
+        match build {
+            BuildOption::Make => assert!(Command::new("make").status().unwrap().success()),
             BuildOption::Meson => todo!(),
             BuildOption::NoBuild => todo!(),
         }

@@ -142,6 +142,7 @@ fn pack(
         &manifest,
         &executable,
         &license,
+        false,
     )?;
 
     if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "additional-files")? {

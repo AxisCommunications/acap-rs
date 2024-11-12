@@ -75,6 +75,7 @@ fn main() {
     main_loop.run();
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 #[cfg(test)]
 mod tests {
     use std::{

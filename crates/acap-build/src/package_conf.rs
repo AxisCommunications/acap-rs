@@ -6,109 +6,96 @@ use std::{
 
 use anyhow::bail;
 use log::debug;
+use regex::Regex;
 use semver::Version;
 use serde_json::Value;
 
 use crate::Architecture;
 
 #[derive(Clone, Debug)]
-pub(crate) struct PackageConf {
-    pub(crate) parameters: Vec<(String, String)>,
-    default_arch: Architecture,
-}
+pub(crate) struct PackageConf(HashMap<&'static str, String>);
+
 impl PackageConf {
-    fn push(&mut self, key: impl ToString, value: impl ToString) {
-        self.parameters.push((key.to_string(), value.to_string()));
+    pub fn file_name() -> &'static str {
+        "package.conf"
     }
 
-    pub fn new_from_manifest(
+    pub fn new(
         manifest: &Value,
         outpath: &Path,
         otherfiles: &[PathBuf],
         arch: Architecture,
     ) -> anyhow::Result<PackageConf> {
-        let aliases: HashMap<_, _> = [
-            ("acapPackageConf.setup.user.group", "APPGRP"),
-            ("acapPackageConf.setup.appId", "APPID"),
-            ("acapPackageConf.setup.version", "APPMAJORVERSION"),
-            ("acapPackageConf.setup.appName", "APPNAME"),
-            ("acapPackageConf.setup.runOptions", "APPOPTS"),
-            ("acapPackageConf.setup.architecture", "APPTYPE"),
-            ("acapPackageConf.setup.user.username", "APPUSR"),
-            ("acapPackageConf.configuration.httpConfig", "HTTPCGIPATHS"),
-            ("acapPackageConf.copyProtection.method", "LICENSEPAGE"),
-            (
-                "acapPackageConf.copyProtection.customOptions",
-                "LICENSE_CHECK_ARGS",
-            ),
-            ("acapPackageConf.setup.friendlyName", "PACKAGENAME"),
-            (
-                "acapPackageConf.installation.postInstallScript",
-                "POSTINSTALLSCRIPT",
-            ),
-            (
-                "acapPackageConf.setup.embeddedSdkVersion",
-                "REQEMBDEVVERSION",
-            ),
-            (
-                "acapPackageConf.configuration.settingPage",
-                "SETTINGSPAGEFILE",
-            ),
-            ("acapPackageConf.setup.runMode", "STARTMODE"),
-            ("acapPackageConf.setup.vendor", "VENDOR"),
-            ("acapPackageConf.setup.vendorUrl", "VENDORHOMEPAGELINK"),
-        ]
-        .into_iter()
-        .collect();
+        let mut package_conf = Self(HashMap::new());
+        package_conf.update_from_manifest(manifest)?;
+        package_conf.update_from_other_files(otherfiles, outpath)?;
+        package_conf.update_from_app_type(arch);
+        Ok(package_conf)
+    }
 
-        let parameters = stringify(manifest);
-        let mut entries = Self {
-            parameters: Vec::new(),
-            default_arch: arch,
-        };
+    fn update_from_manifest(&mut self, manifest: &Value) -> anyhow::Result<()> {
+        let parameters: HashMap<_, _> = PARAMETERS
+            .iter()
+            .flat_map(|p| p.source.map(|s| (s, p.name)))
+            .collect();
+
+        let flat_manifest = stringify(manifest);
         let mut cgi_parsed = false;
-        for (key, value) in parameters {
-            let Value::String(value) = value else {
-                bail!("Expected {key} version to be a string")
-            };
-            match key.as_str() {
+        for (path, value) in flat_manifest {
+            match path.as_str() {
                 "acapPackageConf.setup.version" => {
-                    let v = Version::parse(&value)?;
-                    entries.push("APPMAJORVERSION", v.major);
-                    entries.push("APPMINORVERSION", v.minor);
-                    entries.push("APPMICROVERSION", v.patch);
+                    let Value::String(v) = value else {
+                        bail!("acapPackageConf.setup.version is not a string")
+                    };
+                    let v = Version::parse(&v)?;
+                    self.0.insert("APPMAJORVERSION", v.major.to_string());
+                    self.0.insert("APPMINORVERSION", v.minor.to_string());
+                    self.0.insert("APPMICROVERSION", v.patch.to_string());
                 }
                 "acapPackageConf.setup.vendorUrl" => {
-                    let re = regex::Regex::new("(?:(?:http|https)://)?(.+)")
+                    let re = Regex::new("(?:(?:http|https)://)?(.+)")
                         .expect("Hard-coded regex is valid");
-                    let Some(caps) = re.captures(&value) else {
+                    let Value::String(v) = value else {
+                        bail!("acapPackageConf.setup.vendorUrl is not a string")
+                    };
+                    let Some(caps) = re.captures(&v) else {
                         bail!("Expected vendor url to match regex {:?}", re)
                     };
                     let domain_name = caps
                         .get(1)
                         .expect("Hard coded regex as exactly one capture group")
                         .as_str();
-                    entries.push(
+                    self.0.insert(
                         "VENDORHOMEPAGELINK",
-                        format!(r#"<a href="{value}" target="_blank">{domain_name}</a>"#),
+                        format!(r#"<a href="{v}" target="_blank">{domain_name}</a>"#),
                     );
                 }
-                k if k.starts_with("acapPackageConf.configuration.httpConfig") => {
+                path if path.starts_with("acapPackageConf.configuration.httpConfig") => {
                     if !cgi_parsed {
                         cgi_parsed = true;
-                        entries.push("HTTPCGIPATHS", "cgi.conf");
+                        self.0.insert("HTTPCGIPATHS", "cgi.conf".to_string());
                     }
                 }
-                k => {
-                    if let Some(pkg_key) = aliases.get(k) {
-                        entries.push(pkg_key, value);
+                path => {
+                    if let Some(name) = parameters.get(path) {
+                        let Value::String(v) = value else {
+                            bail!("{path} is not a string")
+                        };
+                        self.0.insert(name, v);
                     } else {
-                        debug!("{k} skipped, no corresponding parameter in package.conf")
+                        debug!("{path} skipped, no corresponding parameter in package.conf")
                     }
                 }
             }
         }
+        Ok(())
+    }
 
+    fn update_from_other_files(
+        &mut self,
+        otherfiles: &[PathBuf],
+        outpath: &Path,
+    ) -> anyhow::Result<()> {
         if !otherfiles.is_empty() {
             let mut relpaths = Vec::new();
             for file in otherfiles {
@@ -118,100 +105,181 @@ impl PackageConf {
                 };
                 relpaths.push(relpath.to_string_lossy().to_string());
             }
-            entries.push("OTHERFILES", relpaths.join(" "));
+            self.0.insert("OTHERFILES", relpaths.join(" "));
         }
-
-        Ok(entries)
+        Ok(())
     }
 
-    pub fn file_name() -> &'static str {
-        "package.conf"
+    fn update_from_app_type(&mut self, arch: Architecture) {
+        self.0
+            .entry("APPTYPE")
+            .or_insert(arch.nickname().to_string());
+
+        let app_name = self.0.get("APPNAME").cloned().unwrap_or_default();
+        self.0.entry("PACKAGENAME").or_insert(app_name);
+
+        for Parameter { name, default, .. } in PARAMETERS {
+            if let Some(v) = default {
+                self.0.entry(name).or_insert(v.to_string());
+            }
+        }
+    }
+    pub fn http_cig_paths(&self) -> Option<&String> {
+        self.0.get("HTTPCGIPATHS")
     }
 }
 
-// PACKAGENAME
-// MENUNAME
-// APPTYPE
-// APPNAME
-// APPID
-// LICENSENAME
-// LICENSEPAGE
-// LICENSE_CHECK_ARGS
-// VENDOR
-// REQEMBDEVVERSION
-// APPMAJORVERSION
-// APPMINORVERSION
-// APPMICROVERSION
-// APPGRP
-// APPUSR
-// APPOPTS
-// OTHERFILES
-// SETTINGSPAGEFILE
-// SETTINGSPAGETEXT
-// VENDORHOMEPAGELINK
-// PREUPGRADESCRIPT
-// POSTINSTALLSCRIPT
-// STARTMODE
-// HTTPCGIPATHS
-
-// Fusion of eap-create.sh and package-conf-parameters.cfg
-const PARAMETERS: [(&str, Option<&str>); 25] = [
-    ("PACKAGENAME", Some("")),
-    ("MENUNAME", None),
-    ("APPTYPE", Some("")),
-    ("APPNAME", Some("")),
-    ("APPID", Some("")),
-    ("LICENSENAME", Some("Available")),
-    ("LICENSEPAGE", Some("none")),
-    ("LICENSE_CHECK_ARGS", None),
-    ("VENDOR", Some("-")),
-    ("REQEMBDEVVERSION", Some("2.0")),
-    ("APPMAJORVERSION", Some("1")),
-    ("APPMINORVERSION", Some("0")),
-    ("APPMICROVERSION", Some("0")),
-    ("APPGRP", Some("sdk")),
-    ("APPUSR", Some("sdk")),
-    ("APPOPTS", Some("")),
-    ("OTHERFILES", Some("")),
-    ("SETTINGSPAGEFILE", Some("")),
-    ("SETTINGSPAGETEXT", Some("")),
-    ("VENDORHOMEPAGELINK", Some("")),
-    ("PREUPGRADESCRIPT", Some("")),
-    ("POSTINSTALLSCRIPT", Some("")),
-    ("STARTMODE", Some("never")),
-    ("HTTPCGIPATHS", Some("")),
-    ("AUTOSTART", None),
-];
-
 impl Display for PackageConf {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        dbg!(self);
-        let default_arch = self.default_arch.nickname();
-        let lut: HashMap<_, _> = self
-            .parameters
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-        for (key, default) in PARAMETERS {
-            let value = match lut.get(key) {
-                Some(v) => Some(v),
-                None => match key {
-                    "PACKAGENAME" => lut.get("APPNAME"),
-                    "APPTYPE" => Some(&default_arch),
-                    _ => default.as_ref(),
-                },
-            };
-            if let Some(value) = value {
-                if key == "VENDORHOMEPAGELINK" {
-                    writeln!(f, r#"{key}='{value}'"#)?;
+        for Parameter { name, .. } in PARAMETERS {
+            if let Some(value) = self.0.get(name) {
+                if name == "VENDORHOMEPAGELINK" {
+                    writeln!(f, r#"{name}='{value}'"#)?;
                 } else {
-                    writeln!(f, r#"{key}="{value}""#)?;
+                    writeln!(f, r#"{name}="{value}""#)?;
                 }
             }
         }
         Ok(())
     }
 }
+
+struct Parameter {
+    name: &'static str,
+    source: Option<&'static str>,
+    default: Option<&'static str>,
+}
+
+// TODO: Consider generating this (semi-) automatically from its sources:
+// - conversion.py
+// - package-conf-parameters.cfg
+const PARAMETERS: [Parameter; 25] = [
+    Parameter {
+        name: "PACKAGENAME",
+        source: Some("acapPackageConf.setup.friendlyName"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "MENUNAME",
+        source: None,
+        default: None, // TODO: Figure out why this should be `None`
+    },
+    Parameter {
+        name: "APPTYPE",
+        source: Some("acapPackageConf.setup.architecture"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "APPNAME",
+        source: Some("acapPackageConf.setup.appName"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "APPID",
+        source: Some("acapPackageConf.setup.appId"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "LICENSENAME",
+        source: None,
+        default: Some("Available"),
+    },
+    Parameter {
+        name: "LICENSEPAGE",
+        source: Some("acapPackageConf.copyProtection.method"),
+        default: Some("none"),
+    },
+    Parameter {
+        name: "LICENSE_CHECK_ARGS",
+        source: Some("acapPackageConf.copyProtection.customOptions"),
+        default: None,
+    },
+    Parameter {
+        name: "VENDOR",
+        source: Some("acapPackageConf.setup.vendor"),
+        default: Some("-"),
+    },
+    Parameter {
+        name: "REQEMBDEVVERSION",
+        source: Some("acapPackageConf.setup.embeddedSdkVersion"),
+        default: Some("2.0"),
+    },
+    Parameter {
+        name: "APPMAJORVERSION",
+        source: Some("acapPackageConf.setup.version"),
+        default: Some("1"),
+    },
+    Parameter {
+        name: "APPMINORVERSION",
+        source: Some("acapPackageConf.setup.version"),
+        default: Some("0"),
+    },
+    Parameter {
+        name: "APPMICROVERSION",
+        source: Some("acapPackageConf.setup.version"),
+        default: Some("0"),
+    },
+    Parameter {
+        name: "APPGRP",
+        source: Some("acapPackageConf.setup.user.group"),
+        default: Some("sdk"),
+    },
+    Parameter {
+        name: "APPUSR",
+        source: Some("acapPackageConf.setup.user.username"),
+        default: Some("sdk"),
+    },
+    Parameter {
+        name: "APPOPTS",
+        source: Some("acapPackageConf.setup.runOptions"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "OTHERFILES",
+        source: None,
+        default: Some(""),
+    },
+    Parameter {
+        name: "SETTINGSPAGEFILE",
+        source: Some("acapPackageConf.configuration.settingPage"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "SETTINGSPAGETEXT",
+        source: None,
+        default: Some(""),
+    },
+    Parameter {
+        name: "VENDORHOMEPAGELINK",
+        source: Some("acapPackageConf.setup.vendorUrl"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "PREUPGRADESCRIPT",
+        source: None,
+        default: Some(""),
+    },
+    Parameter {
+        name: "POSTINSTALLSCRIPT",
+        source: Some("acapPackageConf.installation.postInstallScript"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "STARTMODE",
+        source: Some("acapPackageConf.setup.runMode"),
+        default: Some("never"),
+    },
+    Parameter {
+        name: "HTTPCGIPATHS",
+        source: Some("acapPackageConf.configuration.httpConfig"),
+        default: Some(""),
+    },
+    Parameter {
+        name: "AUTOSTART",
+        source: None,
+        default: None,
+    },
+];
 
 fn stringify(value: &Value) -> Vec<(String, Value)> {
     let mut output = Vec::new();

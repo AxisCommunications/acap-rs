@@ -1,5 +1,5 @@
 /// Wrapper around the ACAP SDK, in particular `acap-build`.
-use std::os::unix::fs::{symlink, PermissionsExt};
+use std::os::unix::fs::PermissionsExt;
 use std::{
     env, fs,
     fs::File,
@@ -7,8 +7,7 @@ use std::{
     process::Command,
     str::FromStr,
 };
-use std::io::Write;
-use std::os::unix::ffi::OsStrExt;
+
 use anyhow::{anyhow, bail, Context};
 use command_utils::RunWith;
 use log::{debug, info};
@@ -25,6 +24,7 @@ mod command_utils;
 pub mod manifest;
 mod package_conf;
 mod param_conf;
+mod static_package_conf;
 
 // TODO: Find a better way to support reproducible builds
 fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
@@ -35,17 +35,21 @@ fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
     let src = src.as_ref();
     if src.is_symlink() {
         // FIXME: Copy symlink in Rust
-        if !dbg!(Command::new("cp").arg("-d").arg(src.as_os_str()).arg(dst.as_ref().as_os_str())).status()?.success() {
+        if !Command::new("cp")
+            .arg("-d")
+            .arg(src.as_os_str())
+            .arg(dst.as_ref().as_os_str())
+            .status()?
+            .success()
+        {
             bail!("Failed to copy symlink: {}", src.display());
         }
+    } else if copy_permissions {
+        fs::copy(src, dst)?;
     } else {
-        if copy_permissions {
-            fs::copy(src, dst)?;
-        } else {
-            let mut src = fs::File::open(src)?;
-            let mut dst = fs::File::create(dst)?;
-            std::io::copy(&mut src, &mut dst)?;
-        }
+        let mut src = fs::File::open(src)?;
+        let mut dst = fs::File::create(dst)?;
+        std::io::copy(&mut src, &mut dst)?;
     }
     Ok(())
 }
@@ -303,17 +307,28 @@ impl AppBuilder {
         let manifest_data = fs::read_to_string(self.manifest_file())?;
         let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
-        let package_name = manifest.acap_package_conf.setup.friendly_name.as_ref().unwrap_or(&manifest.acap_package_conf.setup.app_name).replace(' ', "_");
+        let package_name = manifest
+            .acap_package_conf
+            .setup
+            .friendly_name
+            .as_ref()
+            .unwrap_or(&manifest.acap_package_conf.setup.app_name)
+            .replace(' ', "_");
         let version = manifest.acap_package_conf.setup.version.replace('.', "_");
-        let arch = manifest.acap_package_conf.setup.architecture.as_deref().unwrap_or(self.arch.nickname());
+        let arch = manifest
+            .acap_package_conf
+            .setup
+            .architecture
+            .as_deref()
+            .unwrap_or(self.arch.nickname());
         let tarb = format!("{package_name}_{version}_{arch}.eap");
 
-        let mut other_files = dbg!(self.additional_files.clone());
+        let mut other_files = self.additional_files.clone();
         if let Some(p) = Self::get_pre_uninstall_script(&manifest) {
             other_files.push(PathBuf::from(p));
         }
 
-        let package_conf = PackageConf::new_from_manifest(
+        let package_conf = PackageConf::new(
             &serde_json::from_str::<Value>(&manifest_data)?,
             &self.staging_dir,
             &other_files,
@@ -360,14 +375,14 @@ impl AppBuilder {
             }
         }
 
-        for (k, v) in package_conf.parameters {
-            if k == "HTTPCGIPATHS" {
+        if let Some(v) = package_conf.http_cig_paths() {
+            if !v.is_empty() {
                 tar.arg(v);
             }
         }
         tar.arg("--verbose");
         tar.current_dir(&self.staging_dir);
-        dbg!(tar).run_with_logged_stdout()?;
+        tar.run_with_logged_stdout()?;
         Ok(())
     }
 
@@ -479,7 +494,7 @@ pub fn manifest2packageconf(
         .collect::<Vec<_>>();
 
     let manifest: Value = serde_json::from_reader(File::open(manifest)?)?;
-    let package_conf = PackageConf::new_from_manifest(&manifest, output, &additional_files, arch)?;
+    let package_conf = PackageConf::new(&manifest, output, &additional_files, arch)?;
     let p = output.join(PackageConf::file_name());
     fs::write(&p, package_conf.to_string())?;
     created_files.push(p);
