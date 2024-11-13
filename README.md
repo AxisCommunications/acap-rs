@@ -129,14 +129,19 @@ Each crate has a corresponding `*-sys`, which is omitted for brevity.
 
 - `axevent`: Bindings for the Event API.
   - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axevent/src/lib.rs)
 - `axstorage`: Bindings for the Edge Storage API.
   - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axstorage/src/lib.rs)
 - `bbox`: Bindings for the Bounding Box API.
   - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/bbox/src/lib.rs)
 - `licensekey`: Bindings for the License Key API.
   - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/licensekey/src/lib.rs)
 - `mdb`: Bindings for the Message Broker API.
   - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/mdb/src/lib.rs)
 
 ### VAPIX API bindings
 
