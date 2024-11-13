@@ -1,128 +1,69 @@
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AcapPackageConf {
-    pub setup: Setup,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) configuration: Option<Configuration>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) copy_protection: Option<CopyProtection>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) uninstallation: Option<Uninstallation>,
-}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Manifest(pub(crate) Map<String, Value>);
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct Configuration {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) http_config: Option<Vec<HttpConfig>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) reverse_proxy: Option<Vec<ReverseProxy>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) setting_page: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) param_config: Option<Vec<ParamConfig>>,
-}
+impl Manifest {
+    // TODO: Consider returning an error if any value is of the wrong type.
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CopyProtection {
-    pub(crate) method: String,
-}
+    pub fn app_name(&self) -> Option<&str> {
+        self.0
+            .get("acapPackageConf")?
+            .as_object()?
+            .get("setup")?
+            .as_object()?
+            .get("appName")?
+            .as_str()
+    }
+    pub(crate) fn architecture(&self) -> Option<&str> {
+        self.0
+            .get("acapPackageConf")?
+            .as_object()?
+            .get("setup")?
+            .as_object()?
+            .get("architecture")?
+            .as_str()
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DbusResources {
-    pub(crate) required_methods: Vec<String>,
-}
+    pub(crate) fn http_config(&self) -> Option<&Vec<Value>> {
+        self.0
+            .get("acapPackageConf")?
+            .as_object()?
+            .get("configuration")?
+            .as_object()?
+            .get("httpConfig")?
+            .as_array()
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct HttpConfig {
-    pub(crate) access: String,
-    #[serde(rename = "type")]
-    pub(crate) kind: String,
-    pub(crate) name: Option<String>,
-}
+    pub(crate) fn param_config(&self) -> Option<&Vec<Value>> {
+        self.0
+            .get("acapPackageConf")?
+            .as_object()?
+            .get("configuration")?
+            .as_object()?
+            .get("paramConfig")?
+            .as_array()
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct LinuxResources {
-    pub(crate) user: LinuxUser,
-}
+    pub(crate) fn pre_uninstall_script(&self) -> Option<&Value> {
+        self.0
+            .get("acapPackageConf")?
+            .as_object()?
+            .get("uninstallation")?
+            .as_object()?
+            .get("preUninstallScript")
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct LinuxUser {
-    pub(crate) groups: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Manifest {
-    pub(crate) schema_version: String,
-    pub acap_package_conf: AcapPackageConf,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) resources: Option<Resources>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ParamConfig {
-    pub(crate) name: String,
-    #[serde(rename = "type")]
-    pub(crate) kind: String,
-    pub(crate) default: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct Resources {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) dbus: Option<DbusResources>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) linux: Option<LinuxResources>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ReverseProxy {
-    pub(crate) api_path: String,
-    pub(crate) target: String,
-    pub(crate) access: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Setup {
-    pub app_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) friendly_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) app_id: Option<String>,
-    pub(crate) vendor: String,
-    pub(crate) run_mode: String,
-    pub(crate) version: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) architecture: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) user: Option<User>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub run_options: Option<String>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct Uninstallation {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) pre_uninstall_script: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct User {
-    pub(crate) username: String,
-    pub(crate) group: String,
+    pub(crate) fn version(&self) -> Option<&str> {
+        self.0
+            .get("acapPackageConf")?
+            .as_object()?
+            .get("setup")?
+            .as_object()?
+            .get("version")?
+            .as_str()
+    }
 }
 
 #[cfg(test)]

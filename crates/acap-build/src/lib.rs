@@ -24,7 +24,6 @@ mod command_utils;
 pub mod manifest;
 mod package_conf;
 mod param_conf;
-mod static_package_conf;
 
 // TODO: Find a better way to support reproducible builds
 fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
@@ -250,22 +249,15 @@ impl AppBuilder {
         Ok(app)
     }
 
-    fn get_pre_uninstall_script(manifest: &Manifest) -> Option<String> {
-        manifest
-            .acap_package_conf
-            .uninstallation
-            .as_ref()?
-            .pre_uninstall_script
-            .clone()
-    }
-
     fn bypass_manifest2packageconf(&self) -> anyhow::Result<()> {
         let manifest_data = fs::read_to_string(self.manifest_file())?;
         let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
         let mut additional_files = self.additional_files.clone();
-        if let Some(p) = Self::get_pre_uninstall_script(&manifest) {
-            additional_files.push(PathBuf::from(p));
+        match manifest.pre_uninstall_script() {
+            None => {}
+            Some(Value::String(p)) => additional_files.push(PathBuf::from(p)),
+            Some(v) => bail!("Expected string, got {v:?}"),
         }
 
         manifest2packageconf(
@@ -307,25 +299,35 @@ impl AppBuilder {
         let manifest_data = fs::read_to_string(self.manifest_file())?;
         let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
-        let package_name = manifest
-            .acap_package_conf
-            .setup
-            .friendly_name
-            .as_ref()
-            .unwrap_or(&manifest.acap_package_conf.setup.app_name)
-            .replace(' ', "_");
-        let version = manifest.acap_package_conf.setup.version.replace('.', "_");
-        let arch = manifest
-            .acap_package_conf
-            .setup
-            .architecture
-            .as_deref()
-            .unwrap_or(self.arch.nickname());
+        let friendly_name = manifest
+            .0
+            .get("acapPackageConf")
+            .context("no acapPackageConf")?
+            .as_object()
+            .context("acapPackageConf is not an object")?
+            .get("setup")
+            .context("no setup")?
+            .as_object()
+            .context("setup is not an object")?
+            .get("friendlyName");
+        let package_name = if let Some(friendly_name) = friendly_name {
+            friendly_name
+                .as_str()
+                .context("friendlyName is not a string")?
+        } else {
+            manifest.app_name().context("no app name")?
+        }
+        .replace(' ', "_");
+
+        let version = manifest.version().context("no version")?.replace('.', "_");
+        let arch = manifest.architecture().unwrap_or(self.arch.nickname());
         let tarb = format!("{package_name}_{version}_{arch}.eap");
 
         let mut other_files = self.additional_files.clone();
-        if let Some(p) = Self::get_pre_uninstall_script(&manifest) {
-            other_files.push(PathBuf::from(p));
+        match manifest.pre_uninstall_script() {
+            None => {}
+            Some(Value::String(p)) => other_files.push(PathBuf::from(p)),
+            Some(v) => bail!("Expected string, got {v:?}"),
         }
 
         let package_conf = PackageConf::new(
@@ -358,7 +360,7 @@ impl AppBuilder {
             .arg(format!(
                 "--transform=flags=r;s|{manifest_file_name}|manifest.json|"
             ))
-            .arg(&manifest.acap_package_conf.setup.app_name)
+            .arg(manifest.app_name().context("no app name")?)
             .arg(PackageConf::file_name())
             .arg(ParamConf::file_name())
             .arg(self.license_file().file_name().unwrap().to_str().unwrap())
@@ -500,24 +502,24 @@ pub fn manifest2packageconf(
     created_files.push(p);
 
     let manifest = serde_json::from_value::<Manifest>(manifest)?;
-    match ParamConf::from_manifest(&manifest) {
-        Ok(v) => {
+    match ParamConf::from_manifest(&manifest)? {
+        Some(v) => {
             let p = output.join(ParamConf::file_name());
             fs::write(&p, v.to_string())?;
             created_files.push(p);
         }
-        Err(e) => {
-            info!("Could not create param.conf because {e:?}")
+        None => {
+            info!("No param conf in manifest")
         }
     };
-    match CgiConf::from_manifest(&manifest) {
-        Ok(v) => {
+    match CgiConf::from_manifest(&manifest)? {
+        Some(v) => {
             let p = output.join(CgiConf::file_name());
             fs::write(&p, v.to_string()).unwrap();
             created_files.push(p);
         }
-        Err(e) => {
-            info!("Could not create cgi.conf because {e:?}")
+        None => {
+            info!("No cgi conf in manifest")
         }
     };
 

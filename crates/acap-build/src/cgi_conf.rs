@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
-
 use crate::manifest::Manifest;
+use anyhow::Context;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 enum Entry {
@@ -12,37 +12,50 @@ enum Entry {
 pub(crate) struct CgiConf(Vec<Entry>);
 
 impl CgiConf {
-    pub(crate) fn from_manifest(manifest: &Manifest) -> Result<Self, CgiConfError> {
-        let Some(configuration) = manifest.acap_package_conf.configuration.as_ref() else {
-            return Err(CgiConfError::NoHttpConfig);
-        };
-        let Some(conf) = configuration.http_config.as_ref() else {
-            return Err(CgiConfError::NoHttpConfig);
+    pub(crate) fn from_manifest(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
+        let Some(conf) = manifest.http_config() else {
+            return Ok(None);
         };
 
         let mut entries = Vec::new();
         for obj in conf.iter() {
-            let kind = obj.kind.as_str();
+            let obj = obj
+                .as_object()
+                .context("httpConfig element is not an object")?;
+
+            let kind = obj
+                .get("type")
+                .context("httpConfig object has no field kind")?
+                .as_str()
+                .context("httpConfig field kind is not a string")?;
             if kind == "directory" {
                 continue;
             }
 
-            let Some(name) = obj.name.as_ref() else {
-                return Err(CgiConfError::BadManifest);
-            };
-            let name = name.trim_start_matches('/').to_string();
+            let name = obj
+                .get("name")
+                .context("httpConfig object has no field name")?
+                .as_str()
+                .context("httpConfig field name is not a string")?
+                .trim_start_matches('/')
+                .to_string();
 
-            let access = match obj.access.as_ref() {
+            let access = obj
+                .get("access")
+                .context("httpConfig object has no field access")?
+                .as_str()
+                .context("httpConfig field access is not a string")?;
+
+            let access = match access {
                 "admin" => "administrator".to_string(),
                 access => access.to_string(),
             };
-
             entries.push(match kind {
                 "fastCgi" => Entry::Fast { access, name },
                 _ => Entry::Other { access, name },
             })
         }
-        Ok(Self(entries))
+        Ok(Some(Self(entries)))
     }
 
     pub(crate) fn file_name() -> &'static str {
@@ -60,10 +73,4 @@ impl Display for CgiConf {
         }
         Ok(())
     }
-}
-
-#[derive(Debug)]
-pub(crate) enum CgiConfError {
-    NoHttpConfig,
-    BadManifest,
 }

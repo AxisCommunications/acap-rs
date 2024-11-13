@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
-
 use crate::manifest::Manifest;
+use anyhow::Context;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 enum Entry {
@@ -19,28 +19,45 @@ enum Entry {
 pub(crate) struct ParamConf(Vec<Entry>);
 
 impl ParamConf {
-    pub(crate) fn from_manifest(manifest: &Manifest) -> Result<Self, &'static str> {
-        let Some(configuration) = manifest.acap_package_conf.configuration.as_ref() else {
-            return Err("no configuration in manifest");
-        };
-        let Some(param_config) = configuration.param_config.as_ref() else {
-            return Err("no paramConfig in manifest");
+    pub(crate) fn from_manifest(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
+        let Some(param_config) = manifest.param_config() else {
+            return Ok(None);
         };
 
         let mut entries = Vec::new();
         for obj in param_config.iter() {
-            let name = obj.name.to_string();
-            let default = obj.default.to_string();
-            entries.push(match obj.kind.is_empty() {
+            let obj = obj
+                .as_object()
+                .context("paramConfig element is not an object")?;
+            let name = obj
+                .get("name")
+                .context("paramConfig object has no field key")?
+                .as_str()
+                .context("paramConfig field name is not a string")?
+                .to_string();
+            let default = obj
+                .get("default")
+                .context("paramConfig object has no field default")?
+                .as_str()
+                .context("paramConfig field default is not a string")?
+                .to_string();
+            let kind = obj
+                .get("type")
+                .context("paramConfig object has no field kind")?
+                .as_str()
+                .context("paramConfig field kind is not a string")?
+                .to_string();
+
+            entries.push(match kind.is_empty() {
                 false => Entry::Typed {
                     name,
                     default,
-                    kind: obj.kind.to_string(),
+                    kind,
                 },
                 true => Entry::Untyped { name, default },
             })
         }
-        Ok(Self(entries))
+        Ok(Some(Self(entries)))
     }
 
     pub(crate) fn file_name() -> &'static str {
