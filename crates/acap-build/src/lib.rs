@@ -1,3 +1,9 @@
+use anyhow::{anyhow, bail, Context};
+use command_utils::RunWith;
+use log::{debug, info};
+use serde::Serialize;
+use serde_json::{ser::PrettyFormatter, Serializer, Value};
+use std::io::Write;
 /// Wrapper around the ACAP SDK, in particular `acap-build`.
 use std::os::unix::fs::PermissionsExt;
 use std::{
@@ -7,12 +13,6 @@ use std::{
     process::Command,
     str::FromStr,
 };
-
-use anyhow::{anyhow, bail, Context};
-use command_utils::RunWith;
-use log::{debug, info};
-use serde::Serialize;
-use serde_json::{ser::PrettyFormatter, Serializer, Value};
 use tempfile::NamedTempFile;
 
 use crate::{
@@ -197,7 +197,8 @@ impl AppBuilder {
             // so I think what I will do is merge them and pitch the program comprehensible as
             // a value add.
             self.bypass_manifest2packageconf()?;
-            self.bypass_eap_create()?;
+            // self.create_package_conf()?;
+            self.create_eap()?;
         } else {
             debug!("Using acap-build");
             self.run_acap_build()?;
@@ -255,47 +256,27 @@ impl AppBuilder {
     }
 
     fn bypass_manifest2packageconf(&self) -> anyhow::Result<()> {
-        let manifest_data = fs::read_to_string(self.manifest_file())?;
-        let manifest: Manifest = serde_json::from_str(&manifest_data)?;
-
-        let mut additional_files = self.additional_files.clone();
-        match manifest.try_find_pre_uninstall_script() {
-            Ok(p) => additional_files.push(PathBuf::from(p)),
-            Err(json_ext::Error::KeyNotFound(_)) => {}
-            Err(e) => return Err(e.into()),
-        }
-
-        manifest2packageconf(
-            &self.manifest_file(),
-            &self.staging_dir,
-            &additional_files,
-            self.arch,
-        )?;
+        let manifest: Manifest = serde_json::from_reader(File::open(self.manifest_file())?)?;
+        self.create_package_conf(&manifest)?;
+        self.create_param_conf(&manifest)?;
+        self.create_cgi_conf(&manifest)?;
         Ok(())
     }
 
-    fn create_package_conf(&self) -> anyhow::Result<()> {
-        let param_conf = self.staging_dir.join(ParamConf::file_name());
-        if !param_conf.exists() {
-            fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&param_conf)?;
-            info!("Created an empty {:?}", param_conf);
-        }
+    // fn create_package_conf(&self) -> anyhow::Result<()> {
+    //     let param_conf = self.staging_dir.join(ParamConf::file_name());
+    //     if !param_conf.exists() {
+    //         fs::OpenOptions::new()
+    //             .write(true)
+    //             .create_new(true)
+    //             .open(&param_conf)?;
+    //         info!("Created an empty {:?}", param_conf);
+    //     }
+    //
+    //     Ok(())
+    // }
 
-        // info!("Saving backup of package.conf");
-        // let package_conf = self.staging_dir.join(PackageConf::file_name());
-        // if package_conf.exists() {
-        //     fs::rename(&param_conf, &package_conf.with_extension("conf.orig"))?;
-        // }
-
-        // TODO: More stuff
-
-        Ok(())
-    }
-
-    fn do_make_the_tar(&self) -> anyhow::Result<()> {
+    fn create_eap(&self) -> anyhow::Result<()> {
         let mtime = match env::var_os("SOURCE_DATE_EPOCH") {
             Some(v) => v.into_string().map_err(|e| anyhow!("{e:?}"))?,
             None => String::from_utf8(Command::new("date").arg("+%s").output()?.stdout)?,
@@ -304,12 +285,7 @@ impl AppBuilder {
         let manifest_data = fs::read_to_string(self.manifest_file())?;
         let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
-        let friendly_name = manifest
-            .0
-            .try_get_object("acapPackageConf")?
-            .try_get_object("setup")?
-            .try_get_str("friendlyName");
-        let package_name = match friendly_name {
+        let package_name = match manifest.try_find_friendly_name() {
             Ok(v) => v,
             Err(json_ext::Error::KeyNotFound(_)) => manifest.try_find_app_name()?,
             Err(e) => return Err(e.into()),
@@ -337,9 +313,9 @@ impl AppBuilder {
         }
 
         let package_conf = PackageConf::new(
-            &serde_json::from_str::<Value>(&manifest_data)?,
+            &serde_json::from_str::<Manifest>(&manifest_data)?,
             &self.staging_dir,
-            &other_files,
+            other_files.clone(),
             self.arch,
         )?;
 
@@ -394,12 +370,6 @@ impl AppBuilder {
         Ok(())
     }
 
-    fn bypass_eap_create(&self) -> anyhow::Result<()> {
-        self.create_package_conf()?;
-        self.do_make_the_tar()?;
-        Ok(())
-    }
-
     fn create_temporary_manifest(&self) -> anyhow::Result<NamedTempFile> {
         let manifest = fs::read_to_string(self.manifest_file())?;
 
@@ -421,22 +391,22 @@ impl AppBuilder {
                 .get_mut("acapPackageConf")
                 .context("no key acapPackageConf in manifest")?
                 .get_mut("setup")
-                .context("no key setup in acapPackageConf")?;
-            if let Some(a) = setup.get_mut("architecture") {
+                .context("no key setup in acapPackageConf")?
+                .as_object_mut()
+                .context("Expected setup to be object")?;
+            if let Some(a) = setup.get("architecture") {
                 if a != "all" && a != self.arch.nickname() {
                     bail!(
                         "Architecture in manifest ({a}) is not compatible with built target ({:?})",
                         self.arch
                     );
                 }
-            } else if let Value::Object(setup) = setup {
+            } else {
                 debug!("Architecture not set in manifest, using {:?}", &self.arch);
                 setup.insert(
                     "architecture".to_string(),
                     Value::String(self.arch.nickname().to_string()),
                 );
-            } else {
-                bail!("Expected setup to be an object")
             }
         }
 
@@ -448,6 +418,45 @@ impl AppBuilder {
         );
         manifest.serialize(&mut serializer)?;
         Ok(manifest_file)
+    }
+
+    fn create_package_conf(&self, manifest: &Manifest) -> anyhow::Result<()> {
+        let file = self.staging_dir.join("package.conf");
+        let content = PackageConf::new(
+            manifest,
+            &self.staging_dir,
+            self.additional_files.clone(),
+            self.arch,
+        )?;
+        File::create_new(&file)?.write(content.to_string().as_bytes())?;
+        Ok(())
+    }
+
+    fn create_param_conf(&self, manifest: &Manifest) -> anyhow::Result<()> {
+        let file = self.staging_dir.join("param.conf");
+        match ParamConf::from_manifest(manifest)? {
+            Some(content) => {
+                File::create_new(&file)?.write(content.to_string().as_bytes())?;
+            }
+            None => {
+                info!("No param conf in manifest");
+                File::create_new(&file)?; // from eap-create.sh
+            }
+        };
+        Ok(())
+    }
+
+    fn create_cgi_conf(&self, manifest: &Manifest) -> anyhow::Result<()> {
+        let file = self.staging_dir.join("cgi.conf");
+        match CgiConf::from_manifest(manifest)? {
+            Some(content) => {
+                File::create_new(&file)?.write(content.to_string().as_bytes())?;
+            }
+            None => {
+                info!("No cgi conf in manifest")
+            }
+        };
+        Ok(())
     }
 }
 
@@ -483,48 +492,4 @@ impl FromStr for Architecture {
             _ => Err(anyhow::anyhow!("Unrecognized variant {s}")),
         }
     }
-}
-
-pub fn manifest2packageconf(
-    manifest: &Path,
-    output: &Path,
-    additional_files: &[PathBuf],
-    arch: Architecture,
-) -> anyhow::Result<Vec<PathBuf>> {
-    let mut created_files = Vec::new();
-
-    let additional_files = additional_files
-        .iter()
-        .map(|f| output.join(f))
-        .collect::<Vec<_>>();
-
-    let manifest: Value = serde_json::from_reader(File::open(manifest)?)?;
-    let package_conf = PackageConf::new(&manifest, output, &additional_files, arch)?;
-    let p = output.join(PackageConf::file_name());
-    fs::write(&p, package_conf.to_string())?;
-    created_files.push(p);
-
-    let manifest = serde_json::from_value::<Manifest>(manifest)?;
-    match ParamConf::from_manifest(&manifest)? {
-        Some(v) => {
-            let p = output.join(ParamConf::file_name());
-            fs::write(&p, v.to_string())?;
-            created_files.push(p);
-        }
-        None => {
-            info!("No param conf in manifest")
-        }
-    };
-    match CgiConf::from_manifest(&manifest)? {
-        Some(v) => {
-            let p = output.join(CgiConf::file_name());
-            fs::write(&p, v.to_string()).unwrap();
-            created_files.push(p);
-        }
-        None => {
-            info!("No cgi conf in manifest")
-        }
-    };
-
-    Ok(created_files)
 }

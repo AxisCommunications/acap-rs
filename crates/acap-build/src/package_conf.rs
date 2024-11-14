@@ -10,7 +10,8 @@ use regex::Regex;
 use semver::Version;
 use serde_json::Value;
 
-use crate::Architecture;
+use crate::{json_ext, Architecture};
+use crate::manifest::Manifest;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PackageConf(HashMap<&'static str, String>);
@@ -21,25 +22,36 @@ impl PackageConf {
     }
 
     pub fn new(
-        manifest: &Value,
+        manifest: &Manifest,
         outpath: &Path,
-        otherfiles: &[PathBuf],
+        mut otherfiles: Vec<PathBuf>,
         arch: Architecture,
     ) -> anyhow::Result<PackageConf> {
+        match manifest.try_find_pre_uninstall_script() {
+            Ok(p) => otherfiles.push(PathBuf::from(p)),
+            Err(json_ext::Error::KeyNotFound(_)) => {}
+            Err(e) => return Err(e.into()),
+        }
+
+        let otherfiles = otherfiles
+            .iter()
+            .map(|f| outpath.join(f))
+            .collect::<Vec<_>>();
+
         let mut package_conf = Self(HashMap::new());
         package_conf.update_from_manifest(manifest)?;
-        package_conf.update_from_other_files(otherfiles, outpath)?;
+        package_conf.update_from_other_files(&otherfiles, outpath)?;
         package_conf.update_from_app_type(arch);
         Ok(package_conf)
     }
 
-    fn update_from_manifest(&mut self, manifest: &Value) -> anyhow::Result<()> {
+    fn update_from_manifest(&mut self, manifest: &Manifest) -> anyhow::Result<()> {
         let parameters: HashMap<_, _> = PARAMETERS
             .iter()
             .flat_map(|p| p.source.map(|s| (s, p.name)))
             .collect();
 
-        let flat_manifest = stringify(manifest);
+        let flat_manifest = stringify(manifest.as_value());
         let mut cgi_parsed = false;
         for (path, value) in flat_manifest {
             match path.as_str() {

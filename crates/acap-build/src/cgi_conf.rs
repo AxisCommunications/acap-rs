@@ -1,6 +1,5 @@
-use std::fmt::{Display, Formatter};
-
 use log::debug;
+use std::fmt::{Display, Formatter};
 
 use crate::{
     json_ext,
@@ -50,6 +49,8 @@ impl CgiConf {
         }
         Ok(Some(Self(entries)))
     }
+
+
 
     pub(crate) fn file_name() -> &'static str {
         "cgi.conf"

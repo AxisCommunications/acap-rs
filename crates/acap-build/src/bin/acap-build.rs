@@ -10,7 +10,7 @@ use std::{
 
 use acap_build::{manifest::Manifest, AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
-use log::{debug, warn};
+use log::{debug, info, warn};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, ValueEnum)]
 #[clap(rename_all = "kebab-case")]
@@ -98,6 +98,14 @@ impl Cli {
         let app_name = Self::read_app_name(&manifest)?;
         let exe = path.join(&app_name);
         let license = path.join("LICENSE");
+
+
+        let package_conf = staging_dir.join("package.conf");
+        if package_conf.exists() {
+            info!("Saving backup of package.conf");
+            fs::rename(&package_conf, package_conf.with_extension("conf.orig"))?;
+        }
+
         let mut builder = AppBuilder::new(
             // staging_dir.path().to_path_buf(),
             staging_dir,

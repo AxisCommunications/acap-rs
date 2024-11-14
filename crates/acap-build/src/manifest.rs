@@ -2,52 +2,68 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::{json_ext, json_ext::MapExt};
+use crate::json_ext::ValueExt;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Manifest(pub(crate) Map<String, Value>);
+pub struct Manifest(pub Value);
 
 impl Manifest {
     pub fn find_app_name(&self) -> anyhow::Result<&str> {
         Ok(self.try_find_app_name()?)
     }
 
+    pub(crate) fn as_value(&self) -> &Value {
+        &self.0
+    }
+
+    pub(crate) fn as_object(&self) -> json_ext::Result<&Map<String, Value>> {
+        self.0.try_to_object()
+    }
+
     pub(crate) fn try_find_app_name(&self) -> json_ext::Result<&str> {
-        self.0
+        self.as_object()?
             .try_get_object("acapPackageConf")?
             .try_get_object("setup")?
             .try_get_str("appName")
     }
 
     pub(crate) fn try_find_architecture(&self) -> json_ext::Result<&str> {
-        self.0
+        self.as_object()?
             .try_get_object("acapPackageConf")?
             .try_get_object("setup")?
             .try_get_str("architecture")
     }
 
+    pub(crate) fn try_find_friendly_name(&self) -> json_ext::Result<&str> {
+        self.as_object()?
+            .try_get_object("acapPackageConf")?
+            .try_get_object("setup")?
+            .try_get_str("friendlyName")
+    }
+
     pub(crate) fn try_find_http_config(&self) -> json_ext::Result<&Vec<Value>> {
-        self.0
+        self.as_object()?
             .try_get_object("acapPackageConf")?
             .try_get_object("configuration")?
             .try_get_array("httpConfig")
     }
 
     pub(crate) fn try_find_param_config(&self) -> json_ext::Result<&Vec<Value>> {
-        self.0
+        self.as_object()?
             .try_get_object("acapPackageConf")?
             .try_get_object("configuration")?
             .try_get_array("paramConfig")
     }
 
     pub(crate) fn try_find_pre_uninstall_script(&self) -> json_ext::Result<&str> {
-        self.0
+        self.as_object()?
             .try_get_object("acapPackageConf")?
             .try_get_object("uninstallation")?
             .try_get_str("preUninstallScript")
     }
 
     pub(crate) fn try_find_version(&self) -> json_ext::Result<&str> {
-        self.0
+        self.as_object()?
             .try_get_object("acapPackageConf")?
             .try_get_object("setup")?
             .try_get_str("version")

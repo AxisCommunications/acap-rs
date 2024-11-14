@@ -3,7 +3,6 @@ use std::{
     fmt::{Debug, Display, Formatter},
 };
 
-use anyhow::anyhow;
 use serde_json::{Map, Value};
 
 #[derive(Debug)]
@@ -83,14 +82,18 @@ impl MapExt for Map<String, Value> {
 }
 
 pub(crate) trait ValueExt {
-    fn try_to_object(&self) -> anyhow::Result<&Map<String, Value>>;
+    fn try_to_object(&self) -> Result<&Map<String, Value>>;
 }
 
 impl ValueExt for Value {
-    fn try_to_object(&self) -> anyhow::Result<&Map<String, Value>> {
+    fn try_to_object(&self) -> Result<&Map<String, Value>> {
         match self {
             Value::Object(o) => Ok(o),
-            v => Err(anyhow!("Expected object, found {v:?}")),
+            v => Err(Error::WrongType {
+                key: "?",
+                expected: "object",
+                found: type_name_of_val(v),
+            }),
         }
     }
 }
