@@ -1,3 +1,7 @@
+//! A rust wrapper around the [Message Broker API] from [ACAP].
+//!
+//! [ACAP]: https://axiscommunications.github.io/acap-documentation/
+//! [Message Broker API]: https://axiscommunications.github.io/acap-documentation/docs/api/src/api/message-broker/html/index.html
 // TODO: Add documentation.
 use std::{
     any,

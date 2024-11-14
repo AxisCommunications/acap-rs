@@ -1,3 +1,5 @@
+//! An example app that subscribes to analytics scene description data using [`mdb`].
+
 use std::{ffi::CStr, process::abort, thread::sleep, time::Duration};
 
 use log::{error, info};
