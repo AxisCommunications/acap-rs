@@ -16,11 +16,16 @@ use serde_json::{ser::PrettyFormatter, Serializer, Value};
 use tempfile::NamedTempFile;
 
 use crate::{
-    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
+    cgi_conf::CgiConf,
+    json_ext::{MapExt, ValueExt},
+    manifest::Manifest,
+    package_conf::PackageConf,
+    param_conf::ParamConf,
 };
 
 mod cgi_conf;
 mod command_utils;
+mod json_ext;
 pub mod manifest;
 mod package_conf;
 mod param_conf;
@@ -254,10 +259,10 @@ impl AppBuilder {
         let manifest: Manifest = serde_json::from_str(&manifest_data)?;
 
         let mut additional_files = self.additional_files.clone();
-        match manifest.pre_uninstall_script() {
-            None => {}
-            Some(Value::String(p)) => additional_files.push(PathBuf::from(p)),
-            Some(v) => bail!("Expected string, got {v:?}"),
+        match manifest.try_find_pre_uninstall_script() {
+            Ok(p) => additional_files.push(PathBuf::from(p)),
+            Err(json_ext::Error::KeyNotFound(_)) => {}
+            Err(e) => return Err(e.into()),
         }
 
         manifest2packageconf(
@@ -301,33 +306,34 @@ impl AppBuilder {
 
         let friendly_name = manifest
             .0
-            .get("acapPackageConf")
-            .context("no acapPackageConf")?
-            .as_object()
-            .context("acapPackageConf is not an object")?
-            .get("setup")
-            .context("no setup")?
-            .as_object()
-            .context("setup is not an object")?
-            .get("friendlyName");
-        let package_name = if let Some(friendly_name) = friendly_name {
-            friendly_name
-                .as_str()
-                .context("friendlyName is not a string")?
-        } else {
-            manifest.app_name().context("no app name")?
+            .try_get_object("acapPackageConf")?
+            .try_get_object("setup")?
+            .try_get_str("friendlyName");
+        let package_name = match friendly_name {
+            Ok(v) => v,
+            Err(json_ext::Error::KeyNotFound(_)) => manifest.try_find_app_name()?,
+            Err(e) => return Err(e.into()),
         }
         .replace(' ', "_");
 
-        let version = manifest.version().context("no version")?.replace('.', "_");
-        let arch = manifest.architecture().unwrap_or(self.arch.nickname());
+        let version = manifest
+            .try_find_version()
+            .context("no version")?
+            .replace('.', "_");
+        let arch = match manifest.try_find_architecture() {
+            Ok(v) => v,
+            Err(json_ext::Error::KeyNotFound(_)) => self.arch.nickname(),
+            Err(e) => return Err(e.into()),
+        };
         let tarb = format!("{package_name}_{version}_{arch}.eap");
 
         let mut other_files = self.additional_files.clone();
-        match manifest.pre_uninstall_script() {
-            None => {}
-            Some(Value::String(p)) => other_files.push(PathBuf::from(p)),
-            Some(v) => bail!("Expected string, got {v:?}"),
+        match manifest.try_find_pre_uninstall_script() {
+            Ok(p) => other_files.push(PathBuf::from(p)),
+            Err(json_ext::Error::KeyNotFound(k)) => {
+                debug!("No {k}, skipping pre uninstall script")
+            }
+            Err(e) => return Err(e.into()),
         }
 
         let package_conf = PackageConf::new(
@@ -360,7 +366,7 @@ impl AppBuilder {
             .arg(format!(
                 "--transform=flags=r;s|{manifest_file_name}|manifest.json|"
             ))
-            .arg(manifest.app_name().context("no app name")?)
+            .arg(manifest.try_find_app_name()?)
             .arg(PackageConf::file_name())
             .arg(ParamConf::file_name())
             .arg(self.license_file().file_name().unwrap().to_str().unwrap())
@@ -400,13 +406,10 @@ impl AppBuilder {
         // This file is included in the eap so for as long as we want bit exact output we must
         // take care to serialize the manifest the same way as the python implementation.
         let mut manifest = serde_json::from_str::<Value>(&manifest).context(manifest)?;
-        let Value::String(mut schema_version) = manifest
-            .get("schemaVersion")
-            .context("schemaVersion")?
-            .clone()
-        else {
-            bail!("Expected schema version to be a string")
-        };
+        let mut schema_version = manifest
+            .try_to_object()?
+            .try_get_str("schemaVersion")?
+            .to_string();
 
         // Make it valid semver
         for _ in 0..(2 - schema_version.chars().filter(|&c| c == '.').count()) {

@@ -1,6 +1,12 @@
-use crate::manifest::Manifest;
-use anyhow::Context;
 use std::fmt::{Display, Formatter};
+
+use log::debug;
+
+use crate::{
+    json_ext,
+    json_ext::{MapExt, ValueExt},
+    manifest::Manifest,
+};
 
 #[derive(Debug)]
 enum Entry {
@@ -13,43 +19,30 @@ pub(crate) struct CgiConf(Vec<Entry>);
 
 impl CgiConf {
     pub(crate) fn from_manifest(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
-        let Some(conf) = manifest.http_config() else {
-            return Ok(None);
+        let conf = match manifest.try_find_http_config() {
+            Ok(v) => v,
+            Err(json_ext::Error::KeyNotFound(_)) => return Ok(None),
+            Err(e) => return Err(e.into()),
         };
 
         let mut entries = Vec::new();
         for obj in conf.iter() {
-            let obj = obj
-                .as_object()
-                .context("httpConfig element is not an object")?;
+            let obj = obj.try_to_object()?;
 
-            let kind = obj
-                .get("type")
-                .context("httpConfig object has no field kind")?
-                .as_str()
-                .context("httpConfig field kind is not a string")?;
+            let kind = obj.try_get_str("type")?;
             if kind == "directory" {
+                debug!("Skipping httpConfig of type directory");
                 continue;
             }
 
-            let name = obj
-                .get("name")
-                .context("httpConfig object has no field name")?
-                .as_str()
-                .context("httpConfig field name is not a string")?
-                .trim_start_matches('/')
-                .to_string();
+            let name = obj.try_get_str("name")?.trim_start_matches('/').to_string();
 
-            let access = obj
-                .get("access")
-                .context("httpConfig object has no field access")?
-                .as_str()
-                .context("httpConfig field access is not a string")?;
+            let access = match obj.try_get_str("access")? {
+                "admin" => "administrator",
+                access => access,
+            }
+            .to_string();
 
-            let access = match access {
-                "admin" => "administrator".to_string(),
-                access => access.to_string(),
-            };
             entries.push(match kind {
                 "fastCgi" => Entry::Fast { access, name },
                 _ => Entry::Other { access, name },

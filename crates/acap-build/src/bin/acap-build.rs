@@ -1,8 +1,4 @@
 //! A drop-in replacement for the acap-build python script
-use acap_build::{manifest::Manifest, AppBuilder, Architecture};
-use anyhow::Context;
-use clap::{Parser, ValueEnum};
-use log::{debug, warn};
 use std::{
     env,
     fmt::{Display, Formatter},
@@ -11,6 +7,10 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
+
+use acap_build::{manifest::Manifest, AppBuilder, Architecture};
+use clap::{Parser, ValueEnum};
+use log::{debug, warn};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, ValueEnum)]
 #[clap(rename_all = "kebab-case")]
@@ -58,7 +58,7 @@ impl Cli {
     fn read_app_name(manifest: &Path) -> anyhow::Result<String> {
         let manifest = fs::read_to_string(manifest)?;
         let manifest: Manifest = serde_json::from_str(&manifest)?;
-        Ok(manifest.app_name().context("no appName")?.to_string())
+        Ok(manifest.find_app_name()?.to_string())
     }
     fn exec(self) -> anyhow::Result<()> {
         let Self {
