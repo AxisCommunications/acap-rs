@@ -112,13 +112,13 @@ struct DeployOptions {
     /// Username of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
-    #[clap(long, env = "AXIS_DEVICE_USER")]
+    #[clap(long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
     /// Password of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
     // TODO: Consider disallowing passing password as arguments.
-    #[clap(long, env = "AXIS_DEVICE_PASS")]
+    #[clap(long, env = "AXIS_DEVICE_PASS", default_value = "pass")]
     pass: String,
 }
 
