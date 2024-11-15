@@ -402,6 +402,37 @@ impl std::ops::Drop for LarodMap {
     }
 }
 
+#[derive(Eq, PartialEq, Hash)]
+pub struct Tensor<'a> {
+    ptr: *mut larodTensor,
+    phantom: PhantomData<&'a Session<'a>>,
+}
+
+/// A structure representing a larodTensor.
+impl<'a> Tensor<'a> {
+    fn as_ptr(&self) -> *const larodTensor {
+        self.ptr.cast_const()
+    }
+    pub fn name() {}
+    pub fn byte_size() {}
+    pub fn dims() {}
+    pub fn set_dims() {}
+    pub fn pitches() {}
+    pub fn set_pitches() {}
+    pub fn data_type() {}
+    pub fn set_data_type() {}
+    pub fn layout() {}
+    pub fn set_layout() {}
+    pub fn fd() {}
+    pub fn set_fd() {}
+    pub fn fd_size() {}
+    pub fn set_fd_size() {}
+    pub fn fd_offset() {}
+    pub fn set_fd_offset() {}
+    pub fn fd_props() {}
+    pub fn set_fd_props() {}
+}
+
 /// A type representing a larodDevice.
 /// The lifetime of LarodDevice is explicitly tied to the lifetime of a
 /// [Session]. So using a LarodDevice after the Session it was acquired from
