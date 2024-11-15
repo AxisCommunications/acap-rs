@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::{env, fs::File};
 
 use clap::{Parser, Subcommand};

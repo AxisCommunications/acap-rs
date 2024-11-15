@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! An example of how to handle storage disks using the Edge Storage API.
 
 use std::{

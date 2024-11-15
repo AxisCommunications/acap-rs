@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::{env, fs::File, path::PathBuf};
 
 use acap_ssh_utils::{patch_package, run_other, run_package};
