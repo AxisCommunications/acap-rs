@@ -11,8 +11,8 @@ Commands:
 
 Options:
       --host <HOST>  Hostname or IP address of the device [env: AXIS_DEVICE_IP=]
-  -u, --user <USER>  The username to use for the ssh connection [env: AXIS_DEVICE_USER=]
-  -p, --pass <PASS>  The password to use for the ssh connection [env: AXIS_DEVICE_PASS=]
+  -u, --user <USER>  The username to use for the ssh connection [env: AXIS_DEVICE_USER=, default="root"]
+  -p, --pass <PASS>  The password to use for the ssh connection [env: AXIS_DEVICE_PASS=, default="pass"]
   -h, --help         Print help
 ```
 

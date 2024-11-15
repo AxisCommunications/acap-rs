@@ -46,10 +46,10 @@ struct Netloc {
     #[arg(long, value_parser = url::Host::parse, env="AXIS_DEVICE_IP")]
     host: Host,
     /// The username to use for the ssh connection.
-    #[clap(short, long, env = "AXIS_DEVICE_USER")]
+    #[clap(short, long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
     /// The password to use for the ssh connection.
-    #[clap(short, long, env = "AXIS_DEVICE_PASS")]
+    #[clap(short, long, env = "AXIS_DEVICE_PASS", default_value = "pass")]
     pass: String,
 }
 

@@ -34,8 +34,8 @@ def main(data: None | str | pathlib.Path = None, tunnel: bool = False) -> None:
     env["USERID"] = str(os.getuid())
     env["GROUPID"] = str(os.getgid())
     assert env["AXIS_DEVICE_IP"]
-    assert env["AXIS_DEVICE_PASS"]
-    assert env["AXIS_DEVICE_USER"]
+    env.setdefault("AXIS_DEVICE_PASS", "pass")
+    env.setdefault("AXIS_DEVICE_USER", "root")
 
     cmd = ["docker", "compose"]
     if tunnel:
