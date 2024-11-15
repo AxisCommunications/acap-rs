@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::Context;

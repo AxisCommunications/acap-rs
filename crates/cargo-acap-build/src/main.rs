@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::fs::File;
 
 use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};

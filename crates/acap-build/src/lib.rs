@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Wrapper around the ACAP SDK, in particular `acap-build`.
 use std::os::unix::fs::PermissionsExt;
 use std::{

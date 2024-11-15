@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::{ffi::OsString, fs::File, str::FromStr};
 
 use acap_vapix::{applications_control, basic_device_info, HttpClient};

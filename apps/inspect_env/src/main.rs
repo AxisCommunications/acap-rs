@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! A simple app that inspects the environment it runs in
 
 use std::{collections::HashMap, env, io::IsTerminal};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![allow(clippy::needless_doctest_main)]
 #![doc = include_str!("../README.md")]
 use std::{env, io::IsTerminal};
