@@ -13,4 +13,3 @@ device-tests = []
 
 [[example]]
 name = "basic"
-crate-type = ["bin"]
