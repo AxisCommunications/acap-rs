@@ -1,3 +1,4 @@
+//! Code for populating the `param.conf` file
 use std::fmt::{Display, Formatter};
 
 use crate::{
@@ -23,7 +24,7 @@ enum Entry {
 pub(crate) struct ParamConf(Vec<Entry>);
 
 impl ParamConf {
-    pub(crate) fn from_manifest(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
+    pub(crate) fn new(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
         let param_config = match manifest.try_find_param_config() {
             Ok(v) => v,
             Err(json_ext::Error::KeyNotFound(_)) => return Ok(None),
@@ -47,10 +48,6 @@ impl ParamConf {
             })
         }
         Ok(Some(Self(entries)))
-    }
-
-    pub(crate) fn file_name() -> &'static str {
-        "param.conf"
     }
 }
 

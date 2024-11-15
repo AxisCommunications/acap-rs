@@ -1,5 +1,7 @@
-use log::debug;
+//! Code for populating the `cgi.conf` file
 use std::fmt::{Display, Formatter};
+
+use log::debug;
 
 use crate::{
     json_ext,
@@ -17,7 +19,7 @@ enum Entry {
 pub(crate) struct CgiConf(Vec<Entry>);
 
 impl CgiConf {
-    pub(crate) fn from_manifest(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
+    pub(crate) fn new(manifest: &Manifest) -> anyhow::Result<Option<Self>> {
         let conf = match manifest.try_find_http_config() {
             Ok(v) => v,
             Err(json_ext::Error::KeyNotFound(_)) => return Ok(None),
@@ -48,12 +50,6 @@ impl CgiConf {
             })
         }
         Ok(Some(Self(entries)))
-    }
-
-
-
-    pub(crate) fn file_name() -> &'static str {
-        "cgi.conf"
     }
 }
 

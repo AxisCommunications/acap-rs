@@ -1,3 +1,4 @@
+//! Additional methods for [`serde_json`] types.
 use std::{
     any::type_name_of_val,
     fmt::{Debug, Display, Formatter},

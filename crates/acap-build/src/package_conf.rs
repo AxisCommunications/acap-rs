@@ -1,7 +1,7 @@
+//! Code for populating the `package.conf` file
 use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
-    path::{Path, PathBuf},
 };
 
 use anyhow::bail;
@@ -10,49 +10,31 @@ use regex::Regex;
 use semver::Version;
 use serde_json::Value;
 
-use crate::{json_ext, Architecture};
-use crate::manifest::Manifest;
+use crate::{manifest::Manifest, Architecture};
 
 #[derive(Clone, Debug)]
 pub(crate) struct PackageConf(HashMap<&'static str, String>);
 
 impl PackageConf {
-    pub fn file_name() -> &'static str {
-        "package.conf"
-    }
-
-    pub fn new(
+    pub(crate) fn new(
         manifest: &Manifest,
-        outpath: &Path,
-        mut otherfiles: Vec<PathBuf>,
-        arch: Architecture,
+        other_files: &[String],
+        default_arch: Architecture,
     ) -> anyhow::Result<PackageConf> {
-        match manifest.try_find_pre_uninstall_script() {
-            Ok(p) => otherfiles.push(PathBuf::from(p)),
-            Err(json_ext::Error::KeyNotFound(_)) => {}
-            Err(e) => return Err(e.into()),
-        }
-
-        let otherfiles = otherfiles
-            .iter()
-            .map(|f| outpath.join(f))
-            .collect::<Vec<_>>();
-
         let mut package_conf = Self(HashMap::new());
-        package_conf.update_from_manifest(manifest)?;
-        package_conf.update_from_other_files(&otherfiles, outpath)?;
-        package_conf.update_from_app_type(arch);
+        package_conf.set_custom_from_manifest(manifest)?;
+        package_conf.set_custom_from_other_files(other_files)?;
+        package_conf.set_defaults(default_arch);
         Ok(package_conf)
     }
 
-    fn update_from_manifest(&mut self, manifest: &Manifest) -> anyhow::Result<()> {
+    fn set_custom_from_manifest(&mut self, manifest: &Manifest) -> anyhow::Result<()> {
         let parameters: HashMap<_, _> = PARAMETERS
             .iter()
             .flat_map(|p| p.source.map(|s| (s, p.name)))
             .collect();
 
         let flat_manifest = stringify(manifest.as_value());
-        let mut cgi_parsed = false;
         for (path, value) in flat_manifest {
             match path.as_str() {
                 "acapPackageConf.setup.version" => {
@@ -60,9 +42,9 @@ impl PackageConf {
                         bail!("acapPackageConf.setup.version is not a string")
                     };
                     let v = Version::parse(&v)?;
-                    self.0.insert("APPMAJORVERSION", v.major.to_string());
-                    self.0.insert("APPMINORVERSION", v.minor.to_string());
-                    self.0.insert("APPMICROVERSION", v.patch.to_string());
+                    debug_assert_eq!(self.0.insert("APPMAJORVERSION", v.major.to_string()), None);
+                    debug_assert_eq!(self.0.insert("APPMINORVERSION", v.minor.to_string()), None);
+                    debug_assert_eq!(self.0.insert("APPMICROVERSION", v.patch.to_string()), None);
                 }
                 "acapPackageConf.setup.vendorUrl" => {
                     let re = Regex::new("(?:(?:http|https)://)?(.+)")
@@ -77,23 +59,23 @@ impl PackageConf {
                         .get(1)
                         .expect("Hard coded regex as exactly one capture group")
                         .as_str();
-                    self.0.insert(
-                        "VENDORHOMEPAGELINK",
-                        format!(r#"<a href="{v}" target="_blank">{domain_name}</a>"#),
+                    debug_assert_eq!(
+                        self.0.insert(
+                            "VENDORHOMEPAGELINK",
+                            format!(r#"<a href="{v}" target="_blank">{domain_name}</a>"#),
+                        ),
+                        None
                     );
                 }
                 path if path.starts_with("acapPackageConf.configuration.httpConfig") => {
-                    if !cgi_parsed {
-                        cgi_parsed = true;
-                        self.0.insert("HTTPCGIPATHS", "cgi.conf".to_string());
-                    }
+                    self.0.insert("HTTPCGIPATHS", "cgi.conf".to_string());
                 }
                 path => {
                     if let Some(name) = parameters.get(path) {
                         let Value::String(v) = value else {
                             bail!("{path} is not a string")
                         };
-                        self.0.insert(name, v);
+                        debug_assert_eq!(self.0.insert(name, v), None);
                     } else {
                         debug!("{path} skipped, no corresponding parameter in package.conf")
                     }
@@ -103,31 +85,24 @@ impl PackageConf {
         Ok(())
     }
 
-    fn update_from_other_files(
-        &mut self,
-        otherfiles: &[PathBuf],
-        outpath: &Path,
-    ) -> anyhow::Result<()> {
-        if !otherfiles.is_empty() {
-            let mut relpaths = Vec::new();
-            for file in otherfiles {
-                let relpath = match file.is_absolute() {
-                    true => file.strip_prefix(outpath)?,
-                    false => file,
-                };
-                relpaths.push(relpath.to_string_lossy().to_string());
-            }
-            self.0.insert("OTHERFILES", relpaths.join(" "));
+    fn set_custom_from_other_files(&mut self, other_files: &[String]) -> anyhow::Result<()> {
+        if !other_files.is_empty() {
+            debug_assert_eq!(self.0.insert("OTHERFILES", other_files.join(" ")), None);
         }
         Ok(())
     }
 
-    fn update_from_app_type(&mut self, arch: Architecture) {
+    fn set_defaults(&mut self, arch: Architecture) {
+        // If not set from the manifest, eap-create.sh would try to infer it.
         self.0
             .entry("APPTYPE")
             .or_insert(arch.nickname().to_string());
 
+        // If not set from the manifest, eap-create.sh would try to infer it from the exe.
+        // But we know that it must be set for the manifest to be valid.
+        // TODO: Fail explicitly if app name is not set.
         let app_name = self.0.get("APPNAME").cloned().unwrap_or_default();
+        // If not set from the manifest, eap-create.sh would fall back on the app name
         self.0.entry("PACKAGENAME").or_insert(app_name);
 
         for Parameter { name, default, .. } in PARAMETERS {
@@ -135,9 +110,6 @@ impl PackageConf {
                 self.0.entry(name).or_insert(v.to_string());
             }
         }
-    }
-    pub fn http_cig_paths(&self) -> Option<&String> {
-        self.0.get("HTTPCGIPATHS")
     }
 }
 

@@ -8,7 +8,7 @@ use std::{
     process::Command,
 };
 
-use acap_build::{manifest::Manifest, AppBuilder, Architecture};
+use acap_build::{AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
 use log::{debug, info, warn};
 
@@ -55,11 +55,6 @@ struct Cli {
 }
 
 impl Cli {
-    fn read_app_name(manifest: &Path) -> anyhow::Result<String> {
-        let manifest = fs::read_to_string(manifest)?;
-        let manifest: Manifest = serde_json::from_str(&manifest)?;
-        Ok(manifest.find_app_name()?.to_string())
-    }
     fn exec(self) -> anyhow::Result<()> {
         let Self {
             path,
@@ -91,14 +86,15 @@ impl Cli {
         if staging_dir.exists() {
             fs::remove_dir_all(&staging_dir)?;
         }
+        fs::create_dir(&staging_dir)?;
+
         let manifest = match manifest {
             None => path.join("manifest.json"),
             Some(m) => path.join(m),
         };
-        let app_name = Self::read_app_name(&manifest)?;
-        let exe = path.join(&app_name);
+        // let app_name = Self::read_app_name(&manifest)?;
+        // let exe = path.join(&app_name);
         let license = path.join("LICENSE");
-
 
         let package_conf = staging_dir.join("package.conf");
         if package_conf.exists() {
@@ -106,29 +102,23 @@ impl Cli {
             fs::rename(&package_conf, package_conf.with_extension("conf.orig"))?;
         }
 
-        let mut builder = AppBuilder::new(
-            // staging_dir.path().to_path_buf(),
-            staging_dir,
-            arch,
-            &app_name,
-            &manifest,
-            &exe,
-            &license,
-            true,
-        )?;
+        let mut builder = AppBuilder::new(true, staging_dir, &manifest, arch)?;
+        builder
+            .add_exe(&path.join(builder.app_name()))?
+            .add_license(&license)?;
 
         let lib = path.join("lib");
         if lib.exists() {
-            builder.lib(&lib)?;
+            builder.add_lib(&lib)?;
         }
 
         let html = path.join("html");
         if html.exists() {
-            builder.html(&html)?;
+            builder.add_html(&html)?;
         }
 
         for additional_file in additional_file {
-            builder.additional_file(&path.join(additional_file))?;
+            builder.add_additional(&path.join(additional_file))?;
         }
 
         let path = builder.build()?;
