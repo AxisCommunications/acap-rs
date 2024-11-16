@@ -222,8 +222,13 @@ impl AppBuilder {
             staging_dir,
             default_architecture,
             additional_files,
+            manifest,
             ..
         } = self;
+
+        fs::File::create_new(&staging_dir.join("manifest.json"))?
+            .write_all(manifest.to_string().as_bytes())?;
+
         let mut acap_build = Command::new("acap-build");
         acap_build.args(["--build", "no-build"]);
         for file in additional_files {
@@ -341,11 +346,7 @@ impl AppBuilder {
         // This file is included in the EAP, so for as long as we want bit-exact output, we must
         // take care to serialize the manifest the same way as the python implementation.
         let manifest_file = staging_dir.join("manifest.json");
-        let mut serializer = Serializer::with_formatter(
-            fs::File::create_new(&manifest_file)?,
-            PrettyFormatter::with_indent(b"    "),
-        );
-        manifest.as_value().serialize(&mut serializer)?;
+        fs::File::create_new(&manifest_file)?.write_all(manifest.to_string().as_bytes())?;
         // Replicate the permissions that temporary files get by default.
         let mut permissions = fs::metadata(&manifest_file)?.permissions();
         permissions.set_mode(0o600);

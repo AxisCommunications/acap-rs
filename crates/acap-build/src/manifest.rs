@@ -1,12 +1,16 @@
-use anyhow::{bail, Context};
-use log::debug;
-use serde_json::{Map, Value};
-
 use crate::{
     json_ext,
     json_ext::{MapExt, ValueExt},
     Architecture,
 };
+use anyhow::{bail, Context};
+use log::debug;
+use serde::Serialize;
+use serde_json::ser::PrettyFormatter;
+use serde_json::{Map, Serializer, Value};
+use std::fmt::{Display, Formatter};
+use std::fs;
+use std::io::BufWriter;
 
 #[derive(Debug)]
 pub(crate) struct Manifest(Value);
@@ -109,5 +113,21 @@ impl Manifest {
             .try_get_object("acapPackageConf")?
             .try_get_object("setup")?
             .try_get_str("version")
+    }
+}
+
+impl Display for Manifest {
+
+    // TODO: Consider refactoring this to avoid the intermediate string
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // This file is included in the EAP, so for as long as we want bit-exact output, we must
+        // take care to serialize the manifest the same way as the python implementation.
+        // let mut writer = BufWriter::new(String::new());
+        let mut data = Vec::new();
+        let mut serializer =
+            Serializer::with_formatter(&mut data, PrettyFormatter::with_indent(b"    "));
+        self.0.serialize(&mut serializer).unwrap();
+        f.write_str(String::from_utf8(data).unwrap().as_str())?;
+        Ok(())
     }
 }
