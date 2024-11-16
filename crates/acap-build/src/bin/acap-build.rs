@@ -4,13 +4,14 @@ use std::{
     fmt::{Display, Formatter},
     fs,
     fs::File,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
 };
 
 use acap_build::{AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
-use log::{debug, info, warn};
+use log::{debug, warn};
+use tempdir::TempDir;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, ValueEnum)]
 #[clap(rename_all = "kebab-case")]
@@ -81,28 +82,14 @@ impl Cli {
         }
 
         let arch: Architecture = env::var("OECORE_TARGET_ARCH")?.parse()?;
-        // let staging_dir = TempDir::new("acap-build")?;
-        let staging_dir = env::current_dir().unwrap().join("tmp");
-        if staging_dir.exists() {
-            fs::remove_dir_all(&staging_dir)?;
-        }
-        fs::create_dir(&staging_dir)?;
-
         let manifest = match manifest {
             None => path.join("manifest.json"),
             Some(m) => path.join(m),
         };
-        // let app_name = Self::read_app_name(&manifest)?;
-        // let exe = path.join(&app_name);
         let license = path.join("LICENSE");
 
-        let package_conf = staging_dir.join("package.conf");
-        if package_conf.exists() {
-            info!("Saving backup of package.conf");
-            fs::rename(&package_conf, package_conf.with_extension("conf.orig"))?;
-        }
-
-        let mut builder = AppBuilder::new(true, staging_dir, &manifest, arch)?;
+        let staging_dir = TempDir::new_in(&path, "acap-build")?;
+        let mut builder = AppBuilder::new(true, staging_dir.path(), &manifest, arch)?;
         builder
             .add_exe(&path.join(builder.app_name()))?
             .add_license(&license)?;
@@ -121,36 +108,11 @@ impl Cli {
             builder.add_additional(&path.join(additional_file))?;
         }
 
-        let path = builder.build()?;
-
-        Self::copy_artifacts(path.parent().unwrap(), &env::current_dir().unwrap(), &path)
-    }
-
-    fn copy_artifacts(src: &Path, dst: &Path, eap: &Path) -> anyhow::Result<()> {
-        let (prefix, _) = eap
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .rsplit_once('_')
-            .unwrap();
-        let license = format!("{prefix}_LICENSE.txt");
-        for file_name in [
-            eap.file_name().unwrap().to_str().unwrap(),
-            license.as_str(),
-            "package.conf",
-            "package.conf.orig",
-            "param.conf",
-        ] {
-            match fs::copy(src.join(file_name), dst.join(file_name)) {
-                Ok(n) => {
-                    debug!("Copied {n} bytes of {file_name} from {src:?} to {dst:?}")
-                }
-                Err(e) => {
-                    warn!("{file_name}: {src:?} -> {dst:?} because {e:?}")
-                }
-            }
-        }
+        let eap_file_name = builder.build()?;
+        fs::copy(
+            staging_dir.path().join(&eap_file_name),
+            path.join(&eap_file_name),
+        )?;
         Ok(())
     }
 }

@@ -134,7 +134,7 @@ fn pack(
     debug!("Found license file: {license:?}");
 
     debug!("Creating app builder");
-    let mut app_builder = AppBuilder::new(false, staging_dir, &manifest, arch)?;
+    let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
     app_builder.add_exe(&executable)?.add_license(&license)?;
 
     if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "additional-files")? {
@@ -153,7 +153,7 @@ fn pack(
         app_builder.add_html(&d)?;
     }
 
-    app_builder.build()
+    Ok(staging_dir.join(app_builder.build()?))
 }
 
 fn exactly_one(

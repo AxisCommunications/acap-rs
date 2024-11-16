@@ -1,18 +1,13 @@
 //! Library for creating Embedded Application Packages (EAPs).
-use std::os::unix::fs::PermissionsExt;
 use std::{
-    env, fs,
-    io::Write,
-    path::{Path, PathBuf},
-    process::Command,
+    env, ffi::OsString, fs, io::Write, os::unix::fs::PermissionsExt, path::Path, process::Command,
     str::FromStr,
 };
 
 use anyhow::{anyhow, bail, Context};
 use command_utils::RunWith;
 use log::{debug, info};
-use serde::Serialize;
-use serde_json::{ser::PrettyFormatter, Serializer, Value};
+use serde_json::Value;
 
 use crate::{
     cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
@@ -84,19 +79,19 @@ fn copy_recursively(src: &Path, dst: &Path, copy_permissions: bool) -> anyhow::R
     Ok(())
 }
 
-pub struct AppBuilder {
+pub struct AppBuilder<'a> {
     preserve_permissions: bool,
-    staging_dir: PathBuf,
+    staging_dir: &'a Path,
     manifest: Manifest,
     additional_files: Vec<String>,
     default_architecture: Architecture,
     app_name: String,
 }
 
-impl AppBuilder {
+impl<'a> AppBuilder<'a> {
     pub fn new(
         preserve_permissions: bool,
-        staging_dir: PathBuf,
+        staging_dir: &'a Path,
         manifest: &Path,
         default_architecture: Architecture,
     ) -> anyhow::Result<Self> {
@@ -200,7 +195,7 @@ impl AppBuilder {
     }
 
     /// Build the EAP and return its path.
-    pub fn build(self) -> anyhow::Result<PathBuf> {
+    pub fn build(self) -> anyhow::Result<OsString> {
         let use_rust_acap_build = match env::var_os("ACAP_BUILD_RUST") {
             Some(v) if v.to_string_lossy() == "0" => Some(false),
             Some(v) if v.to_string_lossy() == "1" => Some(true),
@@ -217,7 +212,7 @@ impl AppBuilder {
         }
     }
 
-    fn build_foreign(self) -> anyhow::Result<PathBuf> {
+    fn build_foreign(self) -> anyhow::Result<OsString> {
         let Self {
             staging_dir,
             default_architecture,
@@ -226,7 +221,7 @@ impl AppBuilder {
             ..
         } = self;
 
-        fs::File::create_new(&staging_dir.join("manifest.json"))?
+        fs::File::create_new(staging_dir.join("manifest.json"))?
             .write_all(manifest.to_string().as_bytes())?;
 
         let mut acap_build = Command::new("acap-build");
@@ -239,7 +234,7 @@ impl AppBuilder {
         acap_build.arg(".");
 
         let mut sh = Command::new("sh");
-        sh.current_dir(&staging_dir);
+        sh.current_dir(staging_dir);
 
         let env_setup = match default_architecture {
             Architecture::Aarch64 => "environment-setup-cortexa53-crypto-poky-linux",
@@ -252,7 +247,7 @@ impl AppBuilder {
         sh.run_with_logged_stdout()?;
 
         let mut apps = Vec::new();
-        for entry in fs::read_dir(&staging_dir)? {
+        for entry in fs::read_dir(staging_dir)? {
             let entry = entry?;
             let path = entry.path();
             if let Some(extension) = path.extension() {
@@ -266,10 +261,10 @@ impl AppBuilder {
         if let Some(second) = apps.next() {
             bail!("Built at least one unexpected .eap file {second:?}")
         }
-        Ok(app)
+        Ok(app.file_name().context("file has no name")?.to_os_string())
     }
 
-    fn build_native(self) -> anyhow::Result<PathBuf> {
+    fn build_native(self) -> anyhow::Result<OsString> {
         let Self {
             preserve_permissions,
             staging_dir,
@@ -383,10 +378,10 @@ impl AppBuilder {
         }
 
         tar.arg("--verbose");
-        tar.current_dir(&staging_dir);
+        tar.current_dir(staging_dir);
         tar.run_with_logged_stdout()?;
 
-        Ok(staging_dir.join(eap_file_name))
+        Ok(OsString::from(eap_file_name))
     }
 }
 

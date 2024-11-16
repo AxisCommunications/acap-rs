@@ -1,16 +1,15 @@
+use std::fmt::{Display, Formatter};
+
+use anyhow::{bail, Context};
+use log::debug;
+use serde::Serialize;
+use serde_json::{ser::PrettyFormatter, Map, Serializer, Value};
+
 use crate::{
     json_ext,
     json_ext::{MapExt, ValueExt},
     Architecture,
 };
-use anyhow::{bail, Context};
-use log::debug;
-use serde::Serialize;
-use serde_json::ser::PrettyFormatter;
-use serde_json::{Map, Serializer, Value};
-use std::fmt::{Display, Formatter};
-use std::fs;
-use std::io::BufWriter;
 
 #[derive(Debug)]
 pub(crate) struct Manifest(Value);
@@ -117,7 +116,6 @@ impl Manifest {
 }
 
 impl Display for Manifest {
-
     // TODO: Consider refactoring this to avoid the intermediate string
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // This file is included in the EAP, so for as long as we want bit-exact output, we must
