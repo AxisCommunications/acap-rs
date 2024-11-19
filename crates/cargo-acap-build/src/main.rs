@@ -23,7 +23,11 @@ impl From<ArchAbi> for Architecture {
     }
 }
 
-/// ACAP analog to `cargo build`.
+/// Build app using cargo
+///
+/// Some defaults deviate from Cargo:
+/// - Builds for all supported targets instead of host.
+/// - Uses the release profile instead of the dev profile.
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -50,8 +54,19 @@ impl Cli {
 }
 
 fn build_and_copy(cli: Cli) -> anyhow::Result<()> {
+    let mut args = cli.args.clone();
+    if !args.iter().any(|arg| {
+        arg.split('=')
+            .next()
+            .expect("Split always yields at least one substring")
+            .starts_with("--profile")
+    }) {
+        debug!("Using release profile by default");
+        args.push("--profile=release".to_string());
+    }
+
     AppBuilder::from_targets(cli.targets())
-        .args(cli.args)
+        .args(args)
         .artifact_dir(get_cargo_metadata()?.target_directory.join("acap"))
         .execute()?;
     Ok(())

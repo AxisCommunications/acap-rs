@@ -91,7 +91,7 @@ stop:
 ## * The device has SSH enabled the ssh user root configured.
 run: apps/$(AXIS_PACKAGE)/LICENSE
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
@@ -110,7 +110,7 @@ test: apps/$(AXIS_PACKAGE)/LICENSE
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev --tests
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
@@ -270,6 +270,7 @@ target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
 		--package '*_*' \
+		--profile dev \
 		--locked
 	touch $@
 
