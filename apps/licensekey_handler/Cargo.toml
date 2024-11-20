@@ -5,7 +5,5 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-log = { workspace = true }
-
-acap-logging = { workspace = true }
 licensekey = { workspace = true }
+libc = "0.2.158"

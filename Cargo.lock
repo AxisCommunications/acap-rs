@@ -1326,9 +1326,8 @@ dependencies = [
 name = "licensekey_handler"
 version = "0.0.0"
 dependencies = [
- "acap-logging",
+ "libc",
  "licensekey",
- "log",
 ]
 
 [[package]]
