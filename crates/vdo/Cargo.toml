@@ -7,6 +7,8 @@ edition.workspace = true
 vdo-sys = { workspace = true }
 log.workspace = true
 anyhow.workspace = true
+glib.workspace = true
+glib-sys.workspace = true
 gobject-sys = "0.20.4"
 
 [features]
