@@ -284,6 +284,7 @@ licensekey_handler.filesize:
 	du \
 		--human-readable \
 		--apparent-size \
+		--total \
 		target/acap/licensekey_handler*.eap \
 	> $@
 
