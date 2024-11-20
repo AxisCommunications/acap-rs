@@ -1,0 +1,5 @@
+[package]
+name = "challenge_build_tools"
+version = "1.0.0-alpha+2024"
+edition.workspace = true
+publish = false

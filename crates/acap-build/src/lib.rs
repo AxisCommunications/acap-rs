@@ -1,34 +1,59 @@
 #![forbid(unsafe_code)]
-/// Wrapper around the ACAP SDK, in particular `acap-build`.
-use std::os::unix::fs::PermissionsExt;
+//! Library for creating Embedded Application Packages (EAPs).
 use std::{
-    fs,
-    ops::Deref,
-    path::{Path, PathBuf},
+    env, ffi::OsString, fs, io::Write, os::unix::fs::PermissionsExt, path::Path, process::Command,
+    str::FromStr,
 };
 
-use anyhow::{bail, Context};
+use anyhow::{anyhow, bail, Context};
 use command_utils::RunWith;
-use log::debug;
-use serde::Serialize;
-use serde_json::{ser::PrettyFormatter, Serializer, Value};
+use log::{debug, info};
+use semver::Version;
+use serde_json::Value;
+
+use crate::files::{
+    cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
+};
 
 mod command_utils;
-mod manifest;
+mod json_ext;
+
+mod files;
 
 // TODO: Find a better way to support reproducible builds
-fn copy<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> std::io::Result<u64> {
-    let mut src = fs::File::open(src)?;
-    let mut dst = fs::File::create(dst)?;
-    std::io::copy(&mut src, &mut dst)
+fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
+    src: P,
+    dst: Q,
+    copy_permissions: bool,
+) -> anyhow::Result<()> {
+    let src = src.as_ref();
+    if src.is_symlink() {
+        // FIXME: Copy symlink in Rust
+        if !Command::new("cp")
+            .arg("-dn")
+            .arg(src.as_os_str())
+            .arg(dst.as_ref().as_os_str())
+            .status()?
+            .success()
+        {
+            bail!("Failed to copy symlink: {}", src.display());
+        }
+    } else if copy_permissions {
+        fs::copy(src, dst)?;
+    } else {
+        let mut src = fs::File::open(src)?;
+        let mut dst = fs::File::create(dst)?;
+        std::io::copy(&mut src, &mut dst)?;
+    }
+    Ok(())
 }
 
-fn copy_recursively(src: &Path, dst: &Path) -> anyhow::Result<()> {
+fn copy_recursively(src: &Path, dst: &Path, copy_permissions: bool) -> anyhow::Result<()> {
     if src.is_file() {
         if dst.exists() {
             bail!("Path already exists {dst:?}");
         }
-        copy(src, dst)?;
+        copy(src, dst, copy_permissions)?;
         debug!("Created reg {dst:?}");
         return Ok(());
     }
@@ -45,117 +70,176 @@ fn copy_recursively(src: &Path, dst: &Path) -> anyhow::Result<()> {
     }?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
-        copy_recursively(&entry.path(), &dst.join(entry.file_name()))?;
+        copy_recursively(
+            &entry.path(),
+            &dst.join(entry.file_name()),
+            copy_permissions,
+        )?;
     }
     Ok(())
 }
 
-pub struct AppBuilder {
-    staging_dir: PathBuf,
-    arch: Architecture,
-    additional_files: Vec<PathBuf>,
+enum AcapBuildImpl {
+    Reference,
+    Equivalent,
 }
 
-impl AppBuilder {
-    pub fn new(
-        staging_dir: PathBuf,
-        arch: Architecture,
-        app_name: &str,
-        manifest: &Path,
-        exe: &Path,
-        license: &Path,
-    ) -> anyhow::Result<Self> {
-        fs::create_dir(&staging_dir)?;
-
-        let dst_exe = staging_dir.join(app_name);
-        copy(exe, &dst_exe)?;
-        let mut permissions = fs::metadata(&dst_exe)?.permissions();
-        let mode = permissions.mode();
-        permissions.set_mode(mode | 0o111);
-        fs::set_permissions(&dst_exe, permissions)?;
-
-        let builder = Self {
-            staging_dir,
-            arch,
-            additional_files: Vec::new(),
-        };
-
-        copy(manifest, builder.manifest_file())?;
-        copy(license, builder.license_file())?;
-
-        Ok(builder)
-    }
-
-    fn license_file(&self) -> PathBuf {
-        self.staging_dir.join("LICENSE")
-    }
-
-    fn manifest_file(&self) -> PathBuf {
-        self.staging_dir.join("manifest.json")
-    }
-
-    pub fn additional(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
-        let entries = fs::read_dir(dir)?;
-        for entry in entries {
-            let entry = entry?;
-            let src = entry.path();
-            let dst = self.staging_dir.join(entry.file_name());
-            if dst.exists() {
-                bail!("{} already exists", entry.file_name().to_string_lossy());
+impl AcapBuildImpl {
+    fn from_env_or_default() -> anyhow::Result<Self> {
+        Ok(match env::var_os("ACAP_BUILD_IMPL") {
+            Some(v) if v.to_string_lossy() == "reference" => Self::Reference,
+            Some(v) if v.to_string_lossy() == "equivalent" => Self::Equivalent,
+            Some(v) => {
+                bail!("Expected ACAP_BUILD_IMPL to be 'reference' or 'equivalent', but found {v:?}")
             }
-            copy_recursively(&src, &dst)?;
-            self.additional_files
-                .push(src.strip_prefix(dir)?.to_path_buf());
+            None => Self::Reference,
+        })
+    }
+}
+
+pub struct AppBuilder<'a> {
+    preserve_permissions: bool,
+    staging_dir: &'a Path,
+    manifest: Manifest,
+    additional_files: Vec<String>,
+    default_architecture: Architecture,
+    app_name: String,
+}
+
+impl<'a> AppBuilder<'a> {
+    pub fn new(
+        preserve_permissions: bool,
+        staging_dir: &'a Path,
+        manifest: &Path,
+        default_architecture: Architecture,
+    ) -> anyhow::Result<Self> {
+        let manifest: Value = serde_json::from_reader(fs::File::open(manifest)?)?;
+        let manifest = Manifest::new(manifest, default_architecture)?;
+        let app_name = manifest.try_find_app_name()?.to_string();
+        Ok(Self {
+            preserve_permissions,
+            staging_dir,
+            manifest,
+            app_name,
+            additional_files: Vec::new(),
+            default_architecture,
+        })
+    }
+
+    /// Add files that don't fit any other category to the EAP.
+    pub fn add_additional(&mut self, path: &Path) -> anyhow::Result<&mut Self> {
+        let name = path
+            .file_name()
+            .context("file has no name")?
+            .to_str()
+            .context("file name is not a string")?
+            .to_string();
+        let dst = self.staging_dir.join(&name);
+        if dst.exists() {
+            bail!("{name} already exists");
         }
+        copy_recursively(path, &dst, self.preserve_permissions)?;
+        self.additional_files.push(name);
         Ok(self)
     }
 
-    pub fn lib(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
-        let name = "lib";
+    // acap-build does not expose this and the docs don't mention it,
+    // but eap-create.sh would add it if it exists.
+    // TODO: Consider removing
+    /// Add event declarations to the EAP.
+    pub fn add_declarations(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
+        let name = "declarations";
         let dst = self.staging_dir.join(name);
         if dst.exists() {
             bail!("{name} already exists");
         }
-        copy_recursively(dir, &dst)?;
+        copy_recursively(dir, &dst, self.preserve_permissions)?;
         Ok(self)
     }
 
-    pub fn html(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
+    // TODO: Consider making mandatory
+    /// Add the **mandatory** executable to the EAP.
+    pub fn add_exe(&mut self, reg: &Path) -> anyhow::Result<&mut Self> {
+        let dst = self.staging_dir.join(&self.app_name);
+        copy(reg, &dst, self.preserve_permissions)?;
+        if !self.preserve_permissions {
+            let mut permissions = fs::metadata(&dst)?.permissions();
+            let mode = permissions.mode();
+            permissions.set_mode(mode | 0o111);
+            fs::set_permissions(&dst, permissions)?;
+        }
+        Ok(self)
+    }
+
+    /// Add an embedded web page to the EAP.
+    pub fn add_html(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
         let name = "html";
         let dst = self.staging_dir.join(name);
         if dst.exists() {
             bail!("{name} already exists");
         }
-        copy_recursively(dir, &dst)?;
+        copy_recursively(dir, &dst, self.preserve_permissions)?;
         Ok(self)
     }
 
-    /// Build EAP and return its path
-    ///
-    /// # Arguments
-    ///
-    /// - `sdk_root`: Use the SDK at this location instead of the default location.
-    ///   This will also cause some build tools to be bypassed.
-    pub fn build(&mut self, sdk_root: Option<PathBuf>) -> anyhow::Result<PathBuf> {
-        if let Some(sdk_root) = sdk_root {
-            // TODO: Implement manifest validation
-            log::info!("Bypassing acap-build, manifest will not be validated");
-            self.run_manifest2packageconf(sdk_root.deref())?;
-            self.run_eap_create(sdk_root.deref())?;
-        } else {
-            debug!("Using acap-build");
-            self.run_acap_build()?;
-        }
-        self.eap()
+    // TODO: Consider making mandatory
+    /// Add the **mandatory** open source attributions to the EAP.
+    pub fn add_license(&mut self, reg: &Path) -> anyhow::Result<&mut Self> {
+        copy(
+            reg,
+            self.staging_dir.join("LICENSE"),
+            self.preserve_permissions,
+        )?;
+        Ok(self)
     }
 
-    fn run_acap_build(&self) -> anyhow::Result<()> {
+    /// Add shared libraries to the EAP.
+    pub fn add_lib(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
+        let name = "lib";
+        let dst = self.staging_dir.join(name);
+        if dst.exists() {
+            bail!("{name} already exists");
+        }
+        copy_recursively(dir, &dst, self.preserve_permissions)?;
+        Ok(self)
+    }
+
+    // A backwards compatible program needs to read the manifest to know the name of the executable
+    // and this method is added only to facilitate for that.
+    // TODO: Consider removing this
+    /// Return the short name of the app.
+    pub fn app_name(&self) -> &str {
+        self.app_name.as_str()
+    }
+
+    /// Build the EAP and return its path.
+    pub fn build(self) -> anyhow::Result<OsString> {
+        match AcapBuildImpl::from_env_or_default()? {
+            AcapBuildImpl::Reference => {
+                debug!("Using acap-build");
+                self.build_foreign()
+            }
+            AcapBuildImpl::Equivalent => {
+                // TODO: Implement validation.
+                info!("Bypassing acap-build, manifest will not be validated");
+                self.build_native()
+            }
+        }
+    }
+
+    fn build_foreign(self) -> anyhow::Result<OsString> {
         let Self {
             staging_dir,
-            arch,
+            default_architecture,
             additional_files,
+            manifest,
+            ..
         } = self;
-        let mut acap_build = std::process::Command::new("acap-build");
+
+        fs::File::create_new(staging_dir.join("manifest.json"))?
+            .write_all(manifest.try_to_string()?.as_bytes())?;
+
+        let mut acap_build = Command::new("acap-build");
         acap_build.args(["--build", "no-build"]);
         for file in additional_files {
             // Use `arg` twice to avoid fallible conversion from `&PathBuf` to `&str`.
@@ -164,10 +248,10 @@ impl AppBuilder {
         }
         acap_build.arg(".");
 
-        let mut sh = std::process::Command::new("sh");
+        let mut sh = Command::new("sh");
         sh.current_dir(staging_dir);
 
-        let env_setup = match arch {
+        let env_setup = match default_architecture {
             Architecture::Aarch64 => "environment-setup-cortexa53-crypto-poky-linux",
             Architecture::Armv7hf => "environment-setup-cortexa9hf-neon-poky-linux-gnueabi",
         };
@@ -175,12 +259,10 @@ impl AppBuilder {
             "-c",
             &format!(". /opt/axis/acapsdk/{env_setup} && {acap_build:?}"),
         ]);
-        sh.run_with_logged_stdout()
-    }
+        sh.run_with_logged_stdout()?;
 
-    fn eap(&self) -> anyhow::Result<PathBuf> {
         let mut apps = Vec::new();
-        for entry in fs::read_dir(&self.staging_dir)? {
+        for entry in fs::read_dir(staging_dir)? {
             let entry = entry?;
             let path = entry.path();
             if let Some(extension) = path.extension() {
@@ -194,97 +276,131 @@ impl AppBuilder {
         if let Some(second) = apps.next() {
             bail!("Built at least one unexpected .eap file {second:?}")
         }
-        Ok(app)
+        Ok(app.file_name().context("file has no name")?.to_os_string())
     }
 
-    fn run_manifest2packageconf(&self, sdk_root: &Path) -> anyhow::Result<()> {
-        let mut cmd =
-            std::process::Command::new(sdk_root.join(
-                "acapsdk/axis-acap-manifest-tools/manifest-generator/manifest2packageconf.py",
-            ));
-
-        cmd.arg(self.manifest_file())
-            .arg("--output")
-            .arg(&self.staging_dir)
-            .arg("--force")
-            .arg("--quiet");
-
-        if !self.additional_files.is_empty() {
-            cmd.arg("--additional-files");
-            cmd.args(&self.additional_files);
-        }
-
-        cmd.current_dir(&self.staging_dir);
-        cmd.run_with_logged_stdout()
-    }
-
-    fn run_eap_create(&self, sdk_root: &Path) -> anyhow::Result<()> {
-        let manifest = fs::read_to_string(self.manifest_file())?;
-
-        // This file is included in the eap so for as long as we want bit exact output we must
-        // take care to serialize the manifest the same way as the python implementation.
-        let mut manifest = serde_json::from_str::<Value>(&manifest).context(manifest)?;
-        let Value::String(mut schema_version) = manifest
-            .get("schemaVersion")
-            .context("schemaVersion")?
-            .clone()
-        else {
-            bail!("Expected schema version to be a string")
+    fn build_native(self) -> anyhow::Result<OsString> {
+        let Self {
+            staging_dir,
+            manifest,
+            additional_files,
+            default_architecture,
+            app_name,
+            ..
+        } = self;
+        let mtime = match env::var_os("SOURCE_DATE_EPOCH") {
+            Some(v) => v.into_string().map_err(|e| anyhow!("{e:?}"))?,
+            None => String::from_utf8(Command::new("date").arg("+%s").output()?.stdout)?,
         };
 
-        // Make it valid semver
-        for _ in 0..(2 - schema_version.chars().filter(|&c| c == '.').count()) {
-            schema_version.push_str(".0");
+        // Compute file name
+        let package_name = match manifest.try_find_friendly_name() {
+            Ok(v) => v,
+            Err(json_ext::Error::KeyNotFound(_)) => app_name.as_str(),
+            Err(e) => return Err(e.into()),
         }
-        let schema_version = semver::Version::parse(&schema_version)?;
-        if schema_version > semver::Version::new(1, 3, 0) {
-            let setup = manifest
-                .get_mut("acapPackageConf")
-                .context("no key acapPackageConf in manifest")?
-                .get_mut("setup")
-                .context("no key setup in acapPackageConf")?;
-            if let Some(a) = setup.get_mut("architecture") {
-                if a != "all" && a != self.arch.nickname() {
-                    bail!(
-                        "Architecture in manifest ({a}) is not compatible with built target ({:?})",
-                        self.arch
-                    );
-                }
-            } else if let Value::Object(setup) = setup {
-                debug!("Architecture not set in manifest, using {:?}", &self.arch);
-                setup.insert(
-                    "architecture".to_string(),
-                    Value::String(self.arch.nickname().to_string()),
-                );
-            } else {
-                bail!("Expected setup to be an object")
+        .replace(' ', "_");
+        let Version {
+            major,
+            minor,
+            patch,
+            ..
+        } = manifest.try_find_version().context("no version")?.parse()?;
+
+        let arch = match manifest.try_find_architecture() {
+            Ok(v) => v,
+            Err(json_ext::Error::KeyNotFound(_)) => default_architecture.nickname(),
+            Err(e) => return Err(e.into()),
+        };
+        let eap_file_name = format!("{package_name}_{major}_{minor}_{patch}_{arch}.eap");
+
+        // Copy files named in manifest.
+        // The term "additional files" is used to mean files requested directly.
+        // The term "other files" is used to mean additional files plus any files named in the
+        // manifest.
+        let other_files = additional_files;
+        match manifest.try_find_pre_uninstall_script() {
+            Ok(_) => {
+                // TODO: Add support for pre-uninstall and post-install scripts.
+                bail!("The pre-uninstall script is not supported yet.")
+            }
+            Err(json_ext::Error::KeyNotFound(k)) => {
+                debug!("No {k}, skipping pre uninstall script")
+            }
+            Err(e) => return Err(e.into()),
+        }
+
+        // Generate derived files
+        let package_conf =
+            PackageConf::new(&manifest, &other_files, default_architecture)?.to_string();
+        fs::File::create_new(staging_dir.join("package.conf"))?
+            .write_all(package_conf.as_bytes())?;
+
+        let param_conf = match ParamConf::new(&manifest)? {
+            None => {
+                // If there is no param.conf, `eap-create.sh` creates one
+                debug!("Creating empty param.conf");
+                String::new()
+            }
+            Some(v) => v.to_string(),
+        };
+        fs::File::create_new(staging_dir.join("param.conf"))?.write_all(param_conf.as_bytes())?;
+
+        match CgiConf::new(&manifest)? {
+            None => {
+                debug!("Skipping cgi.conf")
+            }
+            Some(cgi_conf) => {
+                fs::File::create_new(staging_dir.join("cgi.conf"))?
+                    .write_all(cgi_conf.to_string().as_bytes())?;
             }
         }
 
-        let manifest_file = tempfile::NamedTempFile::new_in(&self.staging_dir)?;
+        // This file is included in the EAP, so for as long as we want bit-exact output, we must
+        // take care to serialize the manifest the same way as the python implementation.
+        let manifest_file = staging_dir.join("manifest.json");
+        fs::File::create_new(&manifest_file)?.write_all(manifest.try_to_string()?.as_bytes())?;
+        // Replicate the permissions that temporary files get by default.
+        let mut permissions = fs::metadata(&manifest_file)?.permissions();
+        permissions.set_mode(0o600);
+        fs::set_permissions(&manifest_file, permissions)?;
 
-        let mut serializer = Serializer::with_formatter(
-            fs::File::create(manifest_file.path())?,
-            PrettyFormatter::with_indent(b"    "),
-        );
-        manifest.serialize(&mut serializer)?;
+        // Create the archive
+        let mut tar = Command::new("tar");
+        tar.args(["--exclude", "*~"])
+            .args(["--file", &eap_file_name])
+            .args(["--format", "gnu"])
+            .args(["--group", "0"])
+            .args(["--mtime", &format!("@{mtime}")])
+            .args(["--owner", "0"])
+            .args(["--sort", "name"])
+            .args(["--use-compress-program", "gzip --no-name -9"])
+            .arg("--create")
+            .arg("--numeric-owner")
+            .arg("--exclude-vcs")
+            .arg(&app_name)
+            .arg("package.conf")
+            .arg("param.conf")
+            .arg("LICENSE")
+            .arg("manifest.json");
 
-        let sysroots = sdk_root.join("acapsdk/sysroots");
-        let target_sysroot = sysroots.join(self.arch.nickname());
-        let native_sysroot = sysroots.join("x86_64-pokysdk-linux");
-        let mut cmd = std::process::Command::new(native_sysroot.join("usr/bin/eap-create.sh"));
-        cmd.arg("-m")
-            .arg(
-                manifest_file
-                    .as_ref()
-                    .file_name()
-                    .expect("path is a regular file and does not end with .."),
-            )
-            .arg("--no-validate")
-            .env("OECORE_NATIVE_SYSROOT", native_sysroot)
-            .env("SDKTARGETSYSROOT", target_sysroot)
-            .current_dir(&self.staging_dir);
-        cmd.run_with_logged_stdout()
+        // TODO: Add support for the post-install script
+
+        tar.args(&other_files);
+
+        // TODO: Consider implementing support for `httpd.conf.local.*` and `mime.types.local.*`.
+
+        for dir in ["html", "declarations", "lib", "cgi.conf"] {
+            if staging_dir.join(dir).exists() {
+                tar.arg(dir);
+            }
+        }
+
+        tar.arg("--verbose");
+        tar.current_dir(staging_dir);
+        tar.run_with_logged_stdout()?;
+
+        Ok(OsString::from(eap_file_name))
     }
 }
 
@@ -306,6 +422,18 @@ impl Architecture {
         match self {
             Self::Aarch64 => "aarch64",
             Self::Armv7hf => "armv7hf",
+        }
+    }
+}
+
+impl FromStr for Architecture {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aarch64" => Ok(Self::Aarch64),
+            "arm" => Ok(Self::Armv7hf),
+            _ => Err(anyhow::anyhow!("Unrecognized variant {s}")),
         }
     }
 }
