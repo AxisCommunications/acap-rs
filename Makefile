@@ -275,3 +275,16 @@ target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/
 	touch $@
 
 .PHONY: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
+
+licensekey_handler.filesize:
+	cargo-acap-build \
+		-- \
+		--package licensekey_handler \
+		--profile dev
+	du \
+		--human-readable \
+		--apparent-size \
+		target/acap/licensekey_handler*.eap \
+	> $@
+
+.PHONY: licensekey_handler.filesize
