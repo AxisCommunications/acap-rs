@@ -1,3 +1,4 @@
+#![no_main]
 #![no_std]
 //! A simple example application demonstrating how the licensekey crate may be used
 
@@ -16,7 +17,8 @@ fn check_license_status(app_name: &CStr) {
     }
 }
 
-fn main() {
+#[no_mangle]
+pub extern "C" fn main(_argc: isize, _argv: *const *const u8) -> isize {
     loop {
         check_license_status(c"licensekey_handler");
         unsafe {
