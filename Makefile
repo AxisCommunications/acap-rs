@@ -280,7 +280,7 @@ licensekey_handler.filesize:
 	cargo-acap-build \
 		-- \
 		--package licensekey_handler \
-		--profile dev
+		--profile release
 	du \
 		--human-readable \
 		--apparent-size \
