@@ -179,6 +179,10 @@ check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard cra
 .PHONY: check_generated_files
 
 ## Check that generated files are up to date, including machine-dependent generated files.
+##
+## Note that this will likely work only if:
+## - The command is run inside the dev container.
+## - The name of the repository root is `acap-rs` because this affects the path inside the container.
 check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum apps-$(AXIS_DEVICE_ARCH).filesize
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
