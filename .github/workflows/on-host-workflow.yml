@@ -52,6 +52,7 @@ jobs:
         run: |
           export ACAP_SDK_LOCATION=$HOME/axis/
           source ./init_env.sh
+          export ACAP_BUILD_IMPL=equivalent
           make check_generated_files
   debian_and_ubuntu_no_sdk:
     runs-on: ubuntu-22.04
