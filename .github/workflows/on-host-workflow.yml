@@ -53,3 +53,30 @@ jobs:
           export ACAP_SDK_LOCATION=$HOME/axis/
           source ./init_env.sh
           make check_generated_files
+  debian_and_ubuntu_no_sdk:
+    runs-on: ubuntu-22.04
+    # If the sysroots from the ACAP Native SDK are not needed, then the Rust implementation of
+    # `acap-build` can be used for an easier setup:
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install g++-aarch64-linux-gnu g++-arm-linux-gnueabihf
+      - name: Install Rust toolchaing
+        run: rustup show
+      - name: Install Cargo package
+        run: |
+          cargo install --locked cargo-about@0.6.2
+          cargo install --locked --path crates/cargo-acap-build
+      - name: Build the app
+        run: |
+          make apps/hello_world/LICENSE
+          cargo-acap-build -- --package hello_world
+        env:
+          ACAP_BUILD_IMPL: equivalent
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+      - name: Verify checksums
+        run: shasum target/**/*.eap
