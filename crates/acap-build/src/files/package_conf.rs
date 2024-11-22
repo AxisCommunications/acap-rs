@@ -42,9 +42,9 @@ impl PackageConf {
                         .as_str()
                         .context("acapPackageConf.setup.version is not a string")?;
                     let v = Version::parse(v)?;
-                    debug_assert_eq!(self.0.insert("APPMAJORVERSION", v.major.to_string()), None);
-                    debug_assert_eq!(self.0.insert("APPMINORVERSION", v.minor.to_string()), None);
-                    debug_assert_eq!(self.0.insert("APPMICROVERSION", v.patch.to_string()), None);
+                    self.0.insert("APPMAJORVERSION", v.major.to_string());
+                    self.0.insert("APPMINORVERSION", v.minor.to_string());
+                    self.0.insert("APPMICROVERSION", v.patch.to_string());
                 }
                 "acapPackageConf.setup.vendorUrl" => {
                     let re = Regex::new("(?:(?:http|https)://)?(.+)")
@@ -59,12 +59,10 @@ impl PackageConf {
                         .get(1)
                         .expect("Hard coded regex as exactly one capture group")
                         .as_str();
-                    debug_assert_eq!(
-                        self.0.insert(
-                            "VENDORHOMEPAGELINK",
-                            format!(r#"<a href="{v}" target="_blank">{domain_name}</a>"#),
-                        ),
-                        None
+
+                    self.0.insert(
+                        "VENDORHOMEPAGELINK",
+                        format!(r#"<a href="{v}" target="_blank">{domain_name}</a>"#),
                     );
                 }
                 "acapPackageConf.configuration.httpConfig" => {
@@ -72,10 +70,7 @@ impl PackageConf {
                         .as_array()
                         .context("acapPackageConf.configuration.httpConfig is not an array")?;
                     if !v.is_empty() {
-                        debug_assert_eq!(
-                            self.0.insert("HTTPCGIPATHS", "cgi.conf".to_string()),
-                            None
-                        )
+                        self.0.insert("HTTPCGIPATHS", "cgi.conf".to_string());
                     }
                 }
                 path => {
@@ -84,7 +79,7 @@ impl PackageConf {
                             .as_str()
                             .with_context(|| format!("{path} is not a string"))?
                             .to_string();
-                        debug_assert_eq!(self.0.insert(name, v), None);
+                        self.0.insert(name, v);
                     } else {
                         debug!("{path} skipped, no corresponding parameter in package.conf")
                     }
@@ -96,7 +91,7 @@ impl PackageConf {
 
     fn set_custom_from_other_files(&mut self, other_files: &[String]) -> anyhow::Result<()> {
         if !other_files.is_empty() {
-            debug_assert_eq!(self.0.insert("OTHERFILES", other_files.join(" ")), None);
+            self.0.insert("OTHERFILES", other_files.join(" "));
         }
         Ok(())
     }
