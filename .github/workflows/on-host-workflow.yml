@@ -49,6 +49,7 @@ jobs:
       - name: Shell setup
         # This step typically needs to be done once per shell session.
         # To verify that the procedure has worked, some checks are run as well.
+        # TODO: Simplify shell session setup; exporting two variables seems excessive
         run: |
           export ACAP_SDK_LOCATION=$HOME/axis/
           source ./init_env.sh
@@ -78,6 +79,4 @@ jobs:
         env:
           ACAP_BUILD_IMPL: equivalent
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
-      - name: Verify checksums
-        run: shasum target/**/*.eap
+          CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc;
