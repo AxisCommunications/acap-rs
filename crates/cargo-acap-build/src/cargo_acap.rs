@@ -2,7 +2,6 @@
 /// conventions detailed in [`crate`].
 use std::{
     collections::HashMap,
-    env,
     path::{Path, PathBuf},
 };
 
@@ -71,7 +70,6 @@ pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<A
                         path: pack(
                             &cargo_target_directory,
                             arch,
-                            target.name.clone(),
                             manifest_path,
                             executable,
                             out_dir,
@@ -108,7 +106,6 @@ pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<A
 fn pack(
     cargo_target_dir: &Path,
     arch: Architecture,
-    package_name: String,
     manifest_path: PathBuf,
     executable: PathBuf,
     out_dir: Option<PathBuf>,
@@ -125,6 +122,7 @@ fn pack(
     if staging_dir.is_dir() {
         std::fs::remove_dir_all(&staging_dir)?;
     }
+    std::fs::create_dir(&staging_dir)?;
 
     let manifest_dir = manifest_path
         .parent()
@@ -136,29 +134,29 @@ fn pack(
     debug!("Found license file: {license:?}");
 
     debug!("Creating app builder");
-    let mut app_builder = AppBuilder::new(
-        staging_dir,
-        arch,
-        &package_name,
-        &manifest,
-        &executable,
-        &license,
-    )?;
+    let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
+    app_builder.add_exe(&executable)?.add_license(&license)?;
 
     if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "additional-files")? {
         debug!("Found additional-files dir: {d:?}");
-        app_builder.additional(&d)?;
+        let mut entries = std::fs::read_dir(d)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<std::io::Result<Vec<PathBuf>>>()?;
+        entries.sort();
+        for entry in entries {
+            app_builder.add_additional(&entry)?;
+        }
     }
     if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "lib")? {
         debug!("Found lib dir: {d:?}");
-        app_builder.lib(&d)?;
+        app_builder.add_lib(&d)?;
     }
     if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "html")? {
         debug!("Found html dir: {d:?}");
-        app_builder.html(&d)?;
+        app_builder.add_html(&d)?;
     }
 
-    app_builder.build(env::var_os("ACAP_SDK_LOCATION").map(PathBuf::from))
+    Ok(staging_dir.join(app_builder.build()?))
 }
 
 fn exactly_one(
