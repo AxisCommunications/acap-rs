@@ -1,6 +1,6 @@
 ```console
 $ fleet-manager -h
-Utilities for managing devices in bulk
+Utilities for managing devices in bulk.
 
 Usage: fleet-manager [FLEET] <COMMAND>
 

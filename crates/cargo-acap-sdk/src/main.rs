@@ -17,8 +17,7 @@ mod commands;
 
 /// Tools for developing ACAP apps using Rust
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
-#[command(propagate_version = true)]
+#[clap(verbatim_doc_comment, version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

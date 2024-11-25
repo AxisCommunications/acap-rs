@@ -2,7 +2,7 @@
 $ device-manager -h 
 Utilities for managing individual devices.
 
-Usage: device-manager --host <HOST> --user <USER> --pass <PASS> <COMMAND>
+Usage: device-manager [OPTIONS] --host <HOST> <COMMAND>
 
 Commands:
   restore  Restore device to a clean state
@@ -11,9 +11,10 @@ Commands:
 
 Options:
       --host <HOST>  Hostname or IP address of the device [env: AXIS_DEVICE_IP=]
-  -u, --user <USER>  The username to use for the ssh connection [env: AXIS_DEVICE_USER=, default="root"]
-  -p, --pass <PASS>  The password to use for the ssh connection [env: AXIS_DEVICE_PASS=, default="pass"]
+  -u, --user <USER>  The username to use for the ssh connection [env: AXIS_DEVICE_USER=] [default: root]
+  -p, --pass <PASS>  The password to use for the ssh connection [env: AXIS_DEVICE_PASS=] [default: pass]
   -h, --help         Print help
+  -V, --version      Print version
 ```
 
 Currently, this crate focuses on restoring devices to a known, useful state.

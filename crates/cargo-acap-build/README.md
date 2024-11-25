@@ -1,6 +1,6 @@
 ```console
 $ cargo-acap-build -h
-ACAP analog to `cargo build`
+Build app using cargo
 
 Usage: cargo-acap-build [OPTIONS] [ARGS]...
 

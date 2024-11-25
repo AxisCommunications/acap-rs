@@ -9,6 +9,10 @@ Commands:
   run          Build app(s) and run on the device
   test         Build app(s) in test mode and run on the device
   install      Build app(s) with release profile and install on the device
+  start        Start app on device
+  stop         Stop app on device
+  restart      Restart app on device
+  remove       Remove app form device
   completions  Print shell completion script for this program
   help         Print this message or the help of the given subcommand(s)
 

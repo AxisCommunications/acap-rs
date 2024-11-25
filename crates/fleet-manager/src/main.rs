@@ -17,8 +17,7 @@ mod database;
 
 /// Utilities for managing devices in bulk.
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None)]
-#[command(propagate_version = true)]
+#[clap(verbatim_doc_comment, version)]
 struct Cli {
     /// Location of database file.
     fleet: Option<PathBuf>,
