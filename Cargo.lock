@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "device-manager"
-version = "0.1.0-135-03"
+version = "0.0.0"
 dependencies = [
  "acap-vapix",
  "anyhow",
