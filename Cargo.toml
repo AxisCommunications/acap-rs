@@ -41,7 +41,7 @@ tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 url = "2.5.2"
 
-acap-build = {path="crates/acap-build"}
+acap-build = { path = "crates/acap-build" }
 acap-logging = { path = "crates/acap-logging" }
 acap-ssh-utils = { path = "crates/acap-ssh-utils" }
 acap-vapix = { path = "crates/acap-vapix" }
@@ -52,6 +52,7 @@ axstorage-sys = { path = "crates/axstorage-sys" }
 bbox = { path = "crates/bbox" }
 bbox-sys = { path = "crates/bbox-sys" }
 cargo-acap-build = { path = "crates/cargo-acap-build" }
+cli-version = { path = "crates/cli-version" }
 device-manager = { path = "crates/device-manager" }
 licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }

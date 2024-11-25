@@ -3,6 +3,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use cli_version::version_with_commit_id;
 use tracing::debug;
 
 use crate::commands::{
@@ -17,7 +18,7 @@ mod database;
 
 /// Utilities for managing devices in bulk.
 #[derive(Debug, Parser)]
-#[clap(verbatim_doc_comment, version)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     /// Location of database file.
     fleet: Option<PathBuf>,

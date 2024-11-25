@@ -35,6 +35,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "clap",
+ "cli-version",
  "dirs",
  "env_logger",
  "flate2",
@@ -412,6 +413,7 @@ dependencies = [
  "acap-build",
  "anyhow",
  "clap",
+ "cli-version",
  "dirs",
  "env_logger",
  "log",
@@ -429,6 +431,7 @@ dependencies = [
  "cargo-acap-build",
  "clap",
  "clap_complete",
+ "cli-version",
  "dirs",
  "env_logger",
  "log",
@@ -533,6 +536,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
+name = "cli-version"
+version = "0.1.0"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -614,6 +621,7 @@ dependencies = [
  "acap-vapix",
  "anyhow",
  "clap",
+ "cli-version",
  "dirs",
  "env_logger",
  "log",
@@ -783,6 +791,7 @@ dependencies = [
  "acap-vapix",
  "anyhow",
  "clap",
+ "cli-version",
  "device-manager",
  "dirs",
  "glob",
