@@ -8,7 +8,7 @@ use url::Host;
 
 /// Utilities for managing individual devices.
 #[derive(Clone, Debug, Parser)]
-#[clap(verbatim_doc_comment)]
+#[clap(verbatim_doc_comment, version)]
 struct Cli {
     #[command(flatten)]
     netloc: Netloc,
