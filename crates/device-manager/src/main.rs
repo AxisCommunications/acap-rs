@@ -2,13 +2,14 @@
 use std::{env, fs::File};
 
 use clap::{Parser, Subcommand};
+use cli_version::version_with_commit_id;
 use device_manager::{initialize, restore};
 use log::{debug, info};
 use url::Host;
 
 /// Utilities for managing individual devices.
 #[derive(Clone, Debug, Parser)]
-#[clap(verbatim_doc_comment, version)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     #[command(flatten)]
     netloc: Netloc,

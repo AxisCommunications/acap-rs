@@ -4,6 +4,7 @@ use std::{ffi::OsString, fs::File, str::FromStr};
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
+use cli_version::version_with_commit_id;
 use log::debug;
 use url::Host;
 
@@ -17,7 +18,7 @@ mod commands;
 
 /// Tools for developing ACAP apps using Rust
 #[derive(Parser)]
-#[clap(verbatim_doc_comment, version)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
