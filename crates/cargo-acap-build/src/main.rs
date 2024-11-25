@@ -29,8 +29,7 @@ impl From<ArchAbi> for Architecture {
 /// - Builds for all supported targets instead of host.
 /// - Uses the release profile instead of the dev profile.
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
-#[command(propagate_version = true)]
+#[clap(verbatim_doc_comment, version)]
 struct Cli {
     /// If given, build only for the given architecture(s).
     ///

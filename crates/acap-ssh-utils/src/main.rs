@@ -22,7 +22,7 @@ use url::Host;
 /// with stdout attached to the terminal are officially supported use cases. As such all commands
 /// provided by this program may stop working on future versions AXIS OS.
 #[derive(Clone, Debug, Parser)]
-#[clap(verbatim_doc_comment)]
+#[clap(verbatim_doc_comment, version)]
 struct Cli {
     #[command(flatten)]
     netloc: Netloc,
