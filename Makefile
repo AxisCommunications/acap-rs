@@ -55,7 +55,7 @@ reinit:
 	RUST_LOG=info device-manager reinit
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
-build: apps/$(AXIS_PACKAGE)/LICENSE
+build: apps/$(AXIS_PACKAGE)/application-files/LICENSE
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
@@ -89,7 +89,7 @@ stop:
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-run: apps/$(AXIS_PACKAGE)/LICENSE
+run: apps/$(AXIS_PACKAGE)/application-files/LICENSE
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
@@ -106,7 +106,7 @@ run: apps/$(AXIS_PACKAGE)/LICENSE
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-test: apps/$(AXIS_PACKAGE)/LICENSE
+test: apps/$(AXIS_PACKAGE)/application-files/LICENSE
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
@@ -123,14 +123,14 @@ test: apps/$(AXIS_PACKAGE)/LICENSE
 ## ---------------
 
 ## Install all apps on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
-install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+install_all: $(patsubst %/,%/application-files/LICENSE,$(wildcard apps/*/))
 	cargo-acap-sdk install \
 		-- \
 		--package '*_*' \
 		--profile app
 
 ## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
-test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+test_all: $(patsubst %/,%/application-files/LICENSE,$(wildcard apps/*/))
 	cargo-acap-sdk test \
 		-- \
 		--package licensekey \
@@ -252,7 +252,8 @@ Cargo.lock: FORCE
 		$^
 
 # TODO: Find a convenient way to integrate this with cargo-acap-build
-apps/%/LICENSE: apps/%/Cargo.toml about.hbs
+apps/%/application-files/LICENSE: apps/%/Cargo.toml about.hbs
+	mkdir -p $(@D)
 	cargo-about generate \
 		--fail \
 		--manifest-path apps/$*/Cargo.toml \
@@ -268,7 +269,7 @@ apps-$(AXIS_DEVICE_ARCH).filesize: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
 
-target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/application-files/LICENSE,$(wildcard apps/*/))
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \

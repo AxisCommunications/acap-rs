@@ -17,6 +17,12 @@
       "vendorUrl": "https:www.axis.com",
       "version": "1.0.0-alpha+2024"
     },
+    "installation": {
+      "postInstallScript": "post-install"
+    },
+    "uninstallation": {
+      "preUninstallScript": "pre-uninstall.sh"
+    },
     "configuration": {
       "settingPage": "index.html",
       "httpConfig": [

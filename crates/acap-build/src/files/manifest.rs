@@ -92,6 +92,13 @@ impl Manifest {
             .try_get_array("paramConfig")
     }
 
+    pub(crate) fn try_find_post_install_script(&self) -> json_ext::Result<&str> {
+        self.as_object()?
+            .try_get_object("acapPackageConf")?
+            .try_get_object("uninstallation")?
+            .try_get_str("preUninstallScript")
+    }
+
     pub(crate) fn try_find_pre_uninstall_script(&self) -> json_ext::Result<&str> {
         self.as_object()?
             .try_get_object("acapPackageConf")?
