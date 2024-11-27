@@ -1,18 +1,8 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(improper_ctypes)]
+pub mod mock_glib;
+pub mod mock_glib_sys;
 
-use glib_sys::*;
+mod bindings;
 
-type gchar = ::std::os::raw::c_char;
-type gdouble = ::std::os::raw::c_double;
-
-type gint = ::std::os::raw::c_int;
-type guint = ::std::os::raw::c_uint;
-
-#[cfg(not(target_arch = "x86_64"))]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-#[cfg(target_arch = "x86_64")]
-include!("bindings.rs");
+// Always use the mocks for now because I could not immediately figure out how to set up the
+// conditional compilation.
+pub use bindings::*;

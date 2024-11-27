@@ -15,6 +15,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+// Drop in mocked implementation of glib
+use axevent_sys::mock_glib;
 use log::{debug, error, warn};
 
 use crate::flex::{Event, Handler, KeyValueSet};
@@ -27,13 +29,13 @@ use crate::flex::{Event, Handler, KeyValueSet};
 /// - less than `i64::MAX` seconds before epoch,
 /// - more than `i64::MAX` seconds after epoch, or
 /// - represents another time outside the supported range of `DateTime`.
-pub fn date_time(t: SystemTime) -> glib::DateTime {
+pub fn date_time(t: SystemTime) -> mock_glib::DateTime {
     // TODO: Verify that we are dealing with UTC timestamps
     let secs = match t.duration_since(SystemTime::UNIX_EPOCH) {
         Ok(d) => i64::try_from(d.as_secs()).unwrap(),
         Err(e) => -i64::try_from(e.duration().as_secs()).unwrap(),
     };
-    glib::DateTime::from_unix_utc(secs).unwrap()
+    mock_glib::DateTime::from_unix_utc(secs).unwrap()
 }
 
 /// Convert `DateTime` to `SystemTime`
@@ -41,7 +43,7 @@ pub fn date_time(t: SystemTime) -> glib::DateTime {
 /// # Panics
 ///
 /// Panics when `t` is before the UNIX epoch.
-pub fn system_time(t: glib::DateTime) -> SystemTime {
+pub fn system_time(t: mock_glib::DateTime) -> SystemTime {
     // TODO: Verify that we are dealing with UTC timestamps
     SystemTime::UNIX_EPOCH.add(Duration::from_secs(t.to_unix().try_into().unwrap()))
 }
@@ -87,7 +89,7 @@ impl<'a> Declaration<'a> {
 }
 
 pub struct MainLoop {
-    main_loop: Arc<glib::MainLoop>,
+    main_loop: Arc<mock_glib::MainLoop>,
     join_handle: JoinHandle<()>,
 }
 
@@ -99,7 +101,7 @@ impl Default for MainLoop {
 
 impl MainLoop {
     pub fn new() -> Self {
-        let main_loop = Arc::new(glib::MainLoop::new(None, false));
+        let main_loop = Arc::new(mock_glib::MainLoop::new(None, false));
         let join_handle = thread::spawn({
             let main_loop = Arc::clone(&main_loop);
             move || {

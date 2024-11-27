@@ -118,7 +118,7 @@ mod tests {
         assert!(declaration.rx.recv_timeout(Duration::from_secs(5)).is_ok());
 
         debug!("Sending event");
-        let now = time::SystemTime::now();
+        let now = time::SystemTime::UNIX_EPOCH + Duration::from_secs(1735787045);
         let mut evt_kvs = KeyValueSet::new();
         evt_kvs.add_key_value(c"Greeting", None, Some(sent))?;
         declaration.send_event(Event::new2(evt_kvs, Some(date_time(now))))?;

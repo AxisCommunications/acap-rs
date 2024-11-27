@@ -16,25 +16,45 @@ use std::{
     sync::Mutex,
 };
 
+pub use axevent_sys::mock_glib::Error;
 use axevent_sys::{
-    ax_event_free, ax_event_get_key_value_set, ax_event_get_time_stamp2, ax_event_handler_declare,
-    ax_event_handler_free, ax_event_handler_new, ax_event_handler_send_event,
-    ax_event_handler_subscribe, ax_event_handler_undeclare, ax_event_handler_unsubscribe,
-    ax_event_key_value_set_add_key_value, ax_event_key_value_set_add_nice_names,
-    ax_event_key_value_set_free, ax_event_key_value_set_get_boolean,
-    ax_event_key_value_set_get_double, ax_event_key_value_set_get_integer,
-    ax_event_key_value_set_get_string, ax_event_key_value_set_get_value_type,
-    ax_event_key_value_set_mark_as_data, ax_event_key_value_set_mark_as_source,
-    ax_event_key_value_set_mark_as_user_defined, ax_event_key_value_set_new, ax_event_new2,
-    AXEvent, AXEventHandler, AXEventKeyValueSet, AXEventValueType,
-    AXEventValueType_AX_VALUE_TYPE_BOOL, AXEventValueType_AX_VALUE_TYPE_DOUBLE,
-    AXEventValueType_AX_VALUE_TYPE_ELEMENT, AXEventValueType_AX_VALUE_TYPE_INT,
+    ax_event_free,
+    ax_event_get_key_value_set,
+    ax_event_get_time_stamp2,
+    ax_event_handler_declare,
+    ax_event_handler_free,
+    ax_event_handler_new,
+    ax_event_handler_send_event,
+    ax_event_handler_subscribe,
+    ax_event_handler_undeclare,
+    ax_event_handler_unsubscribe,
+    ax_event_key_value_set_add_key_value,
+    ax_event_key_value_set_add_nice_names,
+    ax_event_key_value_set_free,
+    ax_event_key_value_set_get_boolean,
+    ax_event_key_value_set_get_double,
+    ax_event_key_value_set_get_integer,
+    ax_event_key_value_set_get_string,
+    ax_event_key_value_set_get_value_type,
+    ax_event_key_value_set_mark_as_data,
+    ax_event_key_value_set_mark_as_source,
+    ax_event_key_value_set_mark_as_user_defined,
+    ax_event_key_value_set_new,
+    ax_event_new2,
+    // Drop in mocked implementation of glib
+    mock_glib::{
+        translate::{from_glib_full, from_glib_none, IntoGlibPtr},
+        DateTime,
+    },
+    AXEvent,
+    AXEventHandler,
+    AXEventKeyValueSet,
+    AXEventValueType,
+    AXEventValueType_AX_VALUE_TYPE_BOOL,
+    AXEventValueType_AX_VALUE_TYPE_DOUBLE,
+    AXEventValueType_AX_VALUE_TYPE_ELEMENT,
+    AXEventValueType_AX_VALUE_TYPE_INT,
     AXEventValueType_AX_VALUE_TYPE_STRING,
-};
-pub use glib::Error;
-use glib::{
-    translate::{from_glib_full, from_glib_none, IntoGlibPtr},
-    DateTime,
 };
 use glib_sys::{gboolean, gpointer, GError};
 use log::debug;
