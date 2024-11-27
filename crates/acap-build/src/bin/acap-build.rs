@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
         .map(|n| path.join(n))
         .collect();
     for file in optional_files {
-        if file.exists() {
+        if file.symlink_metadata().is_ok() {
             builder.add(&file)?;
         }
     }

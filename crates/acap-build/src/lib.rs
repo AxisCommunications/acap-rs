@@ -35,18 +35,20 @@ fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
 ) -> anyhow::Result<()> {
     let src = src.as_ref();
     let dst = dst.as_ref();
-    if dst.exists() {
+    if dst.symlink_metadata().is_ok() {
         bail!("Path already exists {dst:?}");
     }
     if src.is_symlink() {
         // FIXME: Copy symlink in Rust
-        if !Command::new("cp")
-            .arg("-dn")
-            .arg(src.as_os_str())
-            .arg(dst.as_os_str())
-            .status()?
-            .success()
-        {
+        let mut cp = Command::new("cp");
+
+        if copy_permissions {
+            cp.arg("--preserve=mode");
+        }
+
+        cp.arg("-dn").arg(src.as_os_str()).arg(dst.as_os_str());
+
+        if !cp.status()?.success() {
             bail!("Failed to copy symlink: {}", src.display());
         }
     } else if copy_permissions {
@@ -165,9 +167,10 @@ impl<'a> AppBuilder<'a> {
         Ok(self)
     }
 
+    // TODO: Remove the file system copy
     fn add_as(&mut self, path: &Path, name: &str) -> anyhow::Result<PathBuf> {
         let dst = self.staging_dir.join(name);
-        if dst.exists() {
+        if dst.symlink_metadata().is_ok() {
             bail!("Cannot add {path:?} because {name} already exists");
         }
         copy_recursively(path, &dst, self.preserve_permissions)?;
@@ -326,7 +329,7 @@ impl<'a> AppBuilder<'a> {
             .arg("--exclude-vcs");
 
         for name in self.section_1_files() {
-            if staging_dir.join(name).exists() {
+            if staging_dir.join(name).symlink_metadata().is_ok() {
                 tar.arg(name);
             }
         }
@@ -336,7 +339,7 @@ impl<'a> AppBuilder<'a> {
         // TODO: Consider implementing support for `httpd.conf.local.*` and `mime.types.local.*`.
 
         for name in self.section_4_files() {
-            if staging_dir.join(name).exists() {
+            if staging_dir.join(name).symlink_metadata().is_ok() {
                 tar.arg(name);
             }
         }

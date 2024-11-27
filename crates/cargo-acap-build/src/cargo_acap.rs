@@ -135,15 +135,32 @@ fn pack(
     let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
     app_builder.add(&executable)?;
 
-    for dir in [Some(manifest_dir), out_dir.as_deref()]
+    // TODO: Don't depend on the exe being the first.
+    let mandatory: Vec<_> = app_builder
+        .mandatory_files()
         .into_iter()
-        .flatten()
-    {
-        let application_files = dir.join("application-files");
-        debug!("Adding files from {application_files:?}");
-        if application_files.exists() {
-            app_builder.add_from(&application_files)?;
+        .skip(1)
+        .map(str::to_string)
+        .collect();
+    for name in mandatory {
+        let path = exactly_one(manifest_dir, out_dir.as_deref(), &name)?;
+        app_builder.add(&path)?;
+    }
+
+    let optional: Vec<_> = app_builder
+        .optional_files()
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    for name in optional {
+        if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {
+            app_builder.add(&d)?;
         }
+    }
+
+    if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "additional-files")? {
+        debug!("Found additional-files dir: {d:?}");
+        app_builder.add_from(&d)?;
     }
 
     Ok(staging_dir.join(app_builder.build()?))
@@ -157,12 +174,33 @@ fn exactly_one(
     let manifest_file = manifest_dir.join(file_name);
     let out_file = out_dir.map(|d| d.join(file_name));
     match (
-        manifest_file.exists(),
-        out_file.as_ref().map(|f| f.exists()).unwrap_or(false),
+        manifest_file.symlink_metadata().is_ok(),
+        out_file.as_ref().map(|f| f.symlink_metadata().is_ok()).unwrap_or(false),
     ) {
         (false, false) => bail!("{file_name:?} exists neither in manifest dir {manifest_dir:?} nor in out dir {out_dir:?}"),
         (false, true) => Ok(out_file.expect("checked above")),
         (true, false) => Ok(manifest_file),
+        (true, true) => bail!("{file_name:?} exist in both {manifest_dir:?} and {out_dir:?}"),
+    }
+}
+
+fn at_most_one(
+    manifest_dir: &Path,
+    out_dir: Option<&Path>,
+    file_name: &str,
+) -> anyhow::Result<Option<PathBuf>> {
+    let manifest_file = manifest_dir.join(file_name);
+    let out_file = out_dir.map(|d| d.join(file_name));
+    match (
+        manifest_file.symlink_metadata().is_ok(),
+        out_file
+            .as_ref()
+            .map(|f| f.symlink_metadata().is_ok())
+            .unwrap_or(false),
+    ) {
+        (false, false) => Ok(None),
+        (false, true) => Ok(Some(out_file.expect("checked above"))),
+        (true, false) => Ok(Some(manifest_file)),
         (true, true) => bail!("{file_name:?} exist in both {manifest_dir:?} and {out_dir:?}"),
     }
 }
