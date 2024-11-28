@@ -31,10 +31,11 @@ dependencies = [
 
 [[package]]
 name = "acap-ssh-utils"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "cli-version",
  "dirs",
  "env_logger",
  "flate2",
@@ -407,11 +408,12 @@ checksum = "a12916984aab3fa6e39d655a33e09c0071eb36d6ab3aea5c2d78551f1df6d952"
 
 [[package]]
 name = "cargo-acap-build"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "acap-build",
  "anyhow",
  "clap",
+ "cli-version",
  "dirs",
  "env_logger",
  "log",
@@ -421,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-acap-sdk"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "acap-ssh-utils",
  "acap-vapix",
@@ -429,6 +431,7 @@ dependencies = [
  "cargo-acap-build",
  "clap",
  "clap_complete",
+ "cli-version",
  "dirs",
  "env_logger",
  "log",
@@ -533,6 +536,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
+name = "cli-version"
+version = "0.1.0"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -609,11 +616,12 @@ dependencies = [
 
 [[package]]
 name = "device-manager"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "acap-vapix",
  "anyhow",
  "clap",
+ "cli-version",
  "dirs",
  "env_logger",
  "log",
@@ -778,11 +786,12 @@ dependencies = [
 
 [[package]]
 name = "fleet-manager"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "acap-vapix",
  "anyhow",
  "clap",
+ "cli-version",
  "device-manager",
  "dirs",
  "glob",

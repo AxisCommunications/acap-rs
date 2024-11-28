@@ -4,6 +4,7 @@ use std::{env, fs::File, path::PathBuf};
 use acap_ssh_utils::{patch_package, run_other, run_package};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use cli_version::version_with_commit_id;
 use log::debug;
 use url::Host;
 
@@ -22,7 +23,7 @@ use url::Host;
 /// with stdout attached to the terminal are officially supported use cases. As such all commands
 /// provided by this program may stop working on future versions AXIS OS.
 #[derive(Clone, Debug, Parser)]
-#[clap(verbatim_doc_comment, version)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     #[command(flatten)]
     netloc: Netloc,

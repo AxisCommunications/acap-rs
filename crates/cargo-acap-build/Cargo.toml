@@ -1,6 +1,6 @@
 [package]
 name = "cargo-acap-build"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
@@ -13,3 +13,4 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
 acap-build = { workspace = true }
+cli-version = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "cargo-acap-sdk"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
@@ -17,3 +17,4 @@ url = { workspace = true }
 acap-ssh-utils = { workspace = true }
 acap-vapix = { workspace = true }
 cargo-acap-build = { workspace = true }
+cli-version = { workspace = true }

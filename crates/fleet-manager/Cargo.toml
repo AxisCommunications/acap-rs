@@ -1,6 +1,6 @@
 [package]
 name = "fleet-manager"
-version = "0.0.0"
+version = "0.1.0"
 edition.workspace = true
 
 [dependencies]
@@ -17,3 +17,4 @@ url = { workspace = true, features = ["serde"] }
 
 device-manager = { workspace = true }
 acap-vapix = { workspace = true }
+cli-version = { workspace = true }

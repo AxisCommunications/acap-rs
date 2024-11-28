@@ -3,6 +3,7 @@ use std::fs::File;
 
 use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
+use cli_version::version_with_commit_id;
 use log::debug;
 
 // TODO: Figure out what to call this.
@@ -29,7 +30,7 @@ impl From<ArchAbi> for Architecture {
 /// - Builds for all supported targets instead of host.
 /// - Uses the release profile instead of the dev profile.
 #[derive(Parser)]
-#[clap(verbatim_doc_comment, version)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     /// If given, build only for the given architecture(s).
     ///

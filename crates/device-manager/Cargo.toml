@@ -1,6 +1,6 @@
 [package]
 name = "device-manager"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
@@ -18,3 +18,4 @@ tokio = { workspace = true, features = ["full"] }
 url = { workspace = true }
 
 acap-vapix = { workspace = true }
+cli-version = { workspace = true }
