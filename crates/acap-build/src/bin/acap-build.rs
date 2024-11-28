@@ -65,21 +65,12 @@ fn main() -> anyhow::Result<()> {
     let staging_dir = TempDir::new_in(&path, "acap-build")?;
     let mut builder = AppBuilder::new(true, staging_dir.path(), &manifest, arch)?;
 
-    let mandatory_files: Vec<_> = builder
-        .mandatory_files()
-        .into_iter()
-        .map(|n| path.join(n))
-        .collect();
-    for file in mandatory_files {
-        builder.add(&file)?;
+    for name in builder.mandatory_files() {
+        builder.add(&path.join(name))?;
     }
 
-    let optional_files: Vec<_> = builder
-        .mandatory_files()
-        .into_iter()
-        .map(|n| path.join(n))
-        .collect();
-    for file in optional_files {
+    for name in builder.optional_files() {
+        let file = path.join(name);
         if file.symlink_metadata().is_ok() {
             builder.add(&file)?;
         }

@@ -412,7 +412,7 @@ impl<'a> AppBuilder<'a> {
     }
 
     /// Return the name of files that must be added using [`Self::add`].
-    pub fn mandatory_files(&self) -> Vec<&str> {
+    pub fn mandatory_files(&self) -> Vec<String> {
         [
             Some(self.app_name.as_str()),
             Some("LICENSE"),
@@ -421,12 +421,16 @@ impl<'a> AppBuilder<'a> {
         ]
         .into_iter()
         .flatten()
+        .map(str::to_string)
         .collect()
     }
 
     /// Return the name of files that should be added using [`Self::add`].
-    pub fn optional_files(&self) -> Vec<&str> {
-        ["html", "declarations", "lib"].into_iter().collect()
+    pub fn optional_files(&self) -> Vec<String> {
+        ["html", "declarations", "lib"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
     }
 }
 

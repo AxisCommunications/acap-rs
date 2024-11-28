@@ -136,23 +136,12 @@ fn pack(
     app_builder.add(&executable)?;
 
     // TODO: Don't depend on the exe being the first.
-    let mandatory: Vec<_> = app_builder
-        .mandatory_files()
-        .into_iter()
-        .skip(1)
-        .map(str::to_string)
-        .collect();
-    for name in mandatory {
+    for name in app_builder.mandatory_files().into_iter().skip(1) {
         let path = exactly_one(manifest_dir, out_dir.as_deref(), &name)?;
         app_builder.add(&path)?;
     }
 
-    let optional: Vec<_> = app_builder
-        .optional_files()
-        .into_iter()
-        .map(str::to_string)
-        .collect();
-    for name in optional {
+    for name in app_builder.optional_files() {
         if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {
             app_builder.add(&d)?;
         }
