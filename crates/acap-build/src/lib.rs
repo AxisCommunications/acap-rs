@@ -168,7 +168,7 @@ impl<'a> AppBuilder<'a> {
     }
 
     // TODO: Remove the file system copy
-    fn add_as(&mut self, path: &Path, name: &str) -> anyhow::Result<PathBuf> {
+    pub fn add_as(&mut self, path: &Path, name: &str) -> anyhow::Result<PathBuf> {
         let dst = self.staging_dir.join(name);
         if dst.symlink_metadata().is_ok() {
             bail!("Cannot add {path:?} because {name} already exists");

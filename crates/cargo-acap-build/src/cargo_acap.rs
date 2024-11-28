@@ -12,6 +12,7 @@ use log::{debug, error, warn};
 use crate::{
     cargo::{get_cargo_metadata, json_message::JsonMessage},
     command_utils::RunWith,
+    files::license,
     Architecture,
 };
 
@@ -135,10 +136,19 @@ fn pack(
     let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
     app_builder.add(&executable)?;
 
+    // TODO: Consider providing defaults for more files.
     // TODO: Don't depend on the exe being the first.
     for name in app_builder.mandatory_files().into_iter().skip(1) {
-        let path = exactly_one(manifest_dir, out_dir.as_deref(), &name)?;
-        app_builder.add(&path)?;
+        if let Some(path) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {
+            app_builder.add(&path)?;
+        } else if name == "LICENSE" {
+            let cache_dir = cargo_target_dir.join("cargo-acap-sdk");
+            std::fs::create_dir_all(&cache_dir)?;
+            let path = license::generate(&manifest_path, &cache_dir)?;
+            app_builder.add_as(&path, "LICENSE")?;
+        } else {
+            bail!("Found no {name} to copy and don't know how to generate one")
+        }
     }
 
     for name in app_builder.optional_files() {

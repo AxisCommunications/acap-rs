@@ -23,6 +23,7 @@ A simple project will look something like:
         - `src/`
             - `main.rs`: Conventional location for the executable[^3].
     - `LICENSE`: Open source acknowledgements[^4].
+      If absent, it will be generated using [`cargo-about`](https://github.com/EmbarkStudios/cargo-about).
     - `manifest.json` Application manifest defining the app and its configuration[^5].
       If absent, the resulting artifact will be a plain executable instead of an EAP.
     - `html/`: Optional web client pages to include in the app[^6][^7].
