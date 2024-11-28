@@ -18,7 +18,7 @@ pub(crate) struct PackageConf(HashMap<&'static str, String>);
 impl PackageConf {
     pub(crate) fn new(
         manifest: &Manifest,
-        other_files: &[String],
+        other_files: &[&str],
         default_arch: Architecture,
     ) -> anyhow::Result<PackageConf> {
         let mut package_conf = Self(HashMap::new());
@@ -89,7 +89,7 @@ impl PackageConf {
         Ok(())
     }
 
-    fn set_custom_from_other_files(&mut self, other_files: &[String]) -> anyhow::Result<()> {
+    fn set_custom_from_other_files(&mut self, other_files: &[&str]) -> anyhow::Result<()> {
         if !other_files.is_empty() {
             self.0.insert("OTHERFILES", other_files.join(" "));
         }

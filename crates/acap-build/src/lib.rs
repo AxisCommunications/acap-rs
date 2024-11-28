@@ -1,7 +1,14 @@
 #![forbid(unsafe_code)]
 //! Library for creating Embedded Application Packages (EAPs).
 use std::{
-    env, ffi::OsString, fs, io::Write, os::unix::fs::PermissionsExt, path::Path, process::Command,
+    collections::HashSet,
+    env,
+    ffi::OsString,
+    fs,
+    io::Write,
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
+    process::Command,
     str::FromStr,
 };
 
@@ -27,15 +34,21 @@ fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
     copy_permissions: bool,
 ) -> anyhow::Result<()> {
     let src = src.as_ref();
+    let dst = dst.as_ref();
+    if dst.symlink_metadata().is_ok() {
+        bail!("Path already exists {dst:?}");
+    }
     if src.is_symlink() {
         // FIXME: Copy symlink in Rust
-        if !Command::new("cp")
-            .arg("-dn")
-            .arg(src.as_os_str())
-            .arg(dst.as_ref().as_os_str())
-            .status()?
-            .success()
-        {
+        let mut cp = Command::new("cp");
+
+        if copy_permissions {
+            cp.arg("--preserve=mode");
+        }
+
+        cp.arg("-dn").arg(src.as_os_str()).arg(dst.as_os_str());
+
+        if !cp.status()?.success() {
             bail!("Failed to copy symlink: {}", src.display());
         }
     } else if copy_permissions {
@@ -49,16 +62,10 @@ fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
 }
 
 fn copy_recursively(src: &Path, dst: &Path, copy_permissions: bool) -> anyhow::Result<()> {
-    if src.is_file() {
-        if dst.exists() {
-            bail!("Path already exists {dst:?}");
-        }
+    if !src.is_dir() {
         copy(src, dst, copy_permissions)?;
         debug!("Created reg {dst:?}");
         return Ok(());
-    }
-    if !src.is_dir() {
-        bail!("`{src:?}` is neither a file nor a directory");
     }
     match fs::create_dir(dst) {
         Ok(()) => {
@@ -101,7 +108,7 @@ pub struct AppBuilder<'a> {
     preserve_permissions: bool,
     staging_dir: &'a Path,
     manifest: Manifest,
-    additional_files: Vec<String>,
+    files: Vec<String>,
     default_architecture: Architecture,
     app_name: String,
 }
@@ -121,48 +128,20 @@ impl<'a> AppBuilder<'a> {
             staging_dir,
             manifest,
             app_name,
-            additional_files: Vec::new(),
+            files: Vec::new(),
             default_architecture,
         })
     }
 
-    /// Add files that don't fit any other category to the EAP.
-    pub fn add_additional(&mut self, path: &Path) -> anyhow::Result<&mut Self> {
+    /// Add a file to the EAP.
+    pub fn add(&mut self, path: &Path) -> anyhow::Result<&mut Self> {
         let name = path
             .file_name()
             .context("file has no name")?
             .to_str()
-            .context("file name is not a string")?
-            .to_string();
-        let dst = self.staging_dir.join(&name);
-        if dst.exists() {
-            bail!("{name} already exists");
-        }
-        copy_recursively(path, &dst, self.preserve_permissions)?;
-        self.additional_files.push(name);
-        Ok(self)
-    }
-
-    // acap-build does not expose this and the docs don't mention it,
-    // but eap-create.sh would add it if it exists.
-    // TODO: Consider removing
-    /// Add event declarations to the EAP.
-    pub fn add_declarations(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
-        let name = "declarations";
-        let dst = self.staging_dir.join(name);
-        if dst.exists() {
-            bail!("{name} already exists");
-        }
-        copy_recursively(dir, &dst, self.preserve_permissions)?;
-        Ok(self)
-    }
-
-    // TODO: Consider making mandatory
-    /// Add the **mandatory** executable to the EAP.
-    pub fn add_exe(&mut self, reg: &Path) -> anyhow::Result<&mut Self> {
-        let dst = self.staging_dir.join(&self.app_name);
-        copy(reg, &dst, self.preserve_permissions)?;
-        if !self.preserve_permissions {
+            .context("file name is not a string")?;
+        let dst = self.add_as(path, name)?;
+        if name == self.app_name && !self.preserve_permissions {
             let mut permissions = fs::metadata(&dst)?.permissions();
             let mode = permissions.mode();
             permissions.set_mode(mode | 0o111);
@@ -171,45 +150,33 @@ impl<'a> AppBuilder<'a> {
         Ok(self)
     }
 
-    /// Add an embedded web page to the EAP.
-    pub fn add_html(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
-        let name = "html";
-        let dst = self.staging_dir.join(name);
-        if dst.exists() {
-            bail!("{name} already exists");
+    /// Add all files in a directory to the EAP.
+    pub fn add_from(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
+        let mut entries = fs::read_dir(dir)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<std::io::Result<Vec<PathBuf>>>()?;
+        entries.sort();
+        for entry in entries {
+            let name = entry
+                .file_name()
+                .context("file has no name")?
+                .to_str()
+                .context("file name is not a string")?;
+            self.add_as(&entry, name)?;
         }
-        copy_recursively(dir, &dst, self.preserve_permissions)?;
         Ok(self)
     }
 
-    // TODO: Consider making mandatory
-    /// Add the **mandatory** open source attributions to the EAP.
-    pub fn add_license(&mut self, reg: &Path) -> anyhow::Result<&mut Self> {
-        copy(
-            reg,
-            self.staging_dir.join("LICENSE"),
-            self.preserve_permissions,
-        )?;
-        Ok(self)
-    }
-
-    /// Add shared libraries to the EAP.
-    pub fn add_lib(&mut self, dir: &Path) -> anyhow::Result<&mut Self> {
-        let name = "lib";
+    // TODO: Remove the file system copy
+    fn add_as(&mut self, path: &Path, name: &str) -> anyhow::Result<PathBuf> {
         let dst = self.staging_dir.join(name);
-        if dst.exists() {
-            bail!("{name} already exists");
+        if dst.symlink_metadata().is_ok() {
+            bail!("Cannot add {path:?} because {name} already exists");
         }
-        copy_recursively(dir, &dst, self.preserve_permissions)?;
-        Ok(self)
-    }
-
-    // A backwards compatible program needs to read the manifest to know the name of the executable
-    // and this method is added only to facilitate for that.
-    // TODO: Consider removing this
-    /// Return the short name of the app.
-    pub fn app_name(&self) -> &str {
-        self.app_name.as_str()
+        copy_recursively(path, &dst, self.preserve_permissions)?;
+        self.files.push(name.to_string());
+        debug!("Added {name} from {path:?}");
+        Ok(dst)
     }
 
     /// Build the EAP and return its path.
@@ -231,20 +198,18 @@ impl<'a> AppBuilder<'a> {
         let Self {
             staging_dir,
             default_architecture,
-            additional_files,
             manifest,
             ..
-        } = self;
+        } = &self;
 
-        fs::File::create_new(staging_dir.join("manifest.json"))?
+        fs::File::create_new(staging_dir.join("manifest.json"))
+            .context("creating manifest.json")?
             .write_all(manifest.try_to_string()?.as_bytes())?;
 
         let mut acap_build = Command::new("acap-build");
         acap_build.args(["--build", "no-build"]);
-        for file in additional_files {
-            // Use `arg` twice to avoid fallible conversion from `&PathBuf` to `&str`.
-            acap_build.arg("--additional-file");
-            acap_build.arg(file);
+        for file in self.additional_files() {
+            acap_build.args(["--additional-file", file]);
         }
         acap_build.arg(".");
 
@@ -283,11 +248,11 @@ impl<'a> AppBuilder<'a> {
         let Self {
             staging_dir,
             manifest,
-            additional_files,
+
             default_architecture,
             app_name,
             ..
-        } = self;
+        } = &self;
         let mtime = match env::var_os("SOURCE_DATE_EPOCH") {
             Some(v) => v.into_string().map_err(|e| anyhow!("{e:?}"))?,
             None => String::from_utf8(Command::new("date").arg("+%s").output()?.stdout)?,
@@ -314,29 +279,13 @@ impl<'a> AppBuilder<'a> {
         };
         let eap_file_name = format!("{package_name}_{major}_{minor}_{patch}_{arch}.eap");
 
-        // Copy files named in manifest.
-        // The term "additional files" is used to mean files requested directly.
-        // The term "other files" is used to mean additional files plus any files named in the
-        // manifest.
-        let other_files = additional_files;
-        match manifest.try_find_pre_uninstall_script() {
-            Ok(_) => {
-                // TODO: Add support for pre-uninstall and post-install scripts.
-                bail!("The pre-uninstall script is not supported yet.")
-            }
-            Err(json_ext::Error::KeyNotFound(k)) => {
-                debug!("No {k}, skipping pre uninstall script")
-            }
-            Err(e) => return Err(e.into()),
-        }
-
         // Generate derived files
         let package_conf =
-            PackageConf::new(&manifest, &other_files, default_architecture)?.to_string();
+            PackageConf::new(manifest, &self.other_files(), *default_architecture)?.to_string();
         fs::File::create_new(staging_dir.join("package.conf"))?
             .write_all(package_conf.as_bytes())?;
 
-        let param_conf = match ParamConf::new(&manifest)? {
+        let param_conf = match ParamConf::new(manifest)? {
             None => {
                 // If there is no param.conf, `eap-create.sh` creates one
                 debug!("Creating empty param.conf");
@@ -346,7 +295,7 @@ impl<'a> AppBuilder<'a> {
         };
         fs::File::create_new(staging_dir.join("param.conf"))?.write_all(param_conf.as_bytes())?;
 
-        match CgiConf::new(&manifest)? {
+        match CgiConf::new(manifest)? {
             None => {
                 debug!("Skipping cgi.conf")
             }
@@ -377,22 +326,21 @@ impl<'a> AppBuilder<'a> {
             .args(["--use-compress-program", "gzip --no-name -9"])
             .arg("--create")
             .arg("--numeric-owner")
-            .arg("--exclude-vcs")
-            .arg(&app_name)
-            .arg("package.conf")
-            .arg("param.conf")
-            .arg("LICENSE")
-            .arg("manifest.json");
+            .arg("--exclude-vcs");
 
-        // TODO: Add support for the post-install script
+        for name in self.section_1_files() {
+            if staging_dir.join(name).symlink_metadata().is_ok() {
+                tar.arg(name);
+            }
+        }
 
-        tar.args(&other_files);
+        tar.args(self.other_files());
 
         // TODO: Consider implementing support for `httpd.conf.local.*` and `mime.types.local.*`.
 
-        for dir in ["html", "declarations", "lib", "cgi.conf"] {
-            if staging_dir.join(dir).exists() {
-                tar.arg(dir);
+        for name in self.section_4_files() {
+            if staging_dir.join(name).symlink_metadata().is_ok() {
+                tar.arg(name);
             }
         }
 
@@ -401,6 +349,88 @@ impl<'a> AppBuilder<'a> {
         tar.run_with_logged_stdout()?;
 
         Ok(OsString::from(eap_file_name))
+    }
+
+    // These sections are probably relevant only for the equivalent and reference implementations;
+    // Once unpacked on device the order of files or the reason they were included is not important
+    // (even though some files are nonetheless treated specially).
+    // The sections don't have any semantics, they are just partitions that can be composed to
+    // create meaningful or useful lists of names.
+
+    fn section_1_files(&self) -> Vec<&str> {
+        [
+            Some(self.app_name.as_str()),
+            Some("package.conf"),
+            Some("param.conf"),
+            Some("LICENSE"),
+            Some("manifest.json"),
+            self.manifest.try_find_post_install_script().ok(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    fn section_2_files(&self) -> Vec<&str> {
+        let known_files: HashSet<_> = [
+            self.section_1_files(),
+            self.section_3_files(),
+            self.section_4_files(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+
+        self.files
+            .iter()
+            .map(String::as_str)
+            .filter(|f| !known_files.contains(f))
+            .collect()
+    }
+
+    fn section_3_files(&self) -> Vec<&str> {
+        [self.manifest.try_find_pre_uninstall_script().ok()]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    fn section_4_files(&self) -> Vec<&str> {
+        ["html", "declarations", "lib", "cgi.conf"]
+            .into_iter()
+            .collect()
+    }
+
+    /// Additional files for the reference implementation.
+    fn additional_files(&self) -> Vec<&str> {
+        self.section_2_files()
+    }
+
+    /// Other files for the `package.conf` file.
+    fn other_files(&self) -> Vec<&str> {
+        [self.section_2_files(), self.section_3_files()].concat()
+    }
+
+    /// Return the name of files that must be added using [`Self::add`].
+    pub fn mandatory_files(&self) -> Vec<String> {
+        [
+            Some(self.app_name.as_str()),
+            Some("LICENSE"),
+            self.manifest.try_find_post_install_script().ok(),
+            self.manifest.try_find_pre_uninstall_script().ok(),
+        ]
+        .into_iter()
+        .flatten()
+        .map(str::to_string)
+        .collect()
+    }
+
+    /// Return the name of files that should be added using [`Self::add`].
+    pub fn optional_files(&self) -> Vec<String> {
+        ["html", "declarations", "lib"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
     }
 }
 
