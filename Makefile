@@ -54,6 +54,15 @@ help:
 reinit:
 	RUST_LOG=info device-manager reinit
 
+## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
+build:
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
+	cargo-acap-build \
+		--target $(AXIS_DEVICE_ARCH) \
+		-- \
+		--package $(AXIS_PACKAGE) \
+		--profile app
+
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
 	cargo-acap-sdk install \
