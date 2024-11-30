@@ -196,7 +196,7 @@ impl Deferred {
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
-    _on_message: Deferred,
+    on_message: Option<Deferred>,
 }
 
 impl SubscriberConfig {
@@ -207,7 +207,17 @@ impl SubscriberConfig {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
             let raw_on_message = Box::into_raw(Box::new(on_message));
-            let on_message = Deferred::new(raw_on_message);
+            // TODO: Verify that panic is sound.
+            // SAFETY: There a few ways this can be dropped:
+            // * This function panics; since the user doesn't get a config back the config either
+            //   is leaked or it wasn't created. In either case the pointer will never be
+            //   dereferenced.
+            // * The struct returned from this function is not used; since the callback is dropped
+            //   after the drop implementation for this type this is sound even if drop would
+            //   dereference the pointer, which I don't think it does.
+            // * The struct is passed to `Subscriber::try_new` which makes sure the callback
+            //   outlives this `SubscriberConfig`.
+            let on_message = Some(Deferred::new(raw_on_message));
 
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_config_create(
@@ -221,10 +231,7 @@ impl SubscriberConfig {
                 (false, false) => {
                     panic!("mdb_subscriber_config_create returned both a connection and an error")
                 }
-                (false, true) => Ok(Self {
-                    ptr,
-                    _on_message: on_message,
-                }),
+                (false, true) => Ok(Self { ptr, on_message }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => panic!(
                     "mdb_subscriber_config_create returned neither a connection nor an error"
@@ -253,9 +260,7 @@ impl SubscriberConfig {
 
 impl Drop for SubscriberConfig {
     fn drop(&mut self) {
-        // SAFETY: `Subscriber` owns the `SubscriberConfig` that mdb_subscriber_create_async is
-        // called with, and never touches on_message by itself. The only reference to self.on_message is
-        // in mdb_subscriber_t which we destroy here so it is also safe to drop on_message.
+        // SAFETY: This is always sound because it does not try to dereference the callback.
         unsafe {
             mdb_sys::mdb_subscriber_config_destroy(&mut self.ptr);
         }
@@ -263,16 +268,19 @@ impl Drop for SubscriberConfig {
 }
 
 pub struct Subscriber<'a> {
+    // Ensure the raw connection is not destroyed before the subscriber
+    _connection: &'a Connection,
     ptr: *mut mdb_sys::mdb_subscriber_t,
     _on_done: Deferred,
-    _config: SubscriberConfig,
-    _marker: PhantomData<&'a Connection>,
+    // We don't need to keep the entire config alive, only the callback, because
+    // `mdb_subscriber_create_async` will copy any information it keeps.
+    _on_message: Deferred,
 }
 
 impl<'a> Subscriber<'a> {
     pub fn try_new<F>(
         connection: &'a Connection,
-        config: SubscriberConfig,
+        mut config: SubscriberConfig,
         on_done: F,
     ) -> Result<Self, Error>
     where
@@ -295,10 +303,10 @@ impl<'a> Subscriber<'a> {
                     panic!("mdb_subscriber_create_async returned both a connection and an error")
                 }
                 (false, true) => Ok(Self {
+                    _connection: connection,
                     ptr,
                     _on_done: on_done,
-                    _config: config,
-                    _marker: PhantomData,
+                    _on_message: config.on_message.take().unwrap(),
                 }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => {
