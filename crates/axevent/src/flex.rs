@@ -25,9 +25,9 @@ use axevent_sys::{
     ax_event_key_value_set_get_double, ax_event_key_value_set_get_integer,
     ax_event_key_value_set_get_string, ax_event_key_value_set_get_value_type,
     ax_event_key_value_set_mark_as_data, ax_event_key_value_set_mark_as_source,
-    ax_event_key_value_set_mark_as_user_defined, ax_event_key_value_set_new, ax_event_new2,
-    AXEvent, AXEventHandler, AXEventKeyValueSet, AXEventValueType,
-    AXEventValueType_AX_VALUE_TYPE_BOOL, AXEventValueType_AX_VALUE_TYPE_DOUBLE,
+    ax_event_key_value_set_mark_as_user_defined, ax_event_key_value_set_new,
+    ax_event_key_value_set_remove_key, ax_event_new2, AXEvent, AXEventHandler, AXEventKeyValueSet,
+    AXEventValueType, AXEventValueType_AX_VALUE_TYPE_BOOL, AXEventValueType_AX_VALUE_TYPE_DOUBLE,
     AXEventValueType_AX_VALUE_TYPE_ELEMENT, AXEventValueType_AX_VALUE_TYPE_INT,
     AXEventValueType_AX_VALUE_TYPE_STRING,
 };
@@ -577,7 +577,7 @@ impl KeyValueSet {
     pub fn remove_key(&mut self, key: &CStr, namespace: Option<&CStr>) -> Result<&mut Self> {
         unsafe {
             try_func!(
-                ax_event_key_value_set_mark_as_source,
+                ax_event_key_value_set_remove_key,
                 self.raw,
                 key.as_ptr(),
                 match namespace {
