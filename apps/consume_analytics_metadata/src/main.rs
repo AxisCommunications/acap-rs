@@ -4,7 +4,7 @@
 use std::{ffi::CStr, process::abort, thread::sleep, time::Duration};
 
 use log::{error, info};
-use mdb::{Connection, Error, Message, Subscriber, SubscriberConfig};
+use mdb::{Connection, Subscriber, SubscriberConfig};
 
 const TOPIC: &CStr = c"com.axis.analytics_scene_description.v0.beta";
 const SOURCE: &CStr = c"1";
@@ -12,7 +12,7 @@ const SOURCE: &CStr = c"1";
 fn main() {
     acap_logging::init_logger();
 
-    let connection = Connection::try_new(Some(|e: Error| {
+    let connection = Connection::try_new(Some(|e| {
         error!("Not connected because {e:?}");
         abort();
     }))
@@ -21,14 +21,14 @@ fn main() {
     let config = SubscriberConfig::try_new(
         TOPIC,
         SOURCE,
-        |message: Message| {
+        |message| {
             let payload = String::from_utf8_lossy(message.payload());
             let libc::timespec{ tv_sec, tv_nsec } = message.timestamp();
             info!("message received from topic: {TOPIC:?} on source: {SOURCE:?}: Monotonic time - {tv_sec}.{tv_nsec:0>9}. Data - {payload}");
         },
     )
     .unwrap();
-    let _subscriber = Subscriber::try_new(&connection, config, |e: Option<Error>| match e {
+    let _subscriber = Subscriber::try_new(&connection, config, |e| match e {
         None => info!("Subscribed"),
         Some(e) => {
             error!("Not subscribed because {e:?}");
@@ -54,8 +54,8 @@ mod tests {
         let mut droppable_tx = Some(tx);
 
         let connection =
-            Connection::try_new(Some(|e: Error| println!("Not connected because {e:?}"))).unwrap();
-        let config = SubscriberConfig::try_new(TOPIC, SOURCE, move |message: Message| {
+            Connection::try_new(Some(|e| println!("Not connected because {e:?}"))).unwrap();
+        let config = SubscriberConfig::try_new(TOPIC, SOURCE, move |message| {
             let payload = String::from_utf8(message.payload().to_vec());
             let Some(tx) = &droppable_tx else {
                 debug!("Dropping message because sender was previously dropped");
@@ -67,7 +67,7 @@ mod tests {
             }
         })
         .unwrap();
-        let _subscriber = Subscriber::try_new(&connection, config, |e: Option<Error>| match e {
+        let _subscriber = Subscriber::try_new(&connection, config, |e| match e {
             None => println!("Subscribed"),
             Some(e) => println!("Not subscribed because {e:?}"),
         })
