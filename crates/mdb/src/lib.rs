@@ -122,24 +122,27 @@ impl Connection {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
-            let on_error = match on_error {
+            let raw_on_error = match on_error {
                 None => std::ptr::null_mut(),
                 Some(on_error) => Box::into_raw(Box::new(on_error)),
             };
-            let _on_error = match on_error.is_null() {
-                false => Some(Deferred::new(on_error)),
+            let on_error = match raw_on_error.is_null() {
+                false => Some(Deferred::new(raw_on_error)),
                 true => None,
             };
             let ptr = mdb_sys::mdb_connection_create(
                 Some(Self::on_error::<F>),
-                on_error as *mut c_void,
+                raw_on_error as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
                 (false, false) => {
                     panic!("mdb_connection_create returned both a connection and an error");
                 }
-                (false, true) => Ok(Self { ptr, _on_error }),
+                (false, true) => Ok(Self {
+                    ptr,
+                    _on_error: on_error,
+                }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => {
                     panic!("mdb_connection_create returned neither a connection nor an error");
@@ -203,22 +206,25 @@ impl SubscriberConfig {
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
-            let on_message = Box::into_raw(Box::new(on_message));
-            let _on_message = Deferred::new(on_message);
+            let raw_on_message = Box::into_raw(Box::new(on_message));
+            let on_message = Deferred::new(raw_on_message);
 
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_config_create(
                 topic.as_ptr(),
                 source.as_ptr(),
                 Some(Self::on_message::<F>),
-                on_message as *mut c_void,
+                raw_on_message as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
                 (false, false) => {
                     panic!("mdb_subscriber_config_create returned both a connection and an error")
                 }
-                (false, true) => Ok(Self { ptr, _on_message }),
+                (false, true) => Ok(Self {
+                    ptr,
+                    _on_message: on_message,
+                }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => panic!(
                     "mdb_subscriber_config_create returned neither a connection nor an error"
@@ -274,14 +280,14 @@ impl<'a> Subscriber<'a> {
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
-            let on_done = Box::into_raw(Box::new(on_done));
-            let _on_done = Deferred::new(on_done);
+            let raw_on_done = Box::into_raw(Box::new(on_done));
+            let on_done = Deferred::new(raw_on_done);
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_create_async(
                 connection.ptr,
                 config.ptr,
                 Some(Self::on_done::<F>),
-                on_done as *mut c_void,
+                raw_on_done as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
@@ -290,7 +296,7 @@ impl<'a> Subscriber<'a> {
                 }
                 (false, true) => Ok(Self {
                     ptr,
-                    _on_done,
+                    _on_done: on_done,
                     _config: config,
                     _marker: PhantomData,
                 }),
