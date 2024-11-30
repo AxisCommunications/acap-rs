@@ -63,25 +63,18 @@ macro_rules! try_func {
     }}
 }
 
-struct Deferred {
-    func: Option<Box<dyn FnOnce()>>,
-}
+struct Deferred(Option<Box<dyn FnOnce()>>);
 
 impl Drop for Deferred {
     fn drop(&mut self) {
-        let func = self.func.take().unwrap();
-        func();
+        assert!(self.0.is_some());
+        self.0.take().unwrap()()
     }
 }
 
 impl Deferred {
-    pub fn new<F>(func: F) -> Self
-    where
-        F: FnOnce() + 'static,
-    {
-        Self {
-            func: Some(Box::new(func)),
-        }
+    unsafe fn new<T: 'static>(ptr: *mut T) -> Self {
+        Self(Some(Box::new(move || drop(Box::from_raw(ptr)))))
     }
 }
 
@@ -165,7 +158,7 @@ impl Drop for Handler {
     fn drop(&mut self) {
         debug!("Dropping {}", any::type_name::<Self>());
         // SAFETY: Empirically `ax_event_handler_free` will not return before all callbacks have
-        // returned, and the callbacks will not be dropped before this function returns.
+        // returned making it safe to drop the callbacks after this function returns.
         unsafe {
             ax_event_handler_free(self.raw);
         }
@@ -220,7 +213,16 @@ impl Handler {
     where
         F: FnMut(Declaration) + Send + 'static,
     {
-        let callback = callback.map(|c| Box::into_raw(Box::new(c)));
+        let raw_callback = callback.map(|c| Box::into_raw(Box::new(c)));
+        // TODO: Verify these assumptions.
+        // SAFETY: There are three ways that the callback can be dropped:
+        // * When `ax_event_handler_declare` returns a failure and this function returns.
+        //   The `axevent` runtime will presumably never use a callback that it failed to add.
+        // * When undeclare is called and removes it from the map of callbacks.
+        //   See safety comment in `undeclare`.
+        // * When this handler is dropped.
+        //   See safety comment ind `drop`.
+        let callback = raw_callback.map(|c| unsafe { Deferred::new(c) });
         // TODO: Verify these assumptions.
         // SAFETY: Passing the callback to C is safe because:
         // - It is called at most once by the C code.
@@ -238,12 +240,12 @@ impl Handler {
                 key_value_set.raw,
                 stateless as c_int,
                 &mut declaration,
-                if callback.is_none() {
+                if raw_callback.is_none() {
                     None
                 } else {
                     Some(Declaration::handle_callback::<F>)
                 },
-                match callback {
+                match raw_callback {
                     None => ptr::null_mut(),
                     Some(callback) => callback as *mut c_void,
                 },
@@ -255,23 +257,30 @@ impl Handler {
                 self.declaration_callbacks
                     .lock()
                     .unwrap()
-                    .insert(handle, Deferred::new(move || drop(Box::from_raw(callback))));
+                    .insert(handle, callback);
             }
 
             Ok(handle)
         }
     }
 
+    /// Remove declaration
+    ///
+    /// The callback may or may not have been dropped if this returns an error.
+    /// If it was not, it will be dropped when this handler goes out of scope.
     pub fn undeclare(&self, declaration: &Declaration) -> Result<()> {
-        unsafe {
-            let result = try_func!(ax_event_handler_undeclare, self.raw, declaration.0);
+        // TODO: Verify these assumptions.
+        // SAFETY: If `ax_event_handler_undeclare` succeeds then, presumably, the callback will
+        // not be used again after the function returns and it is safe to drop the callback.
+        let result = unsafe { try_func!(ax_event_handler_undeclare, self.raw, declaration.0) };
+        if result.is_ok() {
             self.declaration_callbacks
                 .lock()
                 .unwrap()
                 .remove(declaration)
                 .unwrap();
-            result
         }
+        result
     }
 
     pub fn send_event(&self, event: Event, declaration: &Declaration) -> Result<()> {
@@ -289,7 +298,16 @@ impl Handler {
     where
         F: FnMut(Subscription, Event) + Send + 'static,
     {
-        let callback = Box::into_raw(Box::new(callback));
+        let raw_callback = Box::into_raw(Box::new(callback));
+        // TODO: Verify these assumptions.
+        // SAFETY: There are three ways that the callback can be dropped:
+        // * When `ax_event_handler_subscribe returns a failure and this function returns.
+        //   The `axevent` runtime will presumably never use a callback that it failed to add.
+        // * When unsubscribe is called and removes it from the map of callbacks.
+        //   See safety comment in `unsubscribe`.
+        // * When this handler is dropped.
+        //   See safety comment ind `drop`.
+        let callback = unsafe { Deferred::new(raw_callback) };
         unsafe {
             let mut subscription = c_uint::default();
             try_func!(
@@ -298,7 +316,7 @@ impl Handler {
                 key_value_set.raw,
                 &mut subscription,
                 Some(Subscription::handle_callback::<F>),
-                callback as *mut c_void,
+                raw_callback as *mut c_void,
             )?;
 
             let handle = Subscription(subscription);
@@ -306,22 +324,30 @@ impl Handler {
             self.subscription_callbacks
                 .lock()
                 .unwrap()
-                .insert(handle, Deferred::new(move || drop(Box::from_raw(callback))));
+                .insert(handle, callback);
 
             Ok(handle)
         }
     }
 
+    /// Stop subscription
+    ///
+    /// The callback may or may not have been dropped if this returns an error.
+    /// If it was not, it will be dropped when this handler goes out of scope.
     pub fn unsubscribe(&self, subscription: &Subscription) -> Result<()> {
-        unsafe {
-            let result = try_func!(ax_event_handler_unsubscribe, self.raw, subscription.0);
+        // TODO: More SAFETY
+        // TODO: Verify these assumptions.
+        // SAFETY: If `ax_event_handler_unsubscribe` succeeds then, presumably, the callback will
+        // not be used again after the function returns and it is safe to drop the callback.
+        let result = unsafe { try_func!(ax_event_handler_unsubscribe, self.raw, subscription.0) };
+        if result.is_ok() {
             self.subscription_callbacks
                 .lock()
                 .unwrap()
                 .remove(subscription)
                 .unwrap();
-            result
         }
+        result
     }
 }
 
