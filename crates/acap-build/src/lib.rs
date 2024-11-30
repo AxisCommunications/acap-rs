@@ -140,13 +140,7 @@ impl<'a> AppBuilder<'a> {
             .context("file has no name")?
             .to_str()
             .context("file name is not a string")?;
-        let dst = self.add_as(path, name)?;
-        if name == self.app_name && !self.preserve_permissions {
-            let mut permissions = fs::metadata(&dst)?.permissions();
-            let mode = permissions.mode();
-            permissions.set_mode(mode | 0o111);
-            fs::set_permissions(&dst, permissions)?;
-        }
+        self.add_as(path, name)?;
         Ok(self)
     }
 
@@ -175,8 +169,22 @@ impl<'a> AppBuilder<'a> {
         }
         copy_recursively(path, &dst, self.preserve_permissions)?;
         self.files.push(name.to_string());
+        if name == self.app_name && !self.preserve_permissions {
+            let mut permissions = fs::metadata(&dst)?.permissions();
+            let mode = permissions.mode();
+            permissions.set_mode(mode | 0o111);
+            fs::set_permissions(&dst, permissions)?;
+        }
         debug!("Added {name} from {path:?}");
         Ok(dst)
+    }
+
+    /// Add the **mandatory** executable to the EAP.
+    pub fn add_exe(&mut self, reg: &Path) -> anyhow::Result<&mut Self> {
+        // TODO: Consider refactoring or changing to avoid cloning.
+        let app_name = self.app_name.clone();
+        self.add_as(reg, &app_name)?;
+        Ok(self)
     }
 
     /// Build the EAP and return its path.
