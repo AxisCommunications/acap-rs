@@ -10,6 +10,7 @@ use std::{
 use acap_build::{AppBuilder, Architecture};
 use anyhow::Context;
 use clap::{Parser, ValueEnum};
+use log::debug;
 use tempdir::TempDir;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, ValueEnum)]
@@ -17,12 +18,14 @@ use tempdir::TempDir;
 enum BuildOption {
     #[default]
     Make,
+    NoBuild,
 }
 
 impl Display for BuildOption {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Make => write!(f, "make"),
+            Self::NoBuild => write!(f, "no-build"),
         }
     }
 }
@@ -54,6 +57,9 @@ fn main() -> anyhow::Result<()> {
             .status()
             .context("subprocess make failed")?
             .success()),
+        BuildOption::NoBuild => {
+            debug!("no build");
+        }
     }
 
     let arch: Architecture = env::var("OECORE_TARGET_ARCH")?.parse()?;
