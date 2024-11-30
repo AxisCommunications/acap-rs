@@ -74,7 +74,6 @@ jobs:
           cargo install --locked --path crates/cargo-acap-build
       - name: Build the app
         run: |
-          make apps/hello_world/LICENSE
           cargo-acap-build -- --package hello_world
         env:
           ACAP_BUILD_IMPL: equivalent
