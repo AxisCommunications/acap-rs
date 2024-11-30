@@ -142,7 +142,7 @@ fn pack(
         if let Some(path) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {
             app_builder.add(&path)?;
         } else if name == "LICENSE" {
-            let cache_dir = cargo_target_dir.join("cargo-acap-sdk");
+            let cache_dir = cargo_target_dir.join("cargo-acap-sdk").join("LICENSE");
             std::fs::create_dir_all(&cache_dir)?;
             let path = license::generate(&manifest_path, &cache_dir)?;
             app_builder.add_as(&path, "LICENSE")?;
