@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! An example of how to run a webserver
 
 use std::{

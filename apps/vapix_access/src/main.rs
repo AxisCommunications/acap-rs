@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! A simple app that uses a VAPIX service account to access VAPIX APIs.
 
 use std::time::Duration;

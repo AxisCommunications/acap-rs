@@ -1,0 +1,20 @@
+[package]
+name = "fleet-manager"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+dirs = { workspace = true }
+glob = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+url = { workspace = true, features = ["serde"] }
+
+device-manager = { workspace = true }
+acap-vapix = { workspace = true }
+cli-version = { workspace = true }

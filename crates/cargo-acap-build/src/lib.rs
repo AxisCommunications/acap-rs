@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![doc=include_str!("../README.md")]
 
 use std::{
@@ -6,15 +7,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use acap::Architecture;
+pub use acap_build::Architecture;
 pub use cargo::get_cargo_metadata;
 pub use cargo_acap::Artifact;
 use log::debug;
-
-mod acap;
 mod cargo;
 mod cargo_acap;
 mod command_utils;
+mod files;
 
 pub struct AppBuilder {
     targets: Vec<Architecture>,

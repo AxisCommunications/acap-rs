@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! A simple example application demonstrating how to use a build script to generate files
 //! dynamically.
 //!

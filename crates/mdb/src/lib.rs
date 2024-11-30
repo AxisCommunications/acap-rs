@@ -1,8 +1,13 @@
+//! A rust wrapper around the [Message Broker API] from [ACAP].
+//!
+//! [ACAP]: https://axiscommunications.github.io/acap-documentation/
+//! [Message Broker API]: https://axiscommunications.github.io/acap-documentation/docs/api/src/api/message-broker/html/index.html
 // TODO: Add documentation.
 use std::{
     any,
     ffi::CStr,
     fmt::{Debug, Display, Formatter},
+    marker::PhantomData,
     slice::from_raw_parts,
 };
 
@@ -210,15 +215,14 @@ impl SubscriberConfig {
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
-                (false, false) =>
-                    panic!("mdb_subscriber_config_create returned both a connection and an error"),
+                (false, false) => {
+                    panic!("mdb_subscriber_config_create returned both a connection and an error")
+                }
                 (false, true) => Ok(Self { ptr, _on_message }),
                 (true, false) => Err(Error::new_owned(error)),
-                (true, true) => 
-                    panic!(
-                        "mdb_subscriber_config_create returned neither a connection nor an error"
-                    )
-                
+                (true, true) => panic!(
+                    "mdb_subscriber_config_create returned neither a connection nor an error"
+                ),
             }
         }
     }
@@ -333,14 +337,17 @@ unsafe impl Send for Subscriber<'_> {}
 // implementation until it is needed or the Send and Sync properties are clearly guaranteed by
 // the C API.
 
-pub struct Message {
+pub struct Message<'a> {
     ptr: *const mdb_sys::mdb_message_t,
+    _marker: PhantomData<&'a mdb_sys::mdb_message_t>,
 }
 
-impl Message {
+impl Message<'_> {
     unsafe fn from_raw(ptr: *const mdb_sys::mdb_message_t) -> Self {
-        // TODO: Can we encode that this is never owned?
-        Self { ptr }
+        Self {
+            ptr,
+            _marker: PhantomData,
+        }
     }
     pub fn payload(&self) -> &[u8] {
         unsafe {
