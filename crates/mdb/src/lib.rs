@@ -102,7 +102,7 @@ pub struct Connection {
 
 impl Connection {
     // TODO: Consider adopting a builder-like pattern.
-    /// Passing `None` as the `@on_error` callback requires qualifying the generic like so:
+    /// Passing `None` as the `on_error` callback requires qualifying the generic like so:
     ///
     /// ```
     /// let connection = Connection::try_new::<fn(Error)>(None);
