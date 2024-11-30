@@ -159,8 +159,8 @@ impl Connection {
             // TODO: Remove excessive logging once we are somewhat confident this works
             debug!("Handling error {error:?} with user_data {user_data:?}");
             let error = Error::new_borrowed(error);
-            let user_data = user_data as *mut F;
-            (*user_data)(error);
+            let callback = &mut *(user_data as *mut F);
+            callback(error);
         });
     }
 }
@@ -244,9 +244,9 @@ impl SubscriberConfig {
             debug!("Retrieving message...");
             let message = Message::from_raw(message);
             debug!("Retrieving callback...");
-            let user_data = user_data as *mut F;
+            let callback = &mut *(user_data as *mut F);
             debug!("Calling callback...");
-            (*user_data)(message);
+            callback(message);
         });
     }
 }
@@ -319,8 +319,8 @@ impl<'a> Subscriber<'a> {
                 true => None,
                 false => Some(Error::new_borrowed(error)),
             };
-            let user_data = user_data as *mut F;
-            (*user_data)(error);
+            let callback = &mut *(user_data as *mut F);
+            callback(error);
         });
     }
 }
