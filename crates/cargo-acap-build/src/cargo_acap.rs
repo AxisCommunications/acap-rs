@@ -137,6 +137,7 @@ fn pack(
     app_builder.add(&executable)?;
 
     // TODO: Consider providing defaults for more files.
+    // TODO: Consider providing a default build script instead to enable users to opt out entirely.
     // TODO: Don't depend on the exe being the first.
     for name in app_builder.mandatory_files().into_iter().skip(1) {
         if let Some(path) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {

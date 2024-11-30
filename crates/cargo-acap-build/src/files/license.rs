@@ -28,19 +28,19 @@ pub(crate) fn generate(manifest_file: &Path, cache: &Path) -> anyhow::Result<Pat
 
     let manifest = fs::read_to_string(manifest_file)?;
 
+    // TODO: Consider installing cargo about locally.
     let version = String::from_utf8(
         Command::new("cargo-about")
             .arg("--version")
             .output()?
             .stdout,
-    )
-    .unwrap();
+    )?;
 
     let mut hasher = DefaultHasher::new();
     Key {
         config: CONFIG,
         template: TEMPLATE,
-        // TODO: Use lock file as well or instead
+        // TODO: Use lock file as well or instead.
         manifest: manifest.as_str(),
         version: version.as_str(),
     }
