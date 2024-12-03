@@ -62,25 +62,18 @@ mod sys {
     }
 }
 
-struct Deferred {
-    func: Option<Box<dyn FnOnce()>>,
-}
+struct Deferred(Option<Box<dyn FnOnce()>>);
 
 impl Drop for Deferred {
     fn drop(&mut self) {
-        let func = self.func.take().unwrap();
-        func();
+        assert!(self.0.is_some());
+        self.0.take().unwrap()()
     }
 }
 
 impl Deferred {
-    pub fn new<F>(func: F) -> Self
-    where
-        F: FnOnce() + 'static,
-    {
-        Self {
-            func: Some(Box::new(func)),
-        }
+    unsafe fn new<T: 'static>(ptr: *mut T) -> Self {
+        Self(Some(Box::new(move || drop(Box::from_raw(ptr)))))
     }
 }
 
@@ -126,26 +119,24 @@ impl Handler {
     where
         F: FnMut() + Send + 'static,
     {
-        let callback = callback.map(|c| Box::into_raw(Box::new(c)));
+        let raw_callback = callback.map(|c| Box::into_raw(Box::new(c)));
+        let callback = raw_callback.map(|c| unsafe { Deferred::new(c) });
         unsafe {
             let handle = sys::handler_subscribe(
                 self.raw,
-                if callback.is_none() {
+                if raw_callback.is_none() {
                     None
                 } else {
                     Some(Self::trampoline::<F>)
                 },
-                match callback {
+                match raw_callback {
                     None => ptr::null_mut(),
                     Some(callback) => callback as *mut c_void,
                 },
             );
             let handle = Subscription(handle);
             if let Some(callback) = callback {
-                self.callbacks
-                    .lock()
-                    .unwrap()
-                    .insert(handle, Deferred::new(move || drop(Box::from_raw(callback))));
+                self.callbacks.lock().unwrap().insert(handle, callback);
             }
             handle
         }
