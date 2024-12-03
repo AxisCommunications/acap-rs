@@ -5,7 +5,7 @@ set -eux
 DIRECTORY="${1}"
 
 # Keep version in sync with `Dockerfile`.
-docker run axisecp/acap-native-sdk:1.15-armv7hf-ubuntu22.04 tar \
+docker run axisecp/acap-native-sdk:1.3-armv7hf-ubuntu22.04 tar \
   --create \
   --directory /opt/ \
   --file - \
@@ -18,7 +18,7 @@ docker run axisecp/acap-native-sdk:1.15-armv7hf-ubuntu22.04 tar \
   --strip-components 1
 
 # Keep version in sync with `Dockerfile`.
-docker run axisecp/acap-native-sdk:1.15-aarch64-ubuntu22.04 tar \
+docker run axisecp/acap-native-sdk:1.3-aarch64-ubuntu22.04 tar \
   --create \
   --directory /opt/ \
   --file - \
