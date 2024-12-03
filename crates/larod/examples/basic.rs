@@ -1,4 +1,4 @@
-use larod::{Error, Session};
+use larod::{Error, ImageFormat, LarodModel, PreProcBackend, Preprocessor, Session};
 
 fn main() -> Result<(), Error> {
     let session = Session::new();
@@ -25,5 +25,26 @@ fn main() -> Result<(), Error> {
             d.instance().expect("Couldn't get device instance")
         );
     }
+    let mut preprocessor = match Preprocessor::builder()
+        .input_format(ImageFormat::NV12)
+        .input_size((1920, 1080))
+        .output_size((1920, 1080))
+        .backend(PreProcBackend::LibYUV)
+        .load(&session)
+    {
+        Ok(p) => p,
+        Err(Error::LarodError(e)) => {
+            eprintln!("Error building preprocessor: {:?}", e.msg());
+            panic!()
+        }
+        Err(e) => {
+            eprintln!("Unexpected error while building preprocessor: {:?}", e);
+            panic!()
+        }
+    };
+    if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
+        eprintln!("Error creating preprocessor inputs: {:?}", e.msg());
+    }
+    println!("Number of model inputs: {}", preprocessor.num_inputs());
     Ok(())
 }

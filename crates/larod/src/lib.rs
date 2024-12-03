@@ -1,5 +1,13 @@
 //! A safe warpper around the larod-sys bindings to the larod C library.
 //!
+//!
+//! Example
+//! ```rust
+//! use larod::Session;
+//! let session = Session::new();
+//! let devices = session.devices();
+//! ```
+//!
 //! # Gotchas
 //! Many of the C functions return either a bool or a pointer to some object.
 //! Additionally, one of the out arguments is a pointer to a larodError
@@ -13,12 +21,17 @@
 //! by constructing the LarodError struct if the larodError pointer is non-NULL
 //! and the impl Drop for LarodError will dealocate the object appropriately.
 //!
-//! Example
-//! ```rust
-//! use larod::Session;
-//! let session = Session::new();
-//! let devices = session.devices();
-//! ```
+//! ## Tensors
+//! The larod library supports [creating tensors](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#aededa9e269d87d0f1b7636a007760cb2).
+//! However, it seems that calling that function, as well as [larodCreateModelInputs](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#adefd8c496e10eddced5be85d93aceb13),
+//! allocates some structure on the heap. So, when [larodDestroyTensors](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#afac99dfef68ffe3d513008aaac354ae0)
+//! is called, it deallocates any memory or file descriptors associated with
+//! each tensor, but also the container storing the pointers to the tensors.
+//! This makes it all but impossible to create a container in Rust storing
+//! information about individual tensors and pass something to liblarod to
+//! properly deallocate those tensors. This is because C and Rust may use
+//! different allocators and objects should be deallocated by the same allocator
+//! use for their allocation in the first place.
 //!
 //! # TODOs:
 //! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
@@ -28,13 +41,13 @@ use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 use larod_sys::*;
 use std::{
-    collections::HashMap,
     ffi::{c_char, CStr, CString},
+    fmt::Display,
     fs::File,
     marker::PhantomData,
     os::fd::AsRawFd,
     path::Path,
-    ptr::{self},
+    ptr::{self, slice_from_raw_parts},
 };
 
 type Result<T> = std::result::Result<T, Error>;
@@ -96,6 +109,18 @@ impl LarodError {
     }
 }
 
+impl std::error::Error for LarodError {}
+
+impl Display for LarodError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.msg().unwrap_or("unknown error message".into())
+        )
+    }
+}
+
 impl Drop for LarodError {
     fn drop(&mut self) {
         if !self.inner.is_null() {
@@ -104,15 +129,26 @@ impl Drop for LarodError {
     }
 }
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
-    LarodError(LarodError),
+    #[error(transparent)]
+    LarodError(#[from] LarodError),
+    #[error("liblarod returned an unexpected null pointer")]
     NullLarodPointer,
+    #[error("message string returned from liblarod is not valid UTF-8")]
     InvalidLarodMessage,
+    #[error("liblarod returned a pointer to invalid data")]
     PointerToInvalidData,
+    #[error("could not allocate memory for CString")]
     CStringAllocation,
+    #[error("invalid combination of configuration parameters for preprocessor")]
+    PreprocessorError(PreProcError),
+    #[error("missing error data from liblarod")]
     MissingLarodError,
+    #[error(transparent)]
     IOError(std::io::Error),
+    #[error("attempted operation without satisfying all required dependencies")]
+    UnsatisfiedDependencies,
 }
 
 // impl LarodError {
@@ -402,21 +438,73 @@ impl std::ops::Drop for LarodMap {
     }
 }
 
-#[derive(Eq, PartialEq, Hash)]
-pub struct Tensor<'a> {
-    ptr: *mut larodTensor,
-    phantom: PhantomData<&'a Session<'a>>,
+// #[derive(Eq, PartialEq, Hash)]
+// pub struct Tensor<'a> {
+//     ptr: *mut *mut larodTensor,
+//     phantom: PhantomData<&'a Session>,
+// }
+
+struct LarodTensorContainer {
+    ptr: *mut *mut larodTensor,
+    num_tensors: usize,
 }
+pub struct Tensor(*mut larodTensor);
 
 /// A structure representing a larodTensor.
-impl<'a> Tensor<'a> {
-    fn as_ptr(&self) -> *const larodTensor {
-        self.ptr.cast_const()
-    }
+impl Tensor {
+    // fn as_ptr(&self) -> *const larodTensor {
+    //     self.ptr.cast_const()
+    // }
+
+    // fn as_mut_ptr(&self) -> *mut larodTensor {
+    //     self.ptr
+    // }
+
     pub fn name() {}
+
     pub fn byte_size() {}
-    pub fn dims() {}
-    pub fn set_dims() {}
+
+    pub fn dims(&self) -> Result<Vec<usize>> {
+        let (dims, maybe_error) = unsafe { try_func!(larodGetTensorDims, self.0) };
+        if !dims.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorDims indicated success AND returned an error!"
+            );
+            let d = unsafe {
+                (*dims)
+                    .dims
+                    .into_iter()
+                    .take((*dims).len)
+                    .collect::<Vec<usize>>()
+            };
+            Ok(d)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
+    pub fn set_dims(&self, dims: &[usize]) -> Result<()> {
+        let mut dim_array: [usize; 12] = [0; 12];
+        for (idx, dim) in dims.iter().take(12).enumerate() {
+            dim_array[idx] = *dim;
+        }
+        let dims_struct = larodTensorDims {
+            dims: dim_array,
+            len: dims.len(),
+        };
+        let (success, maybe_error) = unsafe { try_func!(larodSetTensorDims, self.0, &dims_struct) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorDims indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
     pub fn pitches() {}
     pub fn set_pitches() {}
     pub fn data_type() {}
@@ -431,6 +519,19 @@ impl<'a> Tensor<'a> {
     pub fn set_fd_offset() {}
     pub fn fd_props() {}
     pub fn set_fd_props() {}
+    // pub fn destroy(mut self, session: &Session) -> Result<()> {
+    //     let (success, maybe_error) =
+    //         unsafe { try_func!(larodDestroyTensors, session.conn, &mut self.ptr, 1) };
+    //     if success {
+    //         debug_assert!(
+    //             maybe_error.is_none(),
+    //             "larodDestroyTensors indicated success AND returned an error!"
+    //         );
+    //         Ok(())
+    //     } else {
+    //         Err(maybe_error.unwrap_or(Error::MissingLarodError))
+    //     }
+    // }
 }
 
 /// A type representing a larodDevice.
@@ -454,7 +555,7 @@ pub struct LarodDevice<'a> {
     // attempt to free it. The lifetime of the memory pointed to expires when
     // conn closes.
     ptr: *const larodDevice,
-    phantom: PhantomData<&'a Session<'a>>,
+    phantom: PhantomData<&'a Session>,
 }
 
 impl<'a> LarodDevice<'a> {
@@ -498,11 +599,346 @@ impl<'a> LarodDevice<'a> {
     }
 }
 
-pub struct LarodModel {
-    ptr: *mut larodModel,
+pub trait LarodModel {
+    fn create_model_inputs(&mut self) -> Result<()>;
+    fn num_inputs(&self) -> usize;
+    fn start(&self) -> Result<()>;
+    fn stop(&self);
 }
 
-impl LarodModel {
+#[derive(Default)]
+pub enum ImageFormat {
+    #[default]
+    NV12,
+    RGBInterleaved,
+    RGBPlanar,
+}
+
+#[derive(Default)]
+pub enum PreProcBackend {
+    #[default]
+    LibYUV,
+    ACE,
+    VProc,
+    OpenCLDLPU,
+    OpenCLGPU,
+    RemoteLibYuv,
+    RemoteOpenCLDLPU,
+    RemoteOpenCLGPU,
+}
+
+#[derive(Debug, Default)]
+pub enum InferenceChip {
+    #[default]
+    TFLiteCPU,
+    TFLiteDLPU,
+}
+
+#[derive(Debug, Default)]
+pub enum PreProcError {
+    #[default]
+    UnsupportedOperation,
+}
+
+#[derive(Default)]
+pub struct PreprocessorBuilder {
+    backend: PreProcBackend,
+    input_size: Option<(i64, i64)>,
+    crop: Option<(i64, i64, i64, i64)>,
+    output_size: Option<(i64, i64)>,
+    input_format: ImageFormat,
+    output_format: ImageFormat,
+}
+
+impl PreprocessorBuilder {
+    pub fn new() -> Self {
+        PreprocessorBuilder::default()
+    }
+
+    pub fn backend(mut self, backend: PreProcBackend) -> Self {
+        self.backend = backend;
+        self
+    }
+
+    /// Crop a portion of the input stream
+    /// (X offset, Y offset, Width, Height)
+    pub fn crop(mut self, crop: (i64, i64, i64, i64)) -> Self {
+        self.crop = Some(crop);
+        self
+    }
+
+    /// Scale the input image width and height to the desired output width and
+    /// height. The aspect ratio is not preserved. Size indicates the desired
+    /// final output size.
+    pub fn output_size(mut self, size: (i64, i64)) -> Self {
+        self.output_size = Some(size);
+        self
+    }
+
+    pub fn input_size(mut self, size: (i64, i64)) -> Self {
+        self.input_size = Some(size);
+        self
+    }
+
+    pub fn input_format(mut self, format: ImageFormat) -> Self {
+        self.input_format = format;
+        self
+    }
+
+    pub fn output_format(mut self, format: ImageFormat) -> Self {
+        self.output_format = format;
+        self
+    }
+
+    pub fn load(self, session: &Session) -> Result<Preprocessor> {
+        let mut map = LarodMap::new()?;
+        match self.input_format {
+            ImageFormat::NV12 => map.set_string("image.input.format", "nv12")?,
+            ImageFormat::RGBInterleaved => {
+                if !matches!(
+                    self.backend,
+                    PreProcBackend::LibYUV | PreProcBackend::RemoteLibYuv
+                ) {
+                    return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
+                } else {
+                    map.set_string("image.input.format", "rgb-interleaved")?;
+                }
+            }
+            ImageFormat::RGBPlanar => {
+                if !matches!(
+                    self.backend,
+                    PreProcBackend::LibYUV | PreProcBackend::RemoteLibYuv
+                ) {
+                    return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
+                } else {
+                    map.set_string("image.input.format", "rgb-planar")?;
+                }
+            }
+        }
+        match self.output_format {
+            ImageFormat::NV12 => {
+                if matches!(
+                    self.backend,
+                    PreProcBackend::LibYUV | PreProcBackend::RemoteLibYuv
+                ) {
+                    map.set_string("image.output.format", "nv12")?;
+                } else {
+                    return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
+                }
+            }
+            ImageFormat::RGBInterleaved => {
+                if matches!(self.backend, PreProcBackend::VProc) {
+                    return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
+                } else {
+                    map.set_string("image.output.format", "rgb-interleaved")?;
+                }
+            }
+            ImageFormat::RGBPlanar => {
+                if matches!(
+                    self.backend,
+                    PreProcBackend::LibYUV | PreProcBackend::VProc | PreProcBackend::RemoteLibYuv
+                ) {
+                    map.set_string("image.output.format", "rgb-planar")?;
+                } else {
+                    return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
+                }
+            }
+        }
+        if let Some(s) = self.input_size {
+            map.set_int_arr2("image.input.size", s)?;
+        }
+
+        let mut crop_map: Option<LarodMap> = None;
+        if let Some(crop) = self.crop {
+            crop_map = Some(LarodMap::new()?);
+            crop_map
+                .as_mut()
+                .unwrap()
+                .set_int_arr4("image.input.crop", crop)?;
+        }
+
+        if let Some(s) = self.output_size {
+            map.set_int_arr2("image.output.size", s)?;
+        }
+
+        let device_name = match self.backend {
+            PreProcBackend::LibYUV => "cpu-proc",
+            PreProcBackend::ACE => "axis-ace-proc",
+            PreProcBackend::VProc => "ambarella-cvflow-proc",
+            PreProcBackend::OpenCLDLPU => "axis-a8-dlpu-proc",
+            PreProcBackend::OpenCLGPU => "axis-a8-gpu-proc",
+            PreProcBackend::RemoteLibYuv => "remote-cpu-proc",
+            PreProcBackend::RemoteOpenCLDLPU => "remote-axis-a8-dlpu-proc",
+            PreProcBackend::RemoteOpenCLGPU => "remote-axis-a8-gpu-proc",
+        };
+        let (device, maybe_device_error) = unsafe {
+            try_func!(
+                larodGetDevice,
+                session.conn,
+                CString::new(device_name)
+                    .map_err(|_| Error::CStringAllocation)?
+                    .as_ptr(),
+                0
+            )
+        };
+        if device.is_null() {
+            return Err(maybe_device_error.unwrap_or(Error::MissingLarodError));
+        }
+        debug_assert!(
+            maybe_device_error.is_none(),
+            "larodGetDevice indicated success AND returned an error!"
+        );
+        let (model_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodLoadModel,
+                session.conn,
+                -1,
+                device,
+                LarodAccess::LAROD_ACCESS_PRIVATE,
+                CString::new("")
+                    .map_err(|_| Error::CStringAllocation)?
+                    .as_ptr(),
+                map.raw
+            )
+        };
+        if !model_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodLoadModel indicated success AND returned an error!"
+            );
+            Ok(Preprocessor {
+                session,
+                ptr: model_ptr,
+                input_tensors: None,
+                num_inputs: 0,
+                output_tensors: None,
+                num_outputs: 0,
+                crop: crop_map,
+            })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+}
+
+pub struct Preprocessor<'a> {
+    session: &'a Session,
+    ptr: *mut larodModel,
+    input_tensors: Option<LarodTensorContainer>,
+    num_inputs: usize,
+    output_tensors: Option<LarodTensorContainer>,
+    num_outputs: usize,
+    crop: Option<LarodMap>,
+}
+
+impl<'a> Preprocessor<'a> {
+    pub fn builder() -> PreprocessorBuilder {
+        PreprocessorBuilder::new()
+    }
+}
+
+impl<'a> LarodModel for Preprocessor<'a> {
+    fn create_model_inputs(&mut self) -> Result<()> {
+        let (tensors, maybe_error) =
+            unsafe { try_func!(larodCreateModelInputs, self.ptr, &mut self.num_inputs) };
+        if !tensors.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodCreateModelInputs indicated success AND returned an error!"
+            );
+            self.input_tensors = Some(LarodTensorContainer {
+                ptr: tensors,
+                num_tensors: self.num_inputs,
+            });
+            // let tensor_slice =
+            //     unsafe { slice::from_raw_parts::<*mut larodTensor>(tensors, self.num_inputs) };
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
+    fn num_inputs(&self) -> usize {
+        self.num_inputs
+    }
+
+    fn start(&self) -> Result<()> {
+        if self.input_tensors.is_none() || self.output_tensors.is_none() {
+            return Err(Error::UnsatisfiedDependencies);
+        }
+        unsafe {
+            try_func!(
+                larodCreateJobRequest,
+                self.ptr,
+                self.input_tensors.as_ref().unwrap().ptr,
+                self.num_inputs,
+                self.output_tensors.as_ref().unwrap().ptr,
+                self.num_outputs,
+                self.crop
+                    .as_ref()
+                    .map_or(ptr::null_mut::<larodMap>(), |m| m.raw)
+            );
+        }
+        Ok(())
+    }
+    fn stop(&self) {}
+}
+
+impl<'a> Drop for Preprocessor<'a> {
+    fn drop(&mut self) {
+        if let Some(ref mut tensor_container) = self.input_tensors {
+            println!("Dropping Preprocessor input tensors!");
+            unsafe {
+                try_func!(
+                    larodDestroyTensors,
+                    self.session.conn,
+                    &mut tensor_container.ptr,
+                    tensor_container.num_tensors
+                )
+            };
+        }
+        unsafe { larodDestroyModel(&mut self.ptr) };
+    }
+}
+
+// #[derive(Default)]
+// pub struct ModelBuilder {
+//     file_path: Option<PathBuf>,
+//     device: InferenceChip,
+//     crop: Option<(u32, u32, u32, u32)>,
+// }
+
+// impl ModelBuilder {
+//     pub fn new() -> Self {
+//         ModelBuilder::default()
+//     }
+
+//     pub fn source_file(mut self, path: PathBuf) -> Self {
+//         self.file_path = Some(path);
+//         self
+//     }
+
+//     pub fn on_chip(mut self, device: InferenceChip) -> Self {
+//         self.device = device;
+//         self
+//     }
+
+//     pub fn with_crop(mut self, crop: (u32, u32, u32, u32)) -> Self {
+//         self.crop = Some(crop);
+//         self
+//     }
+
+//     pub fn load(self, session: Session) -> Model {}
+// }
+
+pub struct InferenceModel<'a> {
+    session: &'a Session,
+    ptr: *mut larodModel,
+    input_tensors: Option<LarodTensorContainer>,
+    num_inputs: usize,
+}
+
+impl<'a> InferenceModel<'a> {
     pub fn id() -> Result<()> {
         Ok(())
     }
@@ -527,16 +963,53 @@ impl LarodModel {
     pub fn num_outputs() -> Result<()> {
         Ok(())
     }
-    pub fn create_model_inputs() -> Result<()> {
-        Ok(())
-    }
+
     pub fn create_model_outputs() -> Result<()> {
         Ok(())
     }
 }
 
-impl Drop for LarodModel {
+impl<'a> LarodModel for InferenceModel<'a> {
+    fn create_model_inputs(&mut self) -> Result<()> {
+        let (tensors, maybe_error) =
+            unsafe { try_func!(larodCreateModelInputs, self.ptr, &mut self.num_inputs) };
+        if !tensors.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodCreateModelInputs indicated success AND returned an error!"
+            );
+            self.input_tensors = Some(LarodTensorContainer {
+                ptr: tensors,
+                num_tensors: self.num_inputs,
+            });
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
+    fn num_inputs(&self) -> usize {
+        self.num_inputs
+    }
+
+    fn start(&self) -> Result<()> {
+        Ok(())
+    }
+    fn stop(&self) {}
+}
+
+impl<'a> Drop for InferenceModel<'a> {
     fn drop(&mut self) {
+        if let Some(ref mut tensor_container) = self.input_tensors {
+            unsafe {
+                try_func!(
+                    larodDestroyTensors,
+                    self.session.conn,
+                    &mut tensor_container.ptr,
+                    tensor_container.num_tensors
+                )
+            };
+        }
         unsafe { larodDestroyModel(&mut self.ptr) };
     }
 }
@@ -547,7 +1020,7 @@ impl SessionBuilder {
     pub fn new() -> SessionBuilder {
         SessionBuilder {}
     }
-    pub fn build(&self) -> Result<Session<'static>> {
+    pub fn build(&self) -> Result<Session> {
         let mut conn: *mut larodConnection = ptr::null_mut();
         let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodConnect, &mut conn) };
@@ -556,11 +1029,7 @@ impl SessionBuilder {
                 maybe_error.is_none(),
                 "larodConnect indicated success AND returned an error!"
             );
-            Ok(Session {
-                conn,
-                model_map: HashMap::new(),
-                phantom: PhantomData,
-            })
+            Ok(Session { conn })
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
@@ -573,22 +1042,20 @@ impl Default for SessionBuilder {
     }
 }
 
-pub struct Session<'a> {
+pub struct Session {
     conn: *mut larodConnection,
-    model_map: HashMap<String, u64>,
-    phantom: PhantomData<&'a larodConnection>,
 }
 
 // Using a session builder might not be necessary.
 // There's little to configure when starting a session.
-impl<'a> Session<'a> {
+impl Session {
     /// Constructs a new `Session`.
     ///
     /// # Panics
     ///
     /// Use `Session::builder()` if you wish to handle the failure as an `Error`
     /// instead of panicking.
-    pub fn new() -> Session<'a> {
+    pub fn new() -> Session {
         SessionBuilder::new().build().expect("Session::new()")
     }
     pub fn builder() -> SessionBuilder {
@@ -645,7 +1112,7 @@ impl<'a> Session<'a> {
             return Err(maybe_error.unwrap_or(Error::MissingLarodError));
         }
         let raw_devices =
-            unsafe { slice::from_raw_parts::<'a, *const larodDevice>(dev_ptr, num_devices) };
+            unsafe { slice::from_raw_parts::<*const larodDevice>(dev_ptr, num_devices) };
 
         let devices: Vec<LarodDevice> = raw_devices
             .iter()
@@ -658,50 +1125,6 @@ impl<'a> Session<'a> {
         Ok(devices)
     }
 
-    // Overloaded need to check that.
-    pub fn load_model<T: AsRef<Path>>(
-        &self,
-        path: T,
-        name: &str,
-        device: &LarodDevice,
-        access: &LarodAccess,
-        params: &LarodMap,
-    ) -> Result<LarodModel> {
-        let file = File::open(path).map_err(Error::IOError)?;
-        let name_cstr = CString::new(name).map_err(|_e| Error::CStringAllocation)?;
-        let (model_ptr, maybe_error) = unsafe {
-            try_func!(
-                larodLoadModel,
-                self.conn,
-                file.as_raw_fd(),
-                device.ptr,
-                *access,
-                name_cstr.as_ptr(),
-                params.raw
-            )
-        };
-        if !model_ptr.is_null() {
-            debug_assert!(
-                maybe_error.is_none(),
-                "larodLoadModel indicated success AND returned an error!"
-            );
-            Ok(LarodModel { ptr: model_ptr })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
-        }
-    }
-    pub fn get_model(&self, model_id: u64) -> Result<LarodModel> {
-        let (model_ptr, maybe_error) = unsafe { try_func!(larodGetModel, self.conn, model_id) };
-        if !model_ptr.is_null() {
-            debug_assert!(
-                maybe_error.is_none(),
-                "larodGetModel indicated success AND returned an error!"
-            );
-            Ok(LarodModel { ptr: model_ptr })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
-        }
-    }
     pub fn models() -> Result<()> {
         Ok(())
     }
@@ -717,9 +1140,19 @@ impl<'a> Session<'a> {
     pub fn destroy_tensors() -> Result<()> {
         Ok(())
     }
-    pub fn track_tensor() -> Result<()> {
-        Ok(())
-    }
+    // pub fn track_tensor(&self, tensor: &Tensor) -> Result<()> {
+    //     let (success, maybe_error) =
+    //         unsafe { try_func!(larodTrackTensor, self.conn, tensor.as_mut_ptr()) };
+    //     if success {
+    //         debug_assert!(
+    //             maybe_error.is_none(),
+    //             "larodTrackTensor indicated success AND returned an error!"
+    //         );
+    //         Ok(())
+    //     } else {
+    //         Err(maybe_error.unwrap_or(Error::MissingLarodError))
+    //     }
+    // }
     pub fn run_job() -> Result<()> {
         Ok(())
     }
@@ -734,7 +1167,7 @@ impl<'a> Session<'a> {
     }
 }
 
-impl<'a> Default for Session<'a> {
+impl Default for Session {
     fn default() -> Self {
         SessionBuilder::default()
             .build()
@@ -742,11 +1175,12 @@ impl<'a> Default for Session<'a> {
     }
 }
 
-impl<'a> std::ops::Drop for Session<'a> {
+impl std::ops::Drop for Session {
     fn drop(&mut self) {
-        unsafe {
-            try_func!(larodDisconnect, &mut self.conn);
-        }
+        println!("Dropping Session!");
+        // unsafe {
+        //     try_func!(larodDisconnect, &mut self.conn);
+        // }
     }
 }
 
@@ -826,7 +1260,7 @@ mod tests {
 
     #[test]
     fn it_establishes_session() {
-        let sess = Session::new();
+        Session::new();
     }
 
     #[test]
@@ -841,5 +1275,57 @@ mod tests {
                 unsafe { std::ptr::addr_of!(*device.ptr) },
             );
         }
+    }
+
+    #[test]
+    fn it_creates_and_destroys_model() {
+        let session = Session::new();
+        let mut preprocessor = match Preprocessor::builder()
+            .input_format(ImageFormat::NV12)
+            .input_size((1920, 1080))
+            .output_size((1920, 1080))
+            .backend(PreProcBackend::LibYUV)
+            .load(&session)
+        {
+            Ok(p) => p,
+            Err(Error::LarodError(e)) => {
+                eprintln!("Error building preprocessor: {:?}", e.msg());
+                panic!()
+            }
+            Err(e) => {
+                eprintln!("Unexpected error while building preprocessor: {:?}", e);
+                panic!()
+            }
+        };
+        if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
+            eprintln!("Error creating preprocessor inputs: {:?}", e.msg());
+        }
+        println!("Number of model inputs: {}", preprocessor.num_inputs);
+    }
+
+    #[test]
+    fn model_errors_with_no_tensors() {
+        let session = Session::new();
+        let mut preprocessor = match Preprocessor::builder()
+            .input_format(ImageFormat::NV12)
+            .input_size((1920, 1080))
+            .output_size((1920, 1080))
+            .backend(PreProcBackend::LibYUV)
+            .load(&session)
+        {
+            Ok(p) => p,
+            Err(Error::LarodError(e)) => {
+                eprintln!("Error building preprocessor: {:?}", e.msg());
+                panic!()
+            }
+            Err(e) => {
+                eprintln!("Unexpected error while building preprocessor: {:?}", e);
+                panic!()
+            }
+        };
+        if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
+            eprintln!("Error creating preprocessor inputs: {:?}", e.msg());
+        }
+        println!("Number of model inputs: {}", preprocessor.num_inputs);
     }
 }

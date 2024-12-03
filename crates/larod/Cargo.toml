@@ -7,6 +7,7 @@ edition.workspace = true
 
 larod-sys = { workspace = true }
 log.workspace = true
+thiserror.workspace = true
 
 [features]
 device-tests = []
