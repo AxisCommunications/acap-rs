@@ -6,6 +6,12 @@
             "vendor": "Axis Communications",
             "runMode": "never",
             "version": "0.0.0"
+        },
+        "installation": {
+            "postInstallScript": "post-install"
+        },
+        "uninstallation": {
+            "preUninstallScript": "pre-uninstall"
         }
     }
 }

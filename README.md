@@ -4,23 +4,55 @@ _Easy and safe [ACAP] apps using [Rust]_
 
 > [!IMPORTANT]
 > This project is an experiment provided "as is".
-> While we strive to maintain it, there's no guarantee of ongoing support, and it may become unmaintained in the future.
+> While we strive to maintain it, there's no guarantee of ongoing support, and it may become
+> unmaintained in the future.
 > Your contributions are appreciated, and feel free to fork and continue the journey if needed.
 
-This repo is home to a mixture of developer tools, example apps, and library crates.
-To simply get started with a new app, please see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
+This repository provides the developer tools, libraries, and documentation that form ACAP for Rust platform.
+To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
 
-## Quickstart guide
+## Table of Contents
 
-The quickest way to build the `hello_world` example is to launch the dev container and run `make build AXIS_PACKAGE=hello_world`.
-Once it completes there should be two `.eap` files in `target/acap`:
+- [**Getting started**](#getting-started)
+  - [Dev container](#dev-container)
+  - [Non-dev container](#non-dev-container)
+  - [Without container](#without-container)
+- [**Developer tools**](#developer-tools)
+  - [Porcelain programs](#porcelain-programs)
+  - [Plumbing programs](#plumbing-programs)
+- [**Libraries**](#libraries)
+  - [ACAP Native API bindings](#acap-native-api-bindings)
+  - [VAPIX API bindings](#vapix-api-bindings)
+  - [Other library crates](#other-library-crates)
+- [**Documentation**](#documentation)
+  - [Example applications](#example-applications)
+- [**Troubleshooting**](#troubleshooting)
+
+## Getting started
+
+There are multiple ways to set up a development environment, but the recommended way is using a dev container.
+
+### Dev container
+
+The quickest way to build the `hello_world` example is to launch the dev container and
+run `make build AXIS_PACKAGE=hello_world`.
+Once it completes there should be an `.eap` file in `target/acap`:
 
 ```console
 $ ls -1 target/acap
 hello_world_1_0_0_aarch64.eap
 ```
 
-If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the app can be built using only `docker`:
+This works with any of the [example applications](#example-applications).
+
+Important workflows are documented in the [Makefile](./Makefile) and can now be listed with
+`make help`.
+
+### Non-dev container
+
+If you prefer to not use dev containers, or the implementation in your favorite IDE is buggy, the
+app can be built using
+only `docker`:
 
 ```sh
 docker build --file .devcontainer/Dockerfile --tag acap-rs .
@@ -35,15 +67,144 @@ docker run \
   make build AXIS_PACKAGE=hello_world
 ```
 
-This works with any of the [example applications](#example-applications).
+### Without container
 
-Important workflows are documented in the [Makefile](./Makefile) and can now be listed with `make help`.
-
-## Advanced setup
 Development environments outside containers are more difficult to reproduce and maintain.
-Should it nonetheless be of interest, one procedure is documented in [this workflow](.github/workflows/on-host-workflow.yml).
+Should it nonetheless be of interest, one procedure is documented
+in [this workflow](.github/workflows/on-host-workflow.yml).
 
-## Testing
+## Developer tools
+
+Tools for developing ACAP apps are provided primarily as binary crates.
+The tools can be roughly divided into low level _plumbing_ and high level _porcelain_.
+
+All of these tools are installed in the dev container of this project.
+To install them in another project before they are released, use the `--git` option e.g. like:
+
+```sh
+cargo install --locked --git https://github.com/AxisCommunications/acap-rs.git cargo-acap-sdk
+```
+
+### Porcelain programs
+
+The focus of these tools are to make common things easy.
+
+- `cargo-acap-sdk` - Automation of common development workflows.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/cargo-acap-sdk/README.md)
+
+### Plumbing programs
+
+The focus of these tools are to make less common things possible.
+
+- `acap-ssh-utils` - Utilities for interacting with Axis devices over SSH.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/acap-ssh-utils/README.md)
+- `cargo-acap-build`: Build utilities for ACAP apps and other executables deployed to Axis devices.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/cargo-acap-build/README.md)
+- `device-manager`: Utilities for manipulating a single Axis device.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/device-manager/README.md)
+- `fleet-manager`: Utilities for manipulating multiple Axis devices.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/fleet-manager/README.md)
+
+These can be installed independently and are provided as library crates too for developers who want
+to write their own,
+tailored tools.
+
+## Libraries
+
+To make it easier to relate the Rust offering to the official offering, the library crates are
+grouped in a similar way as in the ACAP Native SDK APIs documentation.
+
+> [!NOTE]
+> If an API that is important to you is missing, create or upvote the feature request for it.
+
+### ACAP Native API bindings
+
+These are idiomatic and safe bindings for the C APIs.
+Each crate has a corresponding `*-sys`, which is omitted for brevity.
+
+- `axevent`: Bindings for the Event API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axevent/src/lib.rs)
+- `axstorage`: Bindings for the Edge Storage API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axstorage/src/lib.rs)
+- `bbox`: Bindings for the Bounding Box API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/bbox/src/lib.rs)
+- `licensekey`: Bindings for the License Key API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/licensekey/src/lib.rs)
+- `mdb`: Bindings for the Message Broker API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/mdb/src/lib.rs)
+
+### VAPIX API bindings
+
+All the VAPIX APIs are provided by a single crate:
+
+- `acap-vapix`: Bindings for various VAPIX APIs + credentials lookup.
+  - Status: ⚠️ Alpha
+  - Documentation: [README](crates/acap-vapix/README.md)
+
+### Other library crates
+
+These are not closely related to any official APIs but may nonetheless be helpful in their own way:
+
+- `acap-logging`: Logging utilities for ACAP applications
+  - Status: 🚧 Beta
+  - Documentation: [Docs.rs](https://docs.rs/acap-logging/latest/acap_logging/)
+
+## Documentation
+
+Ideally information is provided when and where the reader needs it, such as:
+
+- Tab completions and help texts for binaries.
+- Docstrings and doctests for libraries.
+
+This is however not always suitable, and this section lists other sources of documentation provided
+by this project.
+
+### Example applications
+
+- `axstorage_example`: Writes data to files on all connected storages.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/axstorage_example/src/main.rs)
+- `bounding_box_example`: Draws simple overlays in video streams.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/bounding_box_example/src/main.rs)
+- `consume_analytics_metadata`: Subscribes to _analytics scene description_ data using `mdb`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/consume_analytics_metadata/src/main.rs)
+- `embedded_web_page`: Bundles an embedded web page.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/embedded_web_page/src/main.rs)
+- `hello_world`:Sets up and uses logging using common functions and `acap-logging`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/hello_world/src/main.rs)
+- `licensekey_handler`:Checks if an app is licensed using `licensekey`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/licensekey_handler/src/main.rs)
+- `reverse_proxy`: Exposes HTTP and WebSocket APIs using a `axum` and reverse proxy configuration.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/reverse_proxy/src/main.rs)
+- `send_event`: Sends events using `axevent`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/send_event/src/main.rs)
+- `using_a_build_script`: Generates html, lib and app manifest files using a build script.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/using_a_build_script/src/main.rs)
+- `vapix_access`: Accesses VAPIX APIs using `acap-vapix`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/vapix_access/src/main.rs)
+
+<!-- inspect_env is omitted because it is intended primarily as a test -->
+
+### Testing
 Some items in this workspace rely on libraries or hardware on Axis cameras. This makes testing difficult since these tests cannot run on an arbitrary x86_64 host. Below are some steps to enable running unit test on device.
 
 1. Connect an Axis camera to your network and ensure it is accessible.
@@ -57,41 +218,13 @@ Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/works
 
 If you want to run tests locally, just make sure you clear the `CARGO_TEST_CAMERA` environment variable via `unset CARGO_TEST_CAMERA`.
 
-## Example applications
-
-Below is the list of examples available in the repository.
-
-* [`consume_analytics_metadata`](apps/consume_analytics_metadata/src/main.rs)
-: An example that consumes metadata.
-* [`embedded_web_page`](apps/embedded_web_page/src/main.rs)
-: An example that illustrates how to bundle an embedded web page.
-* [`hello_world`](apps/hello_world/src/main.rs)
-: A simple "Hello, World!" application.
-* [`licensekey_handler`](apps/licensekey_handler/src/main.rs)
-: An example that illustrates how to check the licensekey status.
-* [`reverse_proxy`](apps/reverse_proxy/src/main.rs)
-: Uses a web server and reverse proxy configuration to expose HTTP and WebSocket APIs.
-* [`using_a_build_script`](apps/using_a_build_script/src/main.rs)
-: Uses a build script to generate html, lib and app manifest files at build time.
-* [`vapix_access`](apps/vapix_access/src/main.rs)
-: Uses a VAPIX service account to access VAPIX APIs.
-
-## Library crates
-
-| Name           | Documentation                                                   |
-|----------------|-----------------------------------------------------------------|
-| acap-logging   | [on docs.rs](https://docs.rs/acap-logging/latest/acap_logging/) |
-| acap-vapix     | [in source](crates/acap-vapix/src/lib.rs)                       |
-| licensekey     | [in source](crates/licensekey/src/lib.rs)                       |
-| licensekey-sys |                                                                 |
-| mdb            |                                                                 |
-| mdb-sys        |                                                                 |
 
 ## Troubleshooting
 
 The docker image may fail to build with the following included in the output:
 `/usr/bin/env: 'sh\r': No such file or directory`
-This is likely caused by `git` replacing POSIX newlines with Windows newlines in which case it can be resolved by either
+This is likely caused by `git` replacing POSIX newlines with Windows newlines in which case it can
+be resolved by either
 
 - cloning the code in Windows Subsystem for Linux (WSL), or
 - reconfiguring `git`.
@@ -101,4 +234,5 @@ This is likely caused by `git` replacing POSIX newlines with Windows newlines in
 [MIT](LICENSE)
 
 [ACAP]: https://axiscommunications.github.io/acap-documentation/
+
 [Rust]: https://doc.rust-lang.org/
