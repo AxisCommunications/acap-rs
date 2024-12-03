@@ -140,7 +140,7 @@ test_all:
 ## ------
 
 ## Run all checks except generated files
-check_other: check_build check_docs check_format check_lint check_tests
+check_other: check_build check_docs check_format check_lint check_tests check_miri
 .PHONY: check_other
 
 ## Check that all crates can be built
@@ -271,3 +271,9 @@ target-$(AXIS_DEVICE_ARCH)/acap/_envoy:
 	touch $@
 
 .PHONY: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
+
+check_miri:
+	cargo +nightly miri test \
+		--package ffi_patterns \
+		--target aarch64-unknown-linux-gnu \
+		--target thumbv7neon-unknown-linux-gnueabihf
