@@ -1,8 +1,10 @@
+#![forbid(unsafe_code)]
 use std::{ffi::OsString, fs::File, str::FromStr};
 
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
+use cli_version::version_with_commit_id;
 use log::debug;
 use url::Host;
 
@@ -16,8 +18,7 @@ mod commands;
 
 /// Tools for developing ACAP apps using Rust
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
-#[command(propagate_version = true)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -112,13 +113,13 @@ struct DeployOptions {
     /// Username of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
-    #[clap(long, env = "AXIS_DEVICE_USER")]
+    #[clap(long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
     /// Password of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
     // TODO: Consider disallowing passing password as arguments.
-    #[clap(long, env = "AXIS_DEVICE_PASS")]
+    #[clap(long, env = "AXIS_DEVICE_PASS", default_value = "pass")]
     pass: String,
 }
 

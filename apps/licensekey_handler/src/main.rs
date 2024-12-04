@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! A simple example application demonstrating how the licensekey crate may be used
 
 use std::{
