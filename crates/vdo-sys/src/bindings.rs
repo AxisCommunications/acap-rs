@@ -1007,13 +1007,54 @@ extern "C" {
 extern "C" {
     pub fn vdo_stream_get_event(self_: *mut VdoStream, error: *mut *mut GError) -> *mut VdoMap;
 }
+pub const VDO_ERROR_NOT_FOUND: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NOT_FOUND;
+pub const VDO_ERROR_EXISTS: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_EXISTS;
+pub const VDO_ERROR_INVALID_ARGUMENT: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_INVALID_ARGUMENT;
+pub const VDO_ERROR_PERMISSION_DENIED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_PERMISSION_DENIED;
+pub const VDO_ERROR_NOT_SUPPORTED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NOT_SUPPORTED;
+pub const VDO_ERROR_CLOSED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_CLOSED;
+pub const VDO_ERROR_BUSY: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_BUSY;
+pub const VDO_ERROR_IO: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_IO;
+pub const VDO_ERROR_HAL: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_HAL;
+pub const VDO_ERROR_DBUS: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_DBUS;
+pub const VDO_ERROR_OOM: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_OOM;
+pub const VDO_ERROR_IDLE: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_IDLE;
+pub const VDO_ERROR_NO_DATA: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_DATA;
+pub const VDO_ERROR_NO_BUFFER_SPACE: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_BUFFER_SPACE;
+pub const VDO_ERROR_BUFFER_FAILURE: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_BUFFER_FAILURE;
+pub const VDO_ERROR_INTERFACE_DOWN: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_INTERFACE_DOWN;
+pub const VDO_ERROR_FAILED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_FAILED;
+pub const VDO_ERROR_FATAL: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_FATAL;
+pub const VDO_ERROR_NOT_CONTROLLED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NOT_CONTROLLED;
+pub const VDO_ERROR_NO_EVENT: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_EVENT;
+#[repr(u32)]
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum _bindgen_ty_24 {
+    VDO_ERROR_NOT_FOUND = 1,
+    VDO_ERROR_EXISTS = 2,
+    VDO_ERROR_INVALID_ARGUMENT = 3,
+    VDO_ERROR_PERMISSION_DENIED = 4,
+    VDO_ERROR_NOT_SUPPORTED = 5,
+    VDO_ERROR_CLOSED = 6,
+    VDO_ERROR_BUSY = 7,
+    VDO_ERROR_IO = 8,
+    VDO_ERROR_HAL = 9,
+    VDO_ERROR_DBUS = 10,
+    VDO_ERROR_OOM = 11,
+    VDO_ERROR_IDLE = 12,
+    VDO_ERROR_NO_DATA = 13,
+    VDO_ERROR_NO_BUFFER_SPACE = 14,
+    VDO_ERROR_BUFFER_FAILURE = 15,
+    VDO_ERROR_INTERFACE_DOWN = 16,
+    VDO_ERROR_FAILED = 17,
+    VDO_ERROR_FATAL = 18,
+    VDO_ERROR_NOT_CONTROLLED = 19,
+    VDO_ERROR_NO_EVENT = 20,
+}
 extern "C" {
-    pub fn vdo_stream_enqueue_buffer(
-        self_: *mut VdoStream,
-        fd: gint,
-        offset: guint64,
-        max_size: gsize,
-        opaque: gpointer,
-        error: *mut *mut GError,
-    ) -> gboolean;
+    pub fn vdo_error_quark() -> GQuark;
+}
+extern "C" {
+    pub fn vdo_error_is_expected(error: *mut *mut GError) -> gboolean;
 }
