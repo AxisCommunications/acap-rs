@@ -60,7 +60,7 @@ enum Commands {
     Stop(ControlCommand),
     /// Restart app on device.
     Restart(ControlCommand),
-    /// Remove app form device.
+    /// Remove app from device.
     Remove(ControlCommand),
     /// Print shell completion script for this program
     ///
