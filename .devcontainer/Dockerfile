@@ -40,35 +40,26 @@ COPY .devhost/install-system-packages.sh ./
 RUN ./install-system-packages.sh \
  && rm install-system-packages.sh
 
-ENV PATH=/usr/local/cargo/bin:$PATH \
+ENV PATH=/usr/local/venv/bin:/usr/local/cargo/bin:$PATH \
     CARGO_HOME=/usr/local/cargo \
-    RUSTUP_HOME=/usr/local/rustup
-
-COPY .devhost/install-rust.sh ./
-RUN  ./install-rust.sh \
- && chmod a+w -R $CARGO_HOME $RUSTUP_HOME \
- && rm install-rust.sh
-
-COPY rust-toolchain.toml ./
-RUN rustup show \
- && rm rust-toolchain.toml
-
-ENV PATH=/usr/local/venv/bin:$PATH \
+    RUSTUP_HOME=/usr/local/rustup \
     VIRTUAL_ENV=/usr/local/venv
-
-RUN --mount=type=bind,target=/context \
-    cd /context/.devhost \
- && ./install-venv.sh $VIRTUAL_ENV \
- && chmod a+w -R $VIRTUAL_ENV
 
 # If neither `CARGO_HOME` nor `HOME` is set when launching a container, then cargo will try to
 # download crates to this directory. If launched with the `--user` option then this will fail.
 # TODO: Replace the example in the README with something that does not mount any volumes.
-RUN mkdir /.cargo \
- && chmod a+w /.cargo/
 
-# `install-venv.sh` install a rust package which creates the cargo registry directory as root.
+# When installing Rust binaries the source is downloaded to `$CARGO_HOME/registry`.
+# It is over 400M already, but since the same dependencies will be required in CI, this may be an advantage.
 # TODO: Consider removing the content of `CARGO_HOME` instead of `chmod`ing it;
-# it is over 400M already, but that for now having that cached at the start of the dev container may be an advantage.
-RUN find $CARGO_HOME $RUSTUP_HOME -type d -exec chmod a+rwx {} +
-RUN find $CARGO_HOME $RUSTUP_HOME -type f -exec chmod a+rw {} +
+
+RUN --mount=type=bind,target=/context\
+    cd /context/.devhost \
+ &&  ./install-rust.sh \
+ && rustup show \
+ && ./install-venv.sh $VIRTUAL_ENV \
+ && chmod a+w -R $VIRTUAL_ENV \
+ && mkdir /.cargo \
+ && chmod a+w /.cargo/ \
+ && find $CARGO_HOME $RUSTUP_HOME -type d -exec chmod a+rwx {} + \
+ && find $CARGO_HOME $RUSTUP_HOME -type f -exec chmod a+rw {} +
