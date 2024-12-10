@@ -14,6 +14,7 @@ use log::debug;
 mod cargo;
 mod cargo_acap;
 mod command_utils;
+mod files;
 
 pub struct AppBuilder {
     targets: Vec<Architecture>,

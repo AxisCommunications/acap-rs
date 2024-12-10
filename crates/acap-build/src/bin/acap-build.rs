@@ -1,7 +1,4 @@
 //! A drop-in replacement for the acap-build python script
-use acap_build::{AppBuilder, Architecture};
-use anyhow::Context;
-use clap::{Parser, ValueEnum};
 use std::{
     env,
     fmt::{Display, Formatter},
@@ -9,6 +6,11 @@ use std::{
     path::PathBuf,
     process::Command,
 };
+
+use acap_build::{AppBuilder, Architecture};
+use anyhow::Context;
+use clap::{Parser, ValueEnum};
+use log::debug;
 use tempdir::TempDir;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, ValueEnum)]
@@ -16,12 +18,14 @@ use tempdir::TempDir;
 enum BuildOption {
     #[default]
     Make,
+    NoBuild,
 }
 
 impl Display for BuildOption {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Make => write!(f, "make"),
+            Self::NoBuild => write!(f, "no-build"),
         }
     }
 }
@@ -53,6 +57,9 @@ fn main() -> anyhow::Result<()> {
             .status()
             .context("subprocess make failed")?
             .success()),
+        BuildOption::NoBuild => {
+            debug!("no build");
+        }
     }
 
     let arch: Architecture = env::var("OECORE_TARGET_ARCH")?.parse()?;
@@ -60,26 +67,23 @@ fn main() -> anyhow::Result<()> {
         None => path.join("manifest.json"),
         Some(m) => path.join(m),
     };
-    let license = path.join("LICENSE");
 
     let staging_dir = TempDir::new_in(&path, "acap-build")?;
     let mut builder = AppBuilder::new(true, staging_dir.path(), &manifest, arch)?;
-    builder
-        .add_exe(&path.join(builder.app_name()))?
-        .add_license(&license)?;
 
-    let lib = path.join("lib");
-    if lib.exists() {
-        builder.add_lib(&lib)?;
+    for name in builder.mandatory_files() {
+        builder.add(&path.join(name))?;
     }
 
-    let html = path.join("html");
-    if html.exists() {
-        builder.add_html(&html)?;
+    for name in builder.optional_files() {
+        let file = path.join(name);
+        if file.symlink_metadata().is_ok() {
+            builder.add(&file)?;
+        }
     }
 
     for additional_file in additional_file {
-        builder.add_additional(&path.join(additional_file))?;
+        builder.add(&path.join(additional_file))?;
     }
 
     let eap_file_name = builder.build()?;

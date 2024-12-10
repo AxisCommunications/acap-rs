@@ -12,6 +12,7 @@ use log::{debug, error, warn};
 use crate::{
     cargo::{get_cargo_metadata, json_message::JsonMessage},
     command_utils::RunWith,
+    files::license,
     Architecture,
 };
 
@@ -130,30 +131,36 @@ fn pack(
 
     let manifest = exactly_one(manifest_dir, out_dir.as_deref(), "manifest.json")?;
     debug!("Found manifest file: {manifest:?}");
-    let license = exactly_one(manifest_dir, out_dir.as_deref(), "LICENSE")?;
-    debug!("Found license file: {license:?}");
 
     debug!("Creating app builder");
     let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
-    app_builder.add_exe(&executable)?.add_license(&license)?;
+    app_builder.add_exe(&executable)?;
+
+    // TODO: Consider providing defaults for more files.
+    // TODO: Consider providing a default build script instead to enable users to opt out entirely.
+    // TODO: Don't depend on the exe being the first.
+    for name in app_builder.mandatory_files().into_iter().skip(1) {
+        if let Some(path) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {
+            app_builder.add(&path)?;
+        } else if name == "LICENSE" {
+            let cache_dir = cargo_target_dir.join("cargo-acap-sdk").join("LICENSE");
+            std::fs::create_dir_all(&cache_dir)?;
+            let path = license::generate(&manifest_path, &cache_dir)?;
+            app_builder.add_as(&path, "LICENSE")?;
+        } else {
+            bail!("Found no {name} to copy and don't know how to generate one")
+        }
+    }
+
+    for name in app_builder.optional_files() {
+        if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), &name)? {
+            app_builder.add(&d)?;
+        }
+    }
 
     if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "additional-files")? {
         debug!("Found additional-files dir: {d:?}");
-        let mut entries = std::fs::read_dir(d)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<std::io::Result<Vec<PathBuf>>>()?;
-        entries.sort();
-        for entry in entries {
-            app_builder.add_additional(&entry)?;
-        }
-    }
-    if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "lib")? {
-        debug!("Found lib dir: {d:?}");
-        app_builder.add_lib(&d)?;
-    }
-    if let Some(d) = at_most_one(manifest_dir, out_dir.as_deref(), "html")? {
-        debug!("Found html dir: {d:?}");
-        app_builder.add_html(&d)?;
+        app_builder.add_from(&d)?;
     }
 
     Ok(staging_dir.join(app_builder.build()?))
@@ -167,8 +174,8 @@ fn exactly_one(
     let manifest_file = manifest_dir.join(file_name);
     let out_file = out_dir.map(|d| d.join(file_name));
     match (
-        manifest_file.exists(),
-        out_file.as_ref().map(|f| f.exists()).unwrap_or(false),
+        manifest_file.symlink_metadata().is_ok(),
+        out_file.as_ref().map(|f| f.symlink_metadata().is_ok()).unwrap_or(false),
     ) {
         (false, false) => bail!("{file_name:?} exists neither in manifest dir {manifest_dir:?} nor in out dir {out_dir:?}"),
         (false, true) => Ok(out_file.expect("checked above")),
@@ -185,8 +192,11 @@ fn at_most_one(
     let manifest_file = manifest_dir.join(file_name);
     let out_file = out_dir.map(|d| d.join(file_name));
     match (
-        manifest_file.exists(),
-        out_file.as_ref().map(|f| f.exists()).unwrap_or(false),
+        manifest_file.symlink_metadata().is_ok(),
+        out_file
+            .as_ref()
+            .map(|f| f.symlink_metadata().is_ok())
+            .unwrap_or(false),
     ) {
         (false, false) => Ok(None),
         (false, true) => Ok(Some(out_file.expect("checked above"))),
