@@ -5,6 +5,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::thread::{spawn, JoinHandle};
 
+/// A struct that calls a function when dropped.
+/// This is intended to help make sure pointers are cleaned up at an appropriate time.
+///
+/// It is a verbatim copy of the same type in:
+/// - `axevent`
+/// - `mdb`
 struct Deferred(Option<Box<dyn FnOnce()>>);
 
 impl Deferred {
@@ -20,6 +26,11 @@ impl Drop for Deferred {
     }
 }
 
+/// A struct on which callbacks can be registered.
+///
+/// This pattern is used in:
+/// - `axevent`
+/// - `mdb`
 struct Handler {
     raw: *mut sys::Handler,
     callbacks: Mutex<HashMap<Subscription, Deferred>>,
@@ -47,6 +58,11 @@ impl Handler {
         unsafe { spawn(move || sys::handler_run(ptr.as_ptr())) }
     }
 
+    /// Add a callback freed automatically when the handler goes out of scope.
+    ///
+    /// This pattern is used in:
+    /// - `axevent::flex::Handler::subscribe`
+    /// - `mdb::SubscriberConfig::try_new` (soon)
     fn subscribe<F>(&self, callback: F) -> Subscription
     where
         F: FnMut() + Send + 'static,
@@ -65,8 +81,12 @@ impl Handler {
         }
     }
 
+    /// Remove a callback before the handler is dropped.
+    ///
+    /// This pattern is used in:
+    /// - `axevent::flex::Handler::subscribe`
     fn unsubscribe(&self, handle: &Subscription) {
-        self.callbacks.lock().unwrap().remove(&handle);
+        self.callbacks.lock().unwrap().remove(handle);
     }
 
     unsafe extern "C" fn trampoline<F>(user_data: *mut c_void)
