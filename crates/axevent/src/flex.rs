@@ -15,7 +15,7 @@ use std::{
     process, ptr,
     sync::Mutex,
 };
-use std::ops::DerefMut;
+
 use axevent_sys::{
     ax_event_free, ax_event_get_key_value_set, ax_event_get_time_stamp2, ax_event_handler_declare,
     ax_event_handler_free, ax_event_handler_new, ax_event_handler_send_event,
@@ -298,6 +298,7 @@ impl Handler {
     where
         F: FnMut(Subscription, Event) + Send + 'static,
     {
+        let raw_callback = Box::into_raw(Box::new(callback));
         // TODO: Verify these assumptions.
         // SAFETY: There are three ways that the callback can be dropped:
         // * When `ax_event_handler_subscribe returns a failure and this function returns.
@@ -306,7 +307,7 @@ impl Handler {
         //   See safety comment in `unsubscribe`.
         // * When this handler is dropped.
         //   See safety comment ind `drop`.
-        let mut callback = Box::new(callback);
+        let callback = unsafe { Deferred::new(raw_callback) };
         unsafe {
             let mut subscription = c_uint::default();
             try_func!(
@@ -315,7 +316,7 @@ impl Handler {
                 key_value_set.raw,
                 &mut subscription,
                 Some(Subscription::handle_callback::<F>),
-                callback.deref_mut() as *mut _ as *mut c_void,
+                raw_callback as *mut c_void,
             )?;
 
             let handle = Subscription(subscription);
@@ -323,7 +324,7 @@ impl Handler {
             self.subscription_callbacks
                 .lock()
                 .unwrap()
-                .insert(handle, Deferred(Some(Box::new(||drop(callback)))));
+                .insert(handle, callback);
 
             Ok(handle)
         }
