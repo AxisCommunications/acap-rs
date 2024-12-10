@@ -1,6 +1,7 @@
 use crate::sys;
 use std::collections::HashMap;
 use std::ffi::c_void;
+use std::ops::DerefMut;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::thread::{spawn, JoinHandle};
@@ -51,16 +52,18 @@ impl Handler {
     where
         F: FnMut() + Send + 'static,
     {
-        let raw_callback = Box::into_raw(Box::new(callback));
-        let callback = unsafe { Deferred::new(raw_callback) };
+        let mut callback = Box::new(callback);
         unsafe {
             let handle = sys::handler_subscribe(
                 self.raw,
                 Some(Self::trampoline::<F>),
-                raw_callback as *mut c_void,
+                callback.deref_mut() as *mut _ as *mut c_void,
             );
             let handle = Subscription(handle);
-            self.callbacks.lock().unwrap().insert(handle, callback);
+            self.callbacks
+                .lock()
+                .unwrap()
+                .insert(handle, Deferred(Some(Box::new(|| drop(callback)))));
             handle
         }
     }
