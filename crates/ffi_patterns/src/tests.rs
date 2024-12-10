@@ -8,16 +8,16 @@ use std::thread::{spawn, JoinHandle};
 
 struct Deferred(Option<Box<dyn FnOnce()>>);
 
+impl Deferred {
+    unsafe fn new<T: 'static>(ptr: *mut T) -> Self {
+        Self(Some(Box::new(move || drop(Box::from_raw(ptr)))))
+    }
+}
+
 impl Drop for Deferred {
     fn drop(&mut self) {
         assert!(self.0.is_some());
         self.0.take().unwrap()()
-    }
-}
-
-impl Deferred {
-    unsafe fn new<T: 'static>(ptr: *mut T) -> Self {
-        Self(Some(Box::new(move || drop(Box::from_raw(ptr)))))
     }
 }
 
@@ -33,19 +33,7 @@ impl Handler {
             callbacks: Mutex::new(HashMap::new()),
         }
     }
-}
 
-impl Drop for Handler {
-    fn drop(&mut self) {
-        unsafe {
-            sys::handler_free(self.raw);
-        }
-    }
-}
-
-unsafe impl Send for Handler {}
-
-impl Handler {
     fn spawn(&self) -> JoinHandle<()> {
         #[derive(Debug)]
         struct MyPtr(*mut sys::Handler);
@@ -59,6 +47,7 @@ impl Handler {
         let ptr = MyPtr(self.raw);
         unsafe { spawn(move || sys::handler_run(ptr.as_ptr())) }
     }
+
     fn subscribe<F>(&self, callback: Option<F>) -> Subscription
     where
         F: FnMut() + Send + 'static,
@@ -98,6 +87,16 @@ impl Handler {
         callback();
     }
 }
+
+impl Drop for Handler {
+    fn drop(&mut self) {
+        unsafe {
+            sys::handler_free(self.raw);
+        }
+    }
+}
+
+unsafe impl Send for Handler {}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct Subscription(i32);
