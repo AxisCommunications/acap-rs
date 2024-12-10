@@ -1,7 +1,6 @@
 use crate::sys;
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::thread::{spawn, JoinHandle};
@@ -48,34 +47,25 @@ impl Handler {
         unsafe { spawn(move || sys::handler_run(ptr.as_ptr())) }
     }
 
-    fn subscribe<F>(&self, callback: Option<F>) -> Subscription
+    fn subscribe<F>(&self, callback: F) -> Subscription
     where
         F: FnMut() + Send + 'static,
     {
-        let raw_callback = callback.map(|c| Box::into_raw(Box::new(c)));
-        let callback = raw_callback.map(|c| unsafe { Deferred::new(c) });
+        let raw_callback = Box::into_raw(Box::new(callback));
+        let callback = unsafe { Deferred::new(raw_callback) };
         unsafe {
             let handle = sys::handler_subscribe(
                 self.raw,
-                if raw_callback.is_none() {
-                    None
-                } else {
-                    Some(Self::trampoline::<F>)
-                },
-                match raw_callback {
-                    None => ptr::null_mut(),
-                    Some(callback) => callback as *mut c_void,
-                },
+                Some(Self::trampoline::<F>),
+                raw_callback as *mut c_void,
             );
             let handle = Subscription(handle);
-            if let Some(callback) = callback {
-                self.callbacks.lock().unwrap().insert(handle, callback);
-            }
+            self.callbacks.lock().unwrap().insert(handle, callback);
             handle
         }
     }
 
-    fn unsubscribe(&self, handle: Subscription) {
+    fn unsubscribe(&self, handle: &Subscription) {
         self.callbacks.lock().unwrap().remove(&handle);
     }
 
@@ -102,50 +92,23 @@ unsafe impl Send for Handler {}
 struct Subscription(i32);
 
 #[test]
-fn transfer_callbacks_with_unsubscribe() {
+fn transfer_callbacks() {
     let handler = Handler::new();
 
     static SHARED_COUNT: AtomicUsize = AtomicUsize::new(0);
-    let s1 = handler.subscribe(Some(|| {
+    let s1 = handler.subscribe(|| {
         SHARED_COUNT.fetch_add(1, Ordering::Relaxed);
-    }));
+    });
 
     let mut exclusive_count = 0;
-    let s2 = handler.subscribe(Some(move || {
+    handler.subscribe(move || {
         exclusive_count += 1;
         println!("{exclusive_count}")
-    }));
-
-    let s3 = handler.subscribe::<fn()>(None);
+    });
 
     handler.spawn().join().unwrap();
 
-    handler.unsubscribe(s2);
-    handler.unsubscribe(s1);
-    handler.unsubscribe(s3);
-
-    assert_eq!(SHARED_COUNT.load(Ordering::Relaxed), 2);
-    assert_eq!(exclusive_count, 0);
-}
-
-#[test]
-fn transfer_callbacks_without_unsubscribe() {
-    let handler = Handler::new();
-
-    static SHARED_COUNT: AtomicUsize = AtomicUsize::new(0);
-    handler.subscribe(Some(|| {
-        SHARED_COUNT.fetch_add(1, Ordering::Relaxed);
-    }));
-
-    let mut exclusive_count = 0;
-    handler.subscribe(Some(move || {
-        exclusive_count += 1;
-        println!("{exclusive_count}")
-    }));
-
-    handler.subscribe::<fn()>(None);
-
-    handler.spawn().join().unwrap();
+    handler.unsubscribe(&s1);
 
     assert_eq!(SHARED_COUNT.load(Ordering::Relaxed), 2);
     assert_eq!(exclusive_count, 0);
