@@ -268,13 +268,12 @@ impl Drop for SubscriberConfig {
 }
 
 pub struct Subscriber<'a> {
-    // Ensure the raw connection is not destroyed before the subscriber
-    _connection: &'a Connection,
     ptr: *mut mdb_sys::mdb_subscriber_t,
     _on_done: Deferred,
     // We don't need to keep the entire config alive, only the callback, because
     // `mdb_subscriber_create_async` will copy any information it keeps.
     _on_message: Deferred,
+    _marker: PhantomData<&'a Connection>,
 }
 
 impl<'a> Subscriber<'a> {
@@ -303,7 +302,7 @@ impl<'a> Subscriber<'a> {
                     panic!("mdb_subscriber_create_async returned both a connection and an error")
                 }
                 (false, true) => Ok(Self {
-                    _connection: connection,
+                    _marker: PhantomData,
                     ptr,
                     _on_done: on_done,
                     _on_message: config.on_message.take().unwrap(),
