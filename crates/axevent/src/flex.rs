@@ -12,7 +12,7 @@ use std::{
     collections::HashMap,
     ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
     fmt::Debug,
-    mem, process, ptr,
+    process, ptr,
     sync::Mutex,
 };
 
@@ -31,10 +31,11 @@ use axevent_sys::{
     AXEventValueType_AX_VALUE_TYPE_ELEMENT, AXEventValueType_AX_VALUE_TYPE_INT,
     AXEventValueType_AX_VALUE_TYPE_STRING,
 };
+use glib::translate::FromGlibPtrFull;
 pub use glib::Error;
 use glib::{
     translate::{from_glib_full, from_glib_none, IntoGlibPtr},
-    DateTime, GStringPtr,
+    DateTime, GString,
 };
 use glib_sys::{gboolean, gpointer, GError};
 use log::debug;
@@ -583,7 +584,7 @@ impl KeyValueSet {
         }
     }
 
-    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<GStringPtr> {
+    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<GString> {
         unsafe {
             let mut value: *mut c_char = ptr::null_mut();
             try_func!(
@@ -596,12 +597,14 @@ impl KeyValueSet {
                 },
                 &mut value,
             )?;
-            assert!(!value.is_null());
-            // SAFETY: the foreign code uses `g_strdup` which returns a null terminated UTF-8
-            // string, so the memory pointed to is a valid GStringPtr.
-            // The transmute is safe because GStringPtr is essentially a transparent wrapper around
-            // a char pointer.
-            Ok(mem::transmute::<*mut c_char, GStringPtr>(value))
+            // SAFETY: This is safe because:
+            // - The foreign function sets the error if the value is null in which case we return
+            //   early above.
+            // - The foreign function creates the value with `g_strdup` so it will be nul terminated
+            //   and reads to up to and including the nul terminator are valid.
+            // - This function owns the memory and does not mutate it.
+            // - Values will never be longer than `isize::MAX` in practice.
+            Ok(GString::from_glib_full(value))
         }
     }
 

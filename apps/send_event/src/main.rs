@@ -85,7 +85,7 @@ mod tests {
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
         flex::{Event, Handler, KeyValueSet},
     };
-    use glib::GStringPtr;
+    use glib::GString;
     use log::debug;
 
     fn topic() -> anyhow::Result<KeyValueSet> {
@@ -99,7 +99,7 @@ mod tests {
         Ok(kvs)
     }
 
-    fn send_and_receive_event(sent: &CStr) -> anyhow::Result<GStringPtr> {
+    fn send_and_receive_event(sent: &CStr) -> anyhow::Result<GString> {
         let main_loop = MainLoop::new();
 
         let handler = Handler::new();
@@ -152,7 +152,7 @@ mod tests {
     fn can_send_and_receive_event() {
         let expected = c"Hello";
         let actual = send_and_receive_event(expected).unwrap();
-        assert_eq!(actual.to_gstr().to_cstr().unwrap(), expected);
+        assert_eq!(actual.as_str(), expected.to_str().unwrap());
     }
 
     #[test]
