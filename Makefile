@@ -55,7 +55,7 @@ reinit:
 	RUST_LOG=info device-manager reinit
 
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
-build: apps/$(AXIS_PACKAGE)/LICENSE
+build:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
@@ -89,9 +89,9 @@ stop:
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-run: apps/$(AXIS_PACKAGE)/LICENSE
+run:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE)
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
@@ -106,11 +106,11 @@ run: apps/$(AXIS_PACKAGE)/LICENSE
 ## * The app is installed on the device.
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
-test: apps/$(AXIS_PACKAGE)/LICENSE
+test:
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --tests
+	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev --tests
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
@@ -123,14 +123,14 @@ test: apps/$(AXIS_PACKAGE)/LICENSE
 ## ---------------
 
 ## Install all apps on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
-install_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+install_all:
 	cargo-acap-sdk install \
 		-- \
 		--package '*_*' \
 		--profile app
 
 ## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
-test_all: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+test_all:
 	cargo-acap-sdk test \
 		-- \
 		--package licensekey \
@@ -179,6 +179,10 @@ check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard cra
 .PHONY: check_generated_files
 
 ## Check that generated files are up to date, including machine-dependent generated files.
+##
+## Note that this will likely work only if:
+## - The command is run inside the dev container.
+## - The name of the repository root is `acap-rs` because this affects the path inside the container.
 check_generated_files_container: apps-$(AXIS_DEVICE_ARCH).checksum apps-$(AXIS_DEVICE_ARCH).filesize
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
@@ -203,6 +207,14 @@ check_lint:
 		-- \
 		-Dwarnings
 .PHONY: check_lint
+
+## Check that risky FFI patterns are sound using miri
+check_miri:
+	rustup +nightly component add miri
+	cargo +nightly miri test \
+		--package ffi_patterns \
+		--target aarch64-unknown-linux-gnu \
+		--target thumbv7neon-unknown-linux-gnueabihf
 
 ## _
 check_tests:
@@ -247,14 +259,6 @@ Cargo.lock: FORCE
 		--output-file $@ \
 		$^
 
-# TODO: Find a convenient way to integrate this with cargo-acap-build
-apps/%/LICENSE: apps/%/Cargo.toml about.hbs
-	cargo-about generate \
-		--fail \
-		--manifest-path apps/$*/Cargo.toml \
-		--output-file $@ \
-		about.hbs
-
 apps-$(AXIS_DEVICE_ARCH).checksum: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	find target-$(AXIS_DEVICE_ARCH)/acap/ -name '*.eap' | LC_ALL=C sort | xargs shasum > $@
 
@@ -264,12 +268,13 @@ apps-$(AXIS_DEVICE_ARCH).filesize: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
 
-target-$(AXIS_DEVICE_ARCH)/acap/_envoy: $(patsubst %/,%/LICENSE,$(wildcard apps/*/))
+target-$(AXIS_DEVICE_ARCH)/acap/_envoy:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
 		--target $(AXIS_DEVICE_ARCH) \
 		-- \
 		--package '*_*' \
+		--profile dev \
 		--locked
 	touch $@
 

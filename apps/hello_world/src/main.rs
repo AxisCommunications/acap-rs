@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! A simple hello world application
 //!
 //! This app demonstrates:

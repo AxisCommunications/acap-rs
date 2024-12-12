@@ -1,19 +1,20 @@
 [package]
 name = "cargo-acap-sdk"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.79"
-clap = { version = "4.5.1", features = ["derive"] }
-clap_complete = "4.5.2"
-dirs = "5.0.1"
-env_logger = "0.11.1"
-log = "0.4.17"
-reqwest = {workspace = true, features = ["default-tls"]}
-tokio = { version = "1.36.0", features = ["full"] }
-url = "2.5.0"
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+clap_complete = { workspace = true }
+dirs = { workspace = true }
+env_logger = { workspace = true, default-features = true }
+log = { workspace = true }
+reqwest = { workspace = true, default-features = true, features = ["default-tls"] }
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
 
-acap-ssh-utils = { path = "../acap-ssh-utils" }
+acap-ssh-utils = { workspace = true }
 acap-vapix = { workspace = true }
-cargo-acap-build = { path = "../cargo-acap-build" }
+cargo-acap-build = { workspace = true }
+cli-version = { workspace = true }

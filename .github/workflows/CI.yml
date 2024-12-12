@@ -17,5 +17,9 @@ jobs:
         run: devcontainer up --workspace-folder .
       - name: Update generated files
         run: devcontainer exec --workspace-folder . make --always-make check_generated_files check_generated_files_container
+      - name: Update generated without acap-build
+        run: devcontainer exec --remote-env ACAP_BUILD_IMPL=equivalent --workspace-folder . make check_generated_files_container
       - name: Run other checks
         run: devcontainer exec --workspace-folder . make check_other
+      - name: Run miri check
+        run: devcontainer exec --workspace-folder . make check_miri

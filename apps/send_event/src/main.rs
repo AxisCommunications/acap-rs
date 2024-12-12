@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! An example of how to send an ONVIF event periodically.
 //!
 //! The audience for this example is users who are familiar with the C APIs and have existing code
