@@ -471,13 +471,7 @@ impl Stream {
         Ok(())
     }
 
-    // Not sure this function is needed
-    // pub fn buffers(&self) -> &[Buffer] {
-    //     self.buffers.as_slice()
-    // }
-
-    /// Start a background thread that fetches frames and passes them to the foreground thread
-    /// via an mpsc::channel.
+    /// Request the Larod service to start fetching frames and passing back buffers.
     pub fn start(&mut self) -> Result<RunningStream> {
         if self.buffers.is_empty() {
             return Err(Error::NoBuffersAllocated);
