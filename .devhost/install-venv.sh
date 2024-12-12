@@ -4,6 +4,8 @@ set -eux
 VIRTUAL_ENV="${1}"
 INIT_ENV="${2:-}"
 
+PROJET_ROOT=$(realpath $0 | xargs dirname | xargs dirname)
+
 # Ensure the existence of venv.
 # This is used below for local installations of applications and libraries.
 python3 -m venv "${VIRTUAL_ENV}"
@@ -35,6 +37,7 @@ then
     echo "unset -f deactivate";
     echo 'cargo-acap-sdk completions $(basename $SHELL) | . /dev/stdin'
     echo alias asdk=cargo-acap-sdk
+    echo "export PATH=\"${PROJET_ROOT}/bin:\$PATH\""
     cat environment-setup.sh;
   } > "${INIT_ENV}"
 fi

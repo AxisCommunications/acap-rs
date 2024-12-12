@@ -1,0 +1,5 @@
+[target.aarch64-unknown-linux-gnu]
+runner = ["run-on-device.sh"]
+
+[target.thumbv7neon-unknown-linux-gnueabihf]
+runner = ["run-on-device.sh"]
