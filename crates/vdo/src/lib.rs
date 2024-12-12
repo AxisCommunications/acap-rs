@@ -588,12 +588,12 @@ mod tests {
             .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
             .expect("Unable to create stream");
-        let settings = stream
-            .settings()
-            .expect("error while getting stream settings");
-        settings.dump();
-        let info = stream.info().expect("error while getting stream info");
-        info.dump();
+        // let settings = stream
+        //     .settings()
+        //     .expect("error while getting stream settings");
+        // settings.dump();
+        // let info = stream.info().expect("error while getting stream info");
+        // info.dump();
         let r = stream.start();
         assert!(r.is_err());
         assert!(matches!(r, Err(Error::NoBuffersAllocated)));
@@ -610,12 +610,12 @@ mod tests {
             .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
             .expect("Unable to create stream");
-        let settings = stream
-            .settings()
-            .expect("error while getting stream settings");
-        settings.dump();
-        let info = stream.info().expect("error while getting stream info");
-        info.dump();
+        // let settings = stream
+        //     .settings()
+        //     .expect("error while getting stream settings");
+        // settings.dump();
+        // let info = stream.info().expect("error while getting stream info");
+        // info.dump();
         stream.allocate_buffers(5);
         let mut r = stream.start().expect("starting stream returned error");
 
