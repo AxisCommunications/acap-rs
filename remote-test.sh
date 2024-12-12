@@ -5,7 +5,8 @@ if [ -n "${CARGO_TEST_CAMERA}" ]; then
     scp "$1" $CARGO_TEST_CAMERA:.
     # echo $f
     ssh $CARGO_TEST_CAMERA "chmod +x /root/$f" 
-    ssh $CARGO_TEST_CAMERA "/root/$f"
+    shift
+    ssh $CARGO_TEST_CAMERA "/root/$f" "$@"
 else 
     $1
 fi
