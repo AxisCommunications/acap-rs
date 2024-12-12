@@ -36,7 +36,7 @@ use glib::{
     translate::{from_glib_full, from_glib_none, IntoGlibPtr},
     DateTime,
 };
-use glib_sys::{gboolean, gpointer, GError};
+use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
 
 macro_rules! abort_unwind {
@@ -583,7 +583,7 @@ impl KeyValueSet {
         }
     }
 
-    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<CString> {
+    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<String> {
         unsafe {
             let mut value: *mut c_char = ptr::null_mut();
             try_func!(
@@ -596,7 +596,11 @@ impl KeyValueSet {
                 },
                 &mut value,
             )?;
-            Ok(CString::from(CStr::from_ptr(value)))
+            // Unwrap is OK because the foreign code uses `g_strdup` which returns a null
+            // terminated UTF-8 string.
+            let s = CStr::from_ptr(value).to_str().unwrap().to_string();
+            g_free(value as *mut c_void);
+            Ok(s)
         }
     }
 
