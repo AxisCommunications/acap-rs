@@ -2782,10 +2782,12 @@ name = "vdo"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "env_logger",
  "glib",
  "glib-sys 0.19.8",
  "gobject-sys 0.20.4",
  "log",
+ "thiserror",
  "vdo-sys",
 ]
 

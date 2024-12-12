@@ -5,11 +5,18 @@
 //!
 
 use glib::translate::from_glib_full;
-use glib_sys::{gboolean, gpointer, GError};
+use glib_sys::{gboolean, gpointer, GError, GTRUE};
 use gobject_sys::{g_object_unref, GObject};
-use std::ffi::CString;
-use std::ptr;
+use log::{debug, error, info};
+use std::ffi::{CStr, CString};
+use std::fmt::{Debug, Display};
+use std::marker::PhantomData;
+use std::mem;
+use std::sync::{mpsc, Arc, Mutex, PoisonError};
+use std::thread::JoinHandle;
+use std::{ptr, thread};
 use vdo_sys::*;
+pub use vdo_sys::{VdoBufferStrategy, VdoFormat};
 
 macro_rules! try_func {
     ($func:ident $(,)?) => {{
@@ -18,7 +25,7 @@ macro_rules! try_func {
         if error.is_null() {
             (success, None)
         } else {
-            (success, Some(Error::VDOError(VDOError{inner: error})))
+            (success, Some(Error::VDOError(VDOError::from_gerror(error))))
         }
     }};
     ($func:ident, $($arg:expr),+ $(,)?) => {{
@@ -27,22 +34,141 @@ macro_rules! try_func {
         if error.is_null() {
             (success, None)
         } else {
-            (success, Some(Error::VDOError(VDOError{inner: error})))
+            (success, Some(Error::VDOError(VDOError::from_gerror(error))))
         }
 
     }}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct VDOError {
-    inner: *mut GError,
+    code: i32,
+    message: String,
 }
 
+impl Display for VDOError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "VDOError {{ code: {}, message: {} }}",
+            self.get_code_message(),
+            self.message
+        )
+    }
+}
+
+impl VDOError {
+    fn get_code_message(&self) -> &str {
+        let code_u = u32::try_from(self.code).unwrap_or(0);
+        if code_u == VDO_ERROR_NOT_FOUND as u32 {
+            "VDO_ERROR_NOT_FOUND"
+        } else if code_u == VDO_ERROR_EXISTS as u32 {
+            "VDO_ERROR_EXISTS"
+        } else if code_u == VDO_ERROR_INVALID_ARGUMENT as u32 {
+            "VDO_ERROR_INVALID_ARGUMENT"
+        } else if code_u == VDO_ERROR_PERMISSION_DENIED as u32 {
+            "VDO_ERROR_PERMISSION_DENIED"
+        } else if code_u == VDO_ERROR_NOT_SUPPORTED as u32 {
+            "VDO_ERROR_NOT_SUPPORTED"
+        } else if code_u == VDO_ERROR_CLOSED as u32 {
+            "VDO_ERROR_CLOSED"
+        } else if code_u == VDO_ERROR_BUSY as u32 {
+            "VDO_ERROR_BUSY"
+        } else if code_u == VDO_ERROR_IO as u32 {
+            "VDO_ERROR_IO"
+        } else if code_u == VDO_ERROR_HAL as u32 {
+            "VDO_ERROR_HAL"
+        } else if code_u == VDO_ERROR_DBUS as u32 {
+            "VDO_ERROR_DBUS"
+        } else if code_u == VDO_ERROR_OOM as u32 {
+            "VDO_ERROR_OOM"
+        } else if code_u == VDO_ERROR_IDLE as u32 {
+            "VDO_ERROR_IDLE"
+        } else if code_u == VDO_ERROR_NO_DATA as u32 {
+            "VDO_ERROR_NO_DATA"
+        } else if code_u == VDO_ERROR_NO_BUFFER_SPACE as u32 {
+            "VDO_ERROR_NO_BUFFER_SPACE"
+        } else if code_u == VDO_ERROR_BUFFER_FAILURE as u32 {
+            "VDO_ERROR_BUFFER_FAILURE"
+        } else if code_u == VDO_ERROR_INTERFACE_DOWN as u32 {
+            "VDO_ERROR_INTERFACE_DOWN"
+        } else if code_u == VDO_ERROR_FAILED as u32 {
+            "VDO_ERROR_FAILED"
+        } else if code_u == VDO_ERROR_FATAL as u32 {
+            "VDO_ERROR_FATAL"
+        } else if code_u == VDO_ERROR_NOT_CONTROLLED as u32 {
+            "VDO_ERROR_NOT_CONTROLLED"
+        } else if code_u == VDO_ERROR_NO_EVENT as u32 {
+            "VDO_ERROR_NO_EVENT"
+        } else {
+            "VDO_ERROR_FAILED"
+        }
+    }
+
+    fn from_gerror(gerror: *mut GError) -> Self {
+        if !gerror.is_null() {
+            let g_error = unsafe { *gerror };
+            if !g_error.message.is_null() {
+                let msg = unsafe { CStr::from_ptr(g_error.message) };
+                VDOError {
+                    code: g_error.code,
+                    message: String::from(msg.to_str().unwrap_or("Invalid message")),
+                }
+            } else {
+                VDOError {
+                    code: g_error.code,
+                    message: String::from("Invalid message"),
+                }
+            }
+        } else {
+            VDOError::default()
+        }
+    }
+}
+
+impl std::error::Error for VDOError {}
+
+// impl Display for VDOError {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{:?}", self)
+//     }
+// }
+
+// impl Debug for VDOError {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         if !self.inner.is_null() {
+//             let g_error = unsafe { *self.inner };
+//             if !g_error.message.is_null() {
+//                 let msg = unsafe { CStr::from_ptr(g_error.message) };
+//                 f.debug_struct(&format!("GError @ {self:p}"))
+//                     .field("domain", &g_error.domain)
+//                     .field("code", &g_error.code)
+//                     .field("message", &msg.to_str().unwrap_or("Invalid message data"))
+//                     .finish()
+//             } else {
+//                 write!(f, "{:?}", g_error)
+//             }
+//         } else {
+//             write!(f, "Error returned with null pointer to GError")
+//         }
+//     }
+// }
+
 type Result<T> = std::result::Result<T, Error>;
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
-    VDOError(VDOError),
+    #[error(transparent)]
+    VDOError(#[from] VDOError),
+    #[error("libvdo returned an unexpected null pointer")]
     NullPointer,
+    #[error("could not allocate memory for CString")]
     CStringAllocation,
+    #[error("missing error data from libvdo")]
+    MissingVDOError,
+    #[error("poisoned pointer to stream")]
+    PoisonedStream,
+    #[error("no buffers are allocated for the stream")]
+    NoBuffersAllocated,
 }
 
 pub struct Map {
@@ -69,6 +195,12 @@ impl Map {
         }
         Ok(())
     }
+
+    pub fn dump(&self) {
+        unsafe {
+            vdo_map_dump(self.raw);
+        }
+    }
 }
 
 impl Drop for Map {
@@ -83,7 +215,7 @@ pub struct StreamBuilder {
     format: VdoFormat,
     buffer_access: u32,
     buffer_count: u32,
-    buffer_strategy: u32,
+    buffer_strategy: VdoBufferStrategy,
     input: u32,
     channel: u32,
     width: u32,
@@ -112,7 +244,7 @@ impl Default for StreamBuilder {
             format: VdoFormat::VDO_FORMAT_H264,
             buffer_access: 0,
             buffer_count: 0,
-            buffer_strategy: 0,
+            buffer_strategy: VdoBufferStrategy::VDO_BUFFER_STRATEGY_NONE,
             input: 0,
             channel: 0,
             width: 0,
@@ -142,19 +274,24 @@ impl StreamBuilder {
         StreamBuilder::default()
     }
 
-    pub fn with_channel(mut self, chan: u32) -> Self {
+    pub fn buffer_strategy(mut self, strategy: VdoBufferStrategy) -> Self {
+        self.buffer_strategy = strategy;
+        self
+    }
+
+    pub fn channel(mut self, chan: u32) -> Self {
         self.channel = chan;
         self
     }
-    pub fn with_format(mut self, format: VdoFormat) -> Self {
+    pub fn format(mut self, format: VdoFormat) -> Self {
         self.format = format;
         self
     }
-    pub fn with_width(mut self, width: u32) -> Self {
+    pub fn width(mut self, width: u32) -> Self {
         self.width = width;
         self
     }
-    pub fn with_height(mut self, height: u32) -> Self {
+    pub fn height(mut self, height: u32) -> Self {
         self.height = height;
         self
     }
@@ -165,13 +302,125 @@ impl StreamBuilder {
         map.set_u32("format", self.format as u32)?;
         map.set_u32("width", self.width)?;
         map.set_u32("height", self.height)?;
+        map.set_u32("buffer.strategy", self.buffer_strategy as u32)?;
         let (stream_raw, maybe_error) = unsafe { try_func!(vdo_stream_new, map.raw, None) };
-        Ok(Stream { raw: stream_raw })
+        if !stream_raw.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "vdo_stream_new returned an stream pointer AND returned an error!"
+            );
+            Ok(Stream {
+                raw: StreamWrapper(stream_raw),
+                buffers: Vec::new(),
+            })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingVDOError))
+        }
     }
 }
 
+pub struct Frame<'a> {
+    raw: *mut VdoFrame,
+    phantom: PhantomData<&'a Buffer>,
+}
+
+impl<'a> Frame<'a> {
+    pub fn size(&self) -> usize {
+        unsafe { vdo_frame_get_size(self.raw) }
+    }
+}
+
+pub struct Buffer {
+    raw: *mut VdoBuffer,
+}
+
+pub struct StreamBuffer<'a> {
+    buffer: Buffer,
+    stream: &'a Stream,
+}
+
+impl<'a> StreamBuffer<'a> {
+    pub fn frame(&self) -> Result<Frame> {
+        let frame = unsafe { vdo_buffer_get_frame(self.buffer.raw) };
+        Ok(Frame {
+            raw: frame,
+            phantom: PhantomData,
+        })
+    }
+}
+
+impl<'a> Drop for StreamBuffer<'a> {
+    fn drop(&mut self) {
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                vdo_stream_buffer_unref,
+                self.stream.raw.0,
+                &mut self.buffer.raw
+            )
+        };
+    }
+}
+
+// unsafe impl Send for Buffer {}
+
+unsafe impl Send for StreamWrapper {}
+
+struct StreamWrapper(*mut VdoStream);
 pub struct Stream {
-    raw: *mut VdoStream,
+    raw: StreamWrapper,
+    buffers: Vec<*mut VdoBuffer>,
+}
+
+pub struct StreamIterator<'a> {
+    stream: &'a Stream,
+}
+
+impl<'a> Iterator for StreamIterator<'a> {
+    type Item = StreamBuffer<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let (buffer_ptr, maybe_error) =
+            unsafe { try_func!(vdo_stream_get_buffer, self.stream.raw.0) };
+        if !buffer_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "vdo_stream_get_buffer returned an stream pointer AND returned an error!"
+            );
+            debug!("fetched buffer from vdo stream");
+            Some(StreamBuffer {
+                buffer: Buffer { raw: buffer_ptr },
+                stream: self.stream,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+pub struct RunningStream<'a> {
+    stream: &'a mut Stream,
+}
+
+impl<'a> RunningStream<'a> {
+    pub fn iter(&mut self) -> StreamIterator {
+        StreamIterator {
+            stream: self.stream,
+        }
+    }
+    pub fn stop(&mut self) -> Result<()> {
+        unsafe { vdo_stream_stop(self.stream.raw.0) };
+        Ok(())
+    }
+}
+
+impl<'a> IntoIterator for &'a RunningStream<'a> {
+    type Item = StreamBuffer<'a>;
+    type IntoIter = StreamIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        StreamIterator {
+            stream: self.stream,
+        }
+    }
 }
 
 impl Stream {
@@ -181,5 +430,242 @@ impl Stream {
 
     pub fn new() -> Result<Self> {
         StreamBuilder::new().build()
+    }
+
+    pub fn info(&self) -> Result<Map> {
+        let (map_raw, maybe_error) = unsafe { try_func!(vdo_stream_get_info, self.raw.0) };
+        if !map_raw.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "vdo_stream_get_info returned a pointer AND returned an error!"
+            );
+            Ok(Map { raw: map_raw })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingVDOError))
+        }
+    }
+
+    pub fn settings(&self) -> Result<Map> {
+        let (map_raw, maybe_error) = unsafe { try_func!(vdo_stream_get_settings, self.raw.0) };
+        if !map_raw.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "vdo_stream_get_settings returned a pointer AND returned an error!"
+            );
+            Ok(Map { raw: map_raw })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingVDOError))
+        }
+    }
+
+    pub fn allocate_buffer(&mut self) -> Result<()> {
+        let (buffer_ptr, maybe_error) =
+            unsafe { try_func!(vdo_stream_buffer_alloc, self.raw.0, ptr::null_mut()) };
+        if !buffer_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "vdo_stream_buffer_alloc returned a buffer pointer AND returned an error!"
+            );
+            self.buffers.push(buffer_ptr);
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingVDOError))
+        }
+    }
+
+    pub fn allocate_buffers(&mut self, num: usize) -> Result<()> {
+        for _ in 0..num {
+            let (buffer_ptr, maybe_error) =
+                unsafe { try_func!(vdo_stream_buffer_alloc, self.raw.0, ptr::null_mut()) };
+            if !buffer_ptr.is_null() {
+                debug_assert!(
+                    maybe_error.is_none(),
+                    "vdo_stream_buffer_alloc returned a buffer pointer AND returned an error!"
+                );
+                self.buffers.push(buffer_ptr);
+            } else {
+                return Err(maybe_error.unwrap_or(Error::MissingVDOError));
+            }
+        }
+        Ok(())
+    }
+
+    // Not sure this function is needed
+    // pub fn buffers(&self) -> &[Buffer] {
+    //     self.buffers.as_slice()
+    // }
+
+    /// Start a background thread that fetches frames and passes them to the foreground thread
+    /// via an mpsc::channel.
+    pub fn start(&mut self) -> Result<RunningStream> {
+        if self.buffers.is_empty() {
+            return Err(Error::NoBuffersAllocated);
+        }
+        for buffer in self.buffers.iter() {
+            let (success_enqueue, maybe_error) =
+                unsafe { try_func!(vdo_stream_buffer_enqueue, self.raw.0, *buffer) };
+            if success_enqueue == GTRUE {
+                debug!("enqueued buffer to stream");
+                debug_assert!(
+                    maybe_error.is_none(),
+                    "vdo_stream_buffer_enqueue indicated success AND returned an error!"
+                );
+            } else {
+                return Err(maybe_error.unwrap_or(Error::MissingVDOError));
+            }
+        }
+        let (success_start, maybe_error) = unsafe { try_func!(vdo_stream_start, self.raw.0) };
+        if success_start == GTRUE {
+            debug_assert!(
+                maybe_error.is_none(),
+                "vdo_stream_new returned an stream pointer AND returned an error!"
+            );
+            Ok(RunningStream { stream: self })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingVDOError))
+        }
+    }
+
+    // Do we want to spawn a fetcher thread?
+    // pub fn start_with_channel(&mut self) -> Result<()> {
+    //     let Ok(raw_stream_ptr) = self.raw.lock() else {
+    //         return Err(Error::PoisonedStream);
+    //     };
+    //     for buffer in self.buffers.iter() {
+    //         let (success_enqueue, maybe_error) =
+    //             unsafe { try_func!(vdo_stream_buffer_enqueue, raw_stream_ptr.0, buffer.raw) };
+    //         if success_enqueue == GTRUE {
+    //             debug!("enqueued buffer to stream");
+    //             debug_assert!(
+    //                 maybe_error.is_none(),
+    //                 "vdo_stream_buffer_enqueue indicated success AND returned an error!"
+    //             );
+    //         } else {
+    //             return Err(maybe_error.unwrap_or(Error::MissingVDOError));
+    //         }
+    //     }
+    //     let (success_start, maybe_error) = unsafe { try_func!(vdo_stream_start, raw_stream_ptr.0) };
+    //     drop(raw_stream_ptr);
+    //     if success_start == GTRUE {
+    //         debug_assert!(
+    //             maybe_error.is_none(),
+    //             "vdo_stream_new returned an stream pointer AND returned an error!"
+    //         );
+    //     } else {
+    //         return Err(maybe_error.unwrap_or(Error::MissingVDOError));
+    //     }
+    //     let (sender, receiver) = mpsc::channel();
+    //     let stream_c = self.raw.clone();
+    //     self.rx_channel = Some(receiver);
+    //     self.fetcher_thread = Some(thread::spawn(move || {
+    //         debug!("starting frame fetcher thread");
+    //         let Ok(raw_stream_ptr) = stream_c.lock() else {
+    //             return Err(StreamError::PoisonedStream);
+    //         };
+    //         let (buffer_ptr, maybe_error) =
+    //             unsafe { try_func!(vdo_stream_get_buffer, raw_stream_ptr.0) };
+    //         if !buffer_ptr.is_null() {
+    //             debug_assert!(
+    //                 maybe_error.is_none(),
+    //                 "vdo_stream_get_buffer returned an stream pointer AND returned an error!"
+    //             );
+    //             debug!("fetched buffer from vdo stream");
+    //             sender.send(Buffer { raw: buffer_ptr });
+    //         } else {
+    //             error!("error while fetching buffer: {}", maybe_error.unwrap());
+    //         }
+    //         Ok(())
+    //     }));
+    //     Ok(())
+    // }
+}
+
+impl Drop for Stream {
+    fn drop(&mut self) {
+        unsafe {
+            vdo_stream_stop(self.raw.0);
+        }
+        for mut buffer in mem::take(&mut self.buffers).into_iter() {
+            let (success, maybe_error) =
+                unsafe { try_func!(vdo_stream_buffer_unref, self.raw.0, &mut buffer) };
+        }
+    }
+}
+
+#[cfg(all(test, target_arch = "aarch64", feature = "device-tests"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stream_error_with_no_buffers() {
+        env_logger::try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
+            .width(1920)
+            .height(1080)
+            .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
+            .build()
+            .expect("Unable to create stream");
+        let settings = stream
+            .settings()
+            .expect("error while getting stream settings");
+        settings.dump();
+        let info = stream.info().expect("error while getting stream info");
+        info.dump();
+        let r = stream.start();
+        assert!(r.is_err());
+        assert!(matches!(r, Err(Error::NoBuffersAllocated)));
+    }
+
+    #[test]
+    fn it_starts_stream() {
+        env_logger::try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
+            .width(1920)
+            .height(1080)
+            .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
+            .build()
+            .expect("Unable to create stream");
+        let settings = stream
+            .settings()
+            .expect("error while getting stream settings");
+        settings.dump();
+        let info = stream.info().expect("error while getting stream info");
+        info.dump();
+        stream.allocate_buffers(5);
+        let mut r = stream.start().expect("starting stream returned error");
+
+        let s = r.stop();
+        assert!(s.is_ok());
+    }
+
+    #[test]
+    fn stream_fetches_frames() {
+        env_logger::try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
+            .width(1920)
+            .height(1080)
+            .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
+            .build()
+            .expect("Unable to create stream");
+        stream.allocate_buffers(5);
+        let mut r = stream.start().expect("starting stream returned error");
+
+        {
+            let buff = r.iter().next().expect("failed to fetch frame");
+            let size = buff
+                .frame()
+                .expect("error fetching frame for buffer")
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
+
+        let s = r.stop();
     }
 }

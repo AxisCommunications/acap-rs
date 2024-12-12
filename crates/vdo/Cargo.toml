@@ -10,9 +10,13 @@ anyhow.workspace = true
 glib.workspace = true
 glib-sys.workspace = true
 gobject-sys = "0.20.4"
+thiserror.workspace = true
 
 [features]
 device-tests = []
 
 [[example]]
 name = "basic"
+
+[dev-dependencies]
+env_logger.workspace = true
