@@ -21,3 +21,5 @@ jobs:
         run: devcontainer exec --remote-env ACAP_BUILD_IMPL=equivalent --workspace-folder . make check_generated_files_container
       - name: Run other checks
         run: devcontainer exec --workspace-folder . make check_other
+      - name: Run miri check
+        run: devcontainer exec --workspace-folder . make check_miri
