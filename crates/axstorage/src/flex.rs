@@ -1,4 +1,4 @@
-use std::{ffi::CString, mem, mem::ManuallyDrop, ptr};
+use std::{mem, mem::ManuallyDrop, ptr};
 
 use axstorage_sys::{
     ax_storage_error_quark, ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id,
@@ -18,7 +18,7 @@ use glib::{
     error::ErrorDomain,
     ffi::GError,
     translate::{from_glib, FromGlibPtrFull},
-    GStringPtr, List, Quark,
+    GString, GStringPtr, List, Quark,
 };
 use glib_sys::{gpointer, GTRUE};
 
@@ -328,11 +328,19 @@ where
 }
 
 /// Returns the location on the storage where the client should save its files.
-pub fn get_path(storage: &mut Storage) -> Result<CString, glib::Error> {
+pub fn get_path(storage: &mut Storage) -> Result<GString, glib::Error> {
     // TODO: SAFETY
     unsafe {
         let path = try_func!(ax_storage_get_path, storage.raw);
-        Ok(CString::from_raw(path))
+        // TODO: Consider making these con
+        // SAFETY: This is safe because:
+        // - The foreign function sets the error if the path is null in which case we return early
+        //   above.
+        // - The foreign function creates the value with `g_strdup` so it will be nul terminated
+        //   and reads to up to and including the nul terminator are valid.
+        // - This function owns the memory and does not mutate it.
+        // - Paths will never be longer than `isize::MAX` in practice.
+        Ok(GString::from_glib_full(path))
     }
 }
 
