@@ -5,7 +5,7 @@ edition.workspace = true
 license = "MIT"
 
 [dependencies]
-glib-sys = { workspace = true }
+glib = { workspace = true }
 libc = { workspace = true }
 thiserror = { workspace = true }
 

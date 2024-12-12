@@ -1334,7 +1334,7 @@ dependencies = [
 name = "licensekey"
 version = "0.0.0"
 dependencies = [
- "glib-sys",
+ "glib",
  "libc",
  "licensekey-sys",
  "thiserror",

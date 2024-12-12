@@ -4,10 +4,9 @@
 //! * has a similar structure to the C API, and
 //! * allows everything that can be done (safely) with the C API.
 
-use std::ffi::{c_int, CStr, CString};
-
-use glib_sys::g_free;
-use libc::free;
+use glib::translate::FromGlibPtrFull;
+use glib::GString;
+use std::ffi::{c_int, CStr};
 
 /// Perform a license key check.
 ///
@@ -78,7 +77,7 @@ pub fn licensekey_verify_ex(
 ///
 /// * string with the expiration date in YYYY-MM-DD format.
 /// * `None` if the expiration date couldn't be read.
-pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) -> Option<CString> {
+pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) -> Option<GString> {
     unsafe {
         let ptr = licensekey_sys::licensekey_get_exp_date(
             app_name.as_ptr(),
@@ -90,9 +89,7 @@ pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) 
         if ptr.is_null() {
             None
         } else {
-            let retval = Some(CStr::from_ptr(ptr).to_owned());
-            g_free(ptr as *mut _);
-            retval
+            Some(GString::from_glib_full(ptr))
         }
     }
 }
@@ -107,15 +104,13 @@ pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) 
 ///
 /// * string with license key state message.
 /// * `None` if state is not a valid error state.
-pub fn licensekey_get_state_string(state_code: c_int) -> Option<CString> {
+pub fn licensekey_get_state_string(state_code: c_int) -> Option<GString> {
     unsafe {
         let ptr = licensekey_sys::licensekey_get_state_string(state_code as c_int);
         if ptr.is_null() {
             None
         } else {
-            let value = CStr::from_ptr(ptr).into();
-            free(ptr as *mut _);
-            Some(value)
+            Some(GString::from_glib_full(ptr))
         }
     }
 }
