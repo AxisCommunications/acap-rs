@@ -40,7 +40,7 @@ macro_rules! try_func {
     }}
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct VDOError {
     code: i32,
     message: String,
@@ -50,7 +50,8 @@ impl Display for VDOError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "VDOError {{ code: {}, message: {} }}",
+            "VDOError {{ code: {}, phrase: {}, message: {} }}",
+            self.code,
             self.get_code_message(),
             self.message
         )
@@ -128,31 +129,11 @@ impl VDOError {
 
 impl std::error::Error for VDOError {}
 
-// impl Display for VDOError {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{:?}", self)
-//     }
-// }
-
-// impl Debug for VDOError {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         if !self.inner.is_null() {
-//             let g_error = unsafe { *self.inner };
-//             if !g_error.message.is_null() {
-//                 let msg = unsafe { CStr::from_ptr(g_error.message) };
-//                 f.debug_struct(&format!("GError @ {self:p}"))
-//                     .field("domain", &g_error.domain)
-//                     .field("code", &g_error.code)
-//                     .field("message", &msg.to_str().unwrap_or("Invalid message data"))
-//                     .finish()
-//             } else {
-//                 write!(f, "{:?}", g_error)
-//             }
-//         } else {
-//             write!(f, "Error returned with null pointer to GError")
-//         }
-//     }
-// }
+impl Debug for VDOError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 
 type Result<T> = std::result::Result<T, Error>;
 #[derive(thiserror::Error, Debug)]
