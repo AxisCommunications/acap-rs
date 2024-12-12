@@ -1328,22 +1328,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "larod"
-version = "0.1.0"
-dependencies = [
- "larod-sys",
- "log",
-]
-
-[[package]]
-name = "larod-sys"
-version = "0.1.0"
-dependencies = [
- "bindgen",
- "pkg-config",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
