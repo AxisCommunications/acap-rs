@@ -196,8 +196,8 @@ impl Deferred {
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
-    // This is not usually optional,
-    // we just need a way to move the callback so it can be dropped with another object.
+    // This isn't optional,
+    // we just need a way to move the callback so it can be dropped with another object instead.
     on_message: Option<Deferred>,
 }
 
