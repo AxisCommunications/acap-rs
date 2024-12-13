@@ -72,18 +72,24 @@ impl CStringPtr {
     /// # Safety
     ///
     /// In addition to the safety preconditions for [`CStr::from_ptr`] the memory must have been
-    /// allocated in a manner compatible with [`glib_sys::g_free`].
+    /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
+    /// users of this memory.
     unsafe fn from_ptr(ptr: *mut c_char) -> Self {
         Self(NonNull::new_unchecked(ptr))
     }
 
     pub fn as_c_str(&self) -> &CStr {
+        // SAFETY: The preconditions for instantiating this type include all preconditions
+        // for `CStr::from_ptr`.
         unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
     }
 }
 
 impl Drop for CStringPtr {
     fn drop(&mut self) {
+        // SAFETY: The preconditions for instantiating this type include:
+        // - having full ownership of the memory.
+        // - having allocated the memory in a manner that is compatible with `g_free`.
         unsafe {
             g_free(self.0.as_ptr() as *mut c_void);
         }
