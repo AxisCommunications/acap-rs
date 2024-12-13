@@ -8,7 +8,6 @@ use std::{
     ffi::CStr,
     fmt::{Debug, Display, Formatter},
     marker::PhantomData,
-    mem,
     slice::from_raw_parts,
 };
 
@@ -181,14 +180,11 @@ impl Drop for Connection {
 unsafe impl Send for Connection {}
 unsafe impl Sync for Connection {}
 
-#[derive(Default)]
 struct Deferred(Option<Box<dyn FnOnce()>>);
-
 impl Drop for Deferred {
     fn drop(&mut self) {
-        if let Some(f) = self.0.take() {
-            f()
-        }
+        assert!(self.0.is_some());
+        self.0.take().unwrap()()
     }
 }
 
@@ -200,7 +196,7 @@ impl Deferred {
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
-    on_message: Deferred,
+    on_message: Option<Deferred>,
 }
 
 impl SubscriberConfig {
@@ -220,7 +216,7 @@ impl SubscriberConfig {
             //   dereference the pointer, which it doesn't.
             // * The struct is passed to `Subscriber::try_new` which makes sure the callback
             //   outlives this `SubscriberConfig`.
-            let on_message = Deferred::new(raw_on_message);
+            let on_message = Some(Deferred::new(raw_on_message));
 
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_config_create(
@@ -308,7 +304,7 @@ impl<'a> Subscriber<'a> {
                     _marker: PhantomData,
                     ptr,
                     _on_done: on_done,
-                    _on_message: mem::take(&mut config.on_message),
+                    _on_message: config.on_message.take().unwrap(),
                 }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => {
