@@ -207,14 +207,13 @@ impl SubscriberConfig {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
             let raw_on_message = Box::into_raw(Box::new(on_message));
-            // TODO: Verify that panic is sound.
             // SAFETY: There a few ways this can be dropped:
             // * This function panics; since the user doesn't get a config back the config either
             //   is leaked or it wasn't created. In either case the pointer will never be
             //   dereferenced.
             // * The struct returned from this function is not used; since the callback is dropped
             //   after the drop implementation for this type this is sound even if drop would
-            //   dereference the pointer, which I don't think it does.
+            //   dereference the pointer, which it doesn't.
             // * The struct is passed to `Subscriber::try_new` which makes sure the callback
             //   outlives this `SubscriberConfig`.
             let on_message = Some(Deferred::new(raw_on_message));
