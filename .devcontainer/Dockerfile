@@ -1,8 +1,9 @@
 ARG REPO=axisecp
 ARG SDK=acap-native-sdk
-ARG UBUNTU_VERSION=22.04
+# Keep in sync with `install-sdk.sh` and `on-host-workflow.yml`.
+ARG UBUNTU_VERSION=24.04
 # Keep in sync with `install-sdk.sh`.
-ARG VERSION=1.15
+ARG VERSION=12.1.0
 ARG BASE_IMAGE=debian:bookworm-20240423
 
 FROM --platform=linux/amd64 ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64

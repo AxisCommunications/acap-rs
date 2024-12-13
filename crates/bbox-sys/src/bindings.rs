@@ -124,6 +124,12 @@ extern "C" {
     pub fn bbox_destroy(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    pub fn bbox_coordinates_scene_normalized(self_: *mut bbox_t) -> bool;
+}
+extern "C" {
+    pub fn bbox_coordinates_frame_normalized(self_: *mut bbox_t) -> bool;
+}
+extern "C" {
     pub fn bbox_video_output(self_: *mut bbox_t, enabled: bool) -> bool;
 }
 extern "C" {
