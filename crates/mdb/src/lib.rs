@@ -196,6 +196,8 @@ impl Deferred {
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
+    // This is not usually optional,
+    // we just need a way to move the callback so it can be dropped with another object.
     on_message: Option<Deferred>,
 }
 
@@ -239,6 +241,10 @@ impl SubscriberConfig {
         }
     }
 
+    fn into_callback(mut self) -> Deferred {
+        self.on_message.take().unwrap()
+    }
+
     unsafe extern "C" fn on_message<F>(
         message: *const mdb_sys::mdb_message_t,
         user_data: *mut c_void,
@@ -278,7 +284,7 @@ pub struct Subscriber<'a> {
 impl<'a> Subscriber<'a> {
     pub fn try_new<F>(
         connection: &'a Connection,
-        mut config: SubscriberConfig,
+        config: SubscriberConfig,
         on_done: F,
     ) -> Result<Self, Error>
     where
@@ -304,7 +310,7 @@ impl<'a> Subscriber<'a> {
                     _marker: PhantomData,
                     ptr,
                     _on_done: on_done,
-                    _on_message: config.on_message.take().unwrap(),
+                    _on_message: config.into_callback(),
                 }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => {
