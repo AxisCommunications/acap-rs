@@ -137,7 +137,7 @@ impl Connection {
         }
     }
 
-    unsafe extern "C" fn on_error(error: *mut mdb_sys::mdb_error_t, user_data: *mut c_void) {
+    unsafe extern "C" fn on_error(error: *const mdb_sys::mdb_error_t, user_data: *mut c_void) {
         suppress_unwind!(|| {
             // TODO: Remove excessive logging once we are somewhat confident this works
             debug!("Handling error {error:?} with user_data {user_data:?}");
