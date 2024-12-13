@@ -81,11 +81,11 @@ mod tests {
     use std::{ffi::CStr, time, time::Duration};
 
     use anyhow::bail;
+    use axevent::flex::CStringPtr;
     use axevent::{
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
         flex::{Event, Handler, KeyValueSet},
     };
-    use glib::GString;
     use log::debug;
 
     fn topic() -> anyhow::Result<KeyValueSet> {
@@ -99,7 +99,7 @@ mod tests {
         Ok(kvs)
     }
 
-    fn send_and_receive_event(sent: &CStr) -> anyhow::Result<GString> {
+    fn send_and_receive_event(sent: &CStr) -> anyhow::Result<CStringPtr> {
         let main_loop = MainLoop::new();
 
         let handler = Handler::new();
@@ -133,12 +133,12 @@ mod tests {
 
         let kvs = event.key_value_set();
         assert_eq!(
-            kvs.get_string(c"topic0", Some(c"tnsaxis"))?.as_str(),
-            "CameraApplicationPlatform"
+            kvs.get_string(c"topic0", Some(c"tnsaxis"))?.as_c_str(),
+            c"CameraApplicationPlatform"
         );
         assert_eq!(
-            kvs.get_string(c"topic1", Some(c"tnsaxis"))?.as_str(),
-            "HelloAXEvent"
+            kvs.get_string(c"topic1", Some(c"tnsaxis"))?.as_c_str(),
+            c"HelloAXEvent"
         );
         let received = kvs.get_string(c"Greeting", None)?;
 
@@ -150,9 +150,9 @@ mod tests {
 
     #[test]
     fn can_send_and_receive_event() {
-        let expected = c"Hello";
+        let expected = c"Hello\xc3\x28";
         let actual = send_and_receive_event(expected).unwrap();
-        assert_eq!(actual.as_str(), expected.to_str().unwrap());
+        assert_eq!(actual.as_c_str(), expected);
     }
 
     #[test]
