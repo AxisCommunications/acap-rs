@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,3 +21,5 @@ jobs:
         run: devcontainer exec --remote-env ACAP_BUILD_IMPL=equivalent --workspace-folder . make check_generated_files_container
       - name: Run other checks
         run: devcontainer exec --workspace-folder . make check_other
+      - name: Run miri check
+        run: devcontainer exec --workspace-folder . make check_miri

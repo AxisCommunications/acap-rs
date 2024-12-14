@@ -134,7 +134,7 @@ fn pack(
 
     debug!("Creating app builder");
     let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
-    app_builder.add(&executable)?;
+    app_builder.add_exe(&executable)?;
 
     // TODO: Consider providing defaults for more files.
     // TODO: Consider providing a default build script instead to enable users to opt out entirely.

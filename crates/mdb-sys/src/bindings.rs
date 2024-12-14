@@ -17,7 +17,7 @@ pub struct mdb_error_t {
     pub message: *mut ::std::os::raw::c_char,
 }
 pub type mdb_on_error_t = ::std::option::Option<
-    unsafe extern "C" fn(error: *mut mdb_error_t, user_data: *mut ::std::os::raw::c_void),
+    unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut ::std::os::raw::c_void),
 >;
 extern "C" {
     pub fn mdb_error_destroy(error: *mut *mut mdb_error_t);
@@ -57,9 +57,71 @@ extern "C" {
 extern "C" {
     pub fn mdb_message_get_timestamp(message: *const mdb_message_t) -> *const timespec;
 }
+extern "C" {
+    pub fn mdb_message_create(
+        timestamp: timespec,
+        payload: *const u8,
+        payload_size: usize,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_message_t;
+}
+extern "C" {
+    pub fn mdb_message_destroy(self_: *mut *mut mdb_message_t);
+}
 pub type mdb_on_done_t = ::std::option::Option<
     unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut ::std::os::raw::c_void),
 >;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mdb_dict {
+    _unused: [u8; 0],
+}
+pub type mdb_dict_t = mdb_dict;
+extern "C" {
+    pub fn mdb_dict_set_str(
+        self_: *mut mdb_dict_t,
+        key: *const ::std::os::raw::c_char,
+        value: *const ::std::os::raw::c_char,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_dict_get_str(
+        self_: *const mdb_dict_t,
+        key: *const ::std::os::raw::c_char,
+        error: *mut *mut mdb_error_t,
+    ) -> *const ::std::os::raw::c_char;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mdb_channel_info {
+    _unused: [u8; 0],
+}
+pub type mdb_channel_info_t = mdb_channel_info;
+extern "C" {
+    pub fn mdb_channel_info_create(error: *mut *mut mdb_error_t) -> *mut mdb_channel_info_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_copy(
+        self_: *const mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_channel_info_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_get_application_data(
+        self_: *const mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> *const mdb_dict_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_get_application_data_mutable(
+        self_: *mut mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_dict_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_destroy(self_: *mut *mut mdb_channel_info_t);
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mdb_subscriber_config {
@@ -69,6 +131,11 @@ pub type mdb_subscriber_config_t = mdb_subscriber_config;
 pub type mdb_subscriber_on_message_t = ::std::option::Option<
     unsafe extern "C" fn(message: *const mdb_message_t, user_data: *mut ::std::os::raw::c_void),
 >;
+pub type mdb_subscriber_on_channel_registered_t = ::std::option::Option<
+    unsafe extern "C" fn(info: *const mdb_channel_info_t, user_data: *mut ::std::os::raw::c_void),
+>;
+pub type mdb_subscriber_on_channel_unregistered_t =
+    ::std::option::Option<unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void)>;
 extern "C" {
     pub fn mdb_subscriber_config_create(
         topic: *const ::std::os::raw::c_char,
@@ -77,6 +144,28 @@ extern "C" {
         user_data: *mut ::std::os::raw::c_void,
         error: *mut *mut mdb_error_t,
     ) -> *mut mdb_subscriber_config_t;
+}
+extern "C" {
+    pub fn mdb_subscriber_config_disable_auto_subscribe(
+        self_: *mut mdb_subscriber_config_t,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_subscriber_config_set_on_channel_registered_callback(
+        self_: *mut mdb_subscriber_config_t,
+        on_registered: mdb_subscriber_on_channel_registered_t,
+        user_data: *mut ::std::os::raw::c_void,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_subscriber_config_set_on_channel_unregistered_callback(
+        self_: *mut mdb_subscriber_config_t,
+        on_unregistered: mdb_subscriber_on_channel_unregistered_t,
+        user_data: *mut ::std::os::raw::c_void,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
 }
 extern "C" {
     pub fn mdb_subscriber_config_destroy(self_: *mut *mut mdb_subscriber_config_t);
@@ -95,6 +184,14 @@ extern "C" {
         user_data: *mut ::std::os::raw::c_void,
         error: *mut *mut mdb_error_t,
     ) -> *mut mdb_subscriber_t;
+}
+extern "C" {
+    pub fn mdb_subscriber_manual_subscribe_async(
+        self_: *mut mdb_subscriber_t,
+        on_done: mdb_on_done_t,
+        user_data: *mut ::std::os::raw::c_void,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
 }
 extern "C" {
     pub fn mdb_subscriber_destroy(self_: *mut *mut mdb_subscriber_t);
