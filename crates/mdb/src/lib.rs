@@ -102,7 +102,7 @@ pub struct Connection {
 
 impl Connection {
     // TODO: Consider adopting a builder-like pattern.
-    /// Passing `None` as the `@on_error` callback requires qualifying the generic like so:
+    /// Passing `None` as the `on_error` callback requires qualifying the generic like so:
     ///
     /// ```
     /// let connection = Connection::try_new::<fn(Error)>(None);
@@ -122,24 +122,27 @@ impl Connection {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
-            let on_error = match on_error {
+            let raw_on_error = match on_error {
                 None => std::ptr::null_mut(),
                 Some(on_error) => Box::into_raw(Box::new(on_error)),
             };
-            let _on_error = match on_error.is_null() {
-                false => Some(Deferred::new(on_error)),
+            let on_error = match raw_on_error.is_null() {
+                false => Some(Deferred::new(raw_on_error)),
                 true => None,
             };
             let ptr = mdb_sys::mdb_connection_create(
                 Some(Self::on_error::<F>),
-                on_error as *mut c_void,
+                raw_on_error as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
                 (false, false) => {
                     panic!("mdb_connection_create returned both a connection and an error");
                 }
-                (false, true) => Ok(Self { ptr, _on_error }),
+                (false, true) => Ok(Self {
+                    ptr,
+                    _on_error: on_error,
+                }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => {
                     panic!("mdb_connection_create returned neither a connection nor an error");
@@ -156,8 +159,8 @@ impl Connection {
             // TODO: Remove excessive logging once we are somewhat confident this works
             debug!("Handling error {error:?} with user_data {user_data:?}");
             let error = Error::new_borrowed(error);
-            let user_data = user_data as *mut F;
-            (*user_data)(error);
+            let callback = &mut *(user_data as *mut F);
+            callback(error);
         });
     }
 }
@@ -193,7 +196,9 @@ impl Deferred {
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
-    _on_message: Deferred,
+    // This isn't optional,
+    // we just need a way to move the callback so it can be dropped with another object instead.
+    on_message: Option<Deferred>,
 }
 
 impl SubscriberConfig {
@@ -203,28 +208,41 @@ impl SubscriberConfig {
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
-            let on_message = Box::into_raw(Box::new(on_message));
-            let _on_message = Deferred::new(on_message);
+            let raw_on_message = Box::into_raw(Box::new(on_message));
+            // SAFETY: There a few ways this can be dropped:
+            // * This function panics; since the user doesn't get a config back the config either
+            //   is leaked or it wasn't created. In either case the pointer will never be
+            //   dereferenced.
+            // * The struct returned from this function is not used; since the callback is dropped
+            //   after the drop implementation for this type this is sound even if drop would
+            //   dereference the pointer, which it doesn't.
+            // * The struct is passed to `Subscriber::try_new` which makes sure the callback
+            //   outlives this `SubscriberConfig`.
+            let on_message = Some(Deferred::new(raw_on_message));
 
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_config_create(
                 topic.as_ptr(),
                 source.as_ptr(),
                 Some(Self::on_message::<F>),
-                on_message as *mut c_void,
+                raw_on_message as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
                 (false, false) => {
                     panic!("mdb_subscriber_config_create returned both a connection and an error")
                 }
-                (false, true) => Ok(Self { ptr, _on_message }),
+                (false, true) => Ok(Self { ptr, on_message }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => panic!(
                     "mdb_subscriber_config_create returned neither a connection nor an error"
                 ),
             }
         }
+    }
+
+    fn into_callback(mut self) -> Deferred {
+        self.on_message.take().unwrap()
     }
 
     unsafe extern "C" fn on_message<F>(
@@ -238,18 +256,16 @@ impl SubscriberConfig {
             debug!("Retrieving message...");
             let message = Message::from_raw(message);
             debug!("Retrieving callback...");
-            let user_data = user_data as *mut F;
+            let callback = &mut *(user_data as *mut F);
             debug!("Calling callback...");
-            (*user_data)(message);
+            callback(message);
         });
     }
 }
 
 impl Drop for SubscriberConfig {
     fn drop(&mut self) {
-        // SAFETY: `Subscriber` owns the `SubscriberConfig` that mdb_subscriber_create_async is
-        // called with, and never touches on_message by itself. The only reference to self.on_message is
-        // in mdb_subscriber_t which we destroy here so it is also safe to drop on_message.
+        // SAFETY: This is always sound because it does not try to dereference the callback.
         unsafe {
             mdb_sys::mdb_subscriber_config_destroy(&mut self.ptr);
         }
@@ -259,7 +275,9 @@ impl Drop for SubscriberConfig {
 pub struct Subscriber<'a> {
     ptr: *mut mdb_sys::mdb_subscriber_t,
     _on_done: Deferred,
-    _config: SubscriberConfig,
+    // We don't need to keep the entire config alive, only the callback, because
+    // `mdb_subscriber_create_async` will copy any information it keeps.
+    _on_message: Deferred,
     _marker: PhantomData<&'a Connection>,
 }
 
@@ -274,14 +292,14 @@ impl<'a> Subscriber<'a> {
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
-            let on_done = Box::into_raw(Box::new(on_done));
-            let _on_done = Deferred::new(on_done);
+            let raw_on_done = Box::into_raw(Box::new(on_done));
+            let on_done = Deferred::new(raw_on_done);
             let mut error: *mut mdb_sys::mdb_error_t = std::ptr::null_mut();
             let ptr = mdb_sys::mdb_subscriber_create_async(
                 connection.ptr,
                 config.ptr,
                 Some(Self::on_done::<F>),
-                on_done as *mut c_void,
+                raw_on_done as *mut c_void,
                 &mut error,
             );
             match (ptr.is_null(), error.is_null()) {
@@ -289,10 +307,10 @@ impl<'a> Subscriber<'a> {
                     panic!("mdb_subscriber_create_async returned both a connection and an error")
                 }
                 (false, true) => Ok(Self {
-                    ptr,
-                    _on_done,
-                    _config: config,
                     _marker: PhantomData,
+                    ptr,
+                    _on_done: on_done,
+                    _on_message: config.into_callback(),
                 }),
                 (true, false) => Err(Error::new_owned(error)),
                 (true, true) => {
@@ -313,8 +331,8 @@ impl<'a> Subscriber<'a> {
                 true => None,
                 false => Some(Error::new_borrowed(error)),
             };
-            let user_data = user_data as *mut F;
-            (*user_data)(error);
+            let callback = &mut *(user_data as *mut F);
+            callback(error);
         });
     }
 }
