@@ -151,7 +151,7 @@ impl Connection {
         }
     }
 
-    unsafe extern "C" fn on_error<F>(error: *mut mdb_sys::mdb_error_t, user_data: *mut c_void)
+    unsafe extern "C" fn on_error<F>(error: *const mdb_sys::mdb_error_t, user_data: *mut c_void)
     where
         F: FnMut(Error) + Send + 'static,
     {
