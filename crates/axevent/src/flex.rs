@@ -138,6 +138,9 @@ pub struct Event {
 }
 
 impl Event {
+    // Even though this function is private having it as safe makes it difficult to keep track of
+    // when safety preconditions must be considered, and when they need not.
+    // TODO: Mark as unsafe
     fn from_raw(raw: *mut AXEvent) -> Self {
         unsafe {
             // Converting to `*mut` is safe as long as we ensure that none of the mutable methods on
@@ -151,7 +154,9 @@ impl Event {
     pub fn new2(key_value_set: KeyValueSet, time_stamp: Option<DateTime>) -> Self {
         unsafe {
             let raw = ax_event_new2(key_value_set.raw, time_stamp.into_glib_ptr());
-            Self { raw, key_value_set }
+            // `ax_event_new2` should return null only iff `key_value_set` is null.
+            assert!(!raw.is_null());
+            Self::from_raw(raw)
         }
     }
 
