@@ -81,10 +81,9 @@ mod tests {
     use std::{ffi::CStr, time, time::Duration};
 
     use anyhow::bail;
-    use axevent::flex::CStringPtr;
     use axevent::{
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
-        flex::{Event, Handler, KeyValueSet},
+        flex::{CStringPtr, Event, Handler, KeyValueSet},
     };
     use log::debug;
 
@@ -150,7 +149,13 @@ mod tests {
 
     #[test]
     fn can_send_and_receive_event() {
+        // axevent supports keys and values that are not valid UTF-8;
+        // using an invalid UTF-8 string is a low-effort way of ensuring that support is propagated.
         let expected = c"Hello\xc3\x28";
+
+        // Sanity check
+        assert!(expected.to_str().is_err());
+
         let actual = send_and_receive_event(expected).unwrap();
         assert_eq!(actual.as_c_str(), expected);
     }

@@ -7,6 +7,16 @@
 //! * allows everything that can be done (safely) with the C API.
 //!
 //! Please see the ACAP documentation for [`axevent.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/axevent_8h.html).
+use std::{
+    any,
+    collections::HashMap,
+    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
+    fmt::Debug,
+    process, ptr,
+    ptr::NonNull,
+    sync::Mutex,
+};
+
 use axevent_sys::{
     ax_event_free, ax_event_get_key_value_set, ax_event_get_time_stamp2, ax_event_handler_declare,
     ax_event_handler_free, ax_event_handler_new, ax_event_handler_send_event,
@@ -29,15 +39,6 @@ use glib::{
 };
 use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
-use std::ptr::NonNull;
-use std::{
-    any,
-    collections::HashMap,
-    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
-    fmt::Debug,
-    process, ptr,
-    sync::Mutex,
-};
 
 macro_rules! abort_unwind {
     ($f:expr) => {
