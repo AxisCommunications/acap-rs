@@ -76,6 +76,7 @@ impl CStringPtr {
     /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
     /// users of this memory.
     unsafe fn from_ptr(ptr: *mut c_char) -> Self {
+        debug_assert!(!ptr.is_null());
         Self(NonNull::new_unchecked(ptr))
     }
 
