@@ -317,8 +317,7 @@ impl Handler {
             self.declaration_callbacks
                 .lock()
                 .unwrap()
-                .remove(declaration)
-                .unwrap();
+                .remove(declaration);
         }
         result
     }
