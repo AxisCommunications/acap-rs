@@ -65,7 +65,7 @@ impl std::ops::Deref for BorrowedError<'_> {
     // of a callback. BorrowedError is tied to the lifetime of the contained pointer and since
     // Error does not implement Copy there is no way to leak the contained pointer.
     fn deref(&self) -> &Self::Target {
-        unsafe { &*(self.ptr as *const Error) }
+        unsafe { &*((&self.ptr as *const *const mdb_sys::mdb_error_t) as *const Error) }
     }
 }
 
