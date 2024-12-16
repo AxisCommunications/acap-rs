@@ -163,8 +163,12 @@ mod tests {
     #[test]
     fn can_declare_without_callback() {
         let handler = Handler::new();
-        handler
+        let declaration = handler
             .declare::<fn(axevent::flex::Declaration)>(&topic().unwrap(), true, None)
             .unwrap();
+        // TODO: Consider refactoring the API to make it harder to make this mistake.
+        handler.undeclare(&declaration).unwrap();
+        let main_context = glib::MainContext::default();
+        while main_context.iteration(false) {}
     }
 }
