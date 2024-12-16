@@ -70,6 +70,7 @@ impl std::ops::Deref for BorrowedError<'_> {
 }
 
 impl BorrowedError<'_> {
+    // TODO: Mark this unsafe and explain why
     pub(crate) fn new(ptr: *const mdb_sys::mdb_error_t) -> Self {
         BorrowedError {
             ptr,
