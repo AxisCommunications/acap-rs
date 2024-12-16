@@ -1,6 +1,7 @@
 use crate::sys;
 use std::collections::HashMap;
 use std::ffi::c_void;
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::thread::{spawn, JoinHandle};
@@ -111,6 +112,28 @@ unsafe impl Send for Handler {}
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct Subscription(i32);
 
+pub struct Error {
+    ptr: *mut sys::error_t,
+}
+
+impl Error {
+    fn code(&self) -> i32 {
+        unsafe { self.ptr.as_ref().unwrap().code }
+    }
+}
+
+pub(crate) struct BorrowedError<'a> {
+    ptr: *const sys::error_t,
+    _marker: PhantomData<&'a sys::error_t>,
+}
+
+impl std::ops::Deref for BorrowedError<'_> {
+    type Target = Error;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*((&self.ptr as *const *const sys::error_t) as *const Error) }
+    }
+}
+
 #[test]
 fn transfer_callbacks() {
     let handler = Handler::new();
@@ -132,4 +155,20 @@ fn transfer_callbacks() {
 
     assert_eq!(SHARED_COUNT.load(Ordering::Relaxed), 2);
     assert_eq!(exclusive_count, 0);
+}
+
+#[test]
+fn deref_borrowed_error() {
+    let error: *const sys::error_t = unsafe { sys::error_new() };
+
+    {
+        let borrowed = BorrowedError {
+            ptr: error,
+            _marker: PhantomData,
+        };
+        assert_eq!(borrowed.code(), 42);
+    }
+
+    assert!(!error.is_null());
+    unsafe { sys::error_free(error as *mut sys::error_t) };
 }
