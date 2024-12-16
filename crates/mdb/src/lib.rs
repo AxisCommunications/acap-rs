@@ -133,7 +133,7 @@ pub struct SubscriberConfig {
 impl SubscriberConfig {
     pub fn try_new<F>(topic: &CStr, source: &CStr, on_message: F) -> Result<Self, Error>
     where
-        F: for<'a> FnMut(&Message<'a>) + Send + 'static,
+        F: for<'a> FnMut(Message<'a>) + Send + 'static,
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
@@ -178,7 +178,7 @@ impl SubscriberConfig {
         message: *const mdb_sys::mdb_message_t,
         user_data: *mut c_void,
     ) where
-        F: for<'a> FnMut(&Message<'a>) + Send + 'static,
+        F: for<'a> FnMut(Message<'a>) + Send + 'static,
     {
         suppress_unwind!(|| {
             debug!("Handling message {message:?} with user_data {user_data:?}");
@@ -187,7 +187,7 @@ impl SubscriberConfig {
             debug!("Retrieving callback...");
             let callback = &mut *(user_data as *mut F);
             debug!("Calling callback...");
-            callback(&message);
+            callback(message);
         });
     }
 }
