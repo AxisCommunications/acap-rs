@@ -640,12 +640,17 @@ pub enum PreProcError {
     UnsupportedOperation,
 }
 
+struct Resolution {
+    width: u32,
+    height: u32,
+}
+
 #[derive(Default)]
 pub struct PreprocessorBuilder {
     backend: PreProcBackend,
-    input_size: Option<(i64, i64)>,
+    input_size: Option<Resolution>,
     crop: Option<(i64, i64, i64, i64)>,
-    output_size: Option<(i64, i64)>,
+    output_size: Option<Resolution>,
     input_format: ImageFormat,
     output_format: ImageFormat,
 }
@@ -670,13 +675,13 @@ impl PreprocessorBuilder {
     /// Scale the input image width and height to the desired output width and
     /// height. The aspect ratio is not preserved. Size indicates the desired
     /// final output size.
-    pub fn output_size(mut self, size: (i64, i64)) -> Self {
-        self.output_size = Some(size);
+    pub fn output_size(mut self, width: u32, height: u32) -> Self {
+        self.output_size = Some(Resolution { width, height });
         self
     }
 
-    pub fn input_size(mut self, size: (i64, i64)) -> Self {
-        self.input_size = Some(size);
+    pub fn input_size(mut self, width: u32, height: u32) -> Self {
+        self.input_size = Some(Resolution { width, height });
         self
     }
 
@@ -745,7 +750,10 @@ impl PreprocessorBuilder {
             }
         }
         if let Some(s) = self.input_size {
-            map.set_int_arr2("image.input.size", s)?;
+            map.set_int_arr2(
+                "image.input.size",
+                (i64::from(s.width), i64::from(s.height)),
+            )?;
         }
 
         let mut crop_map: Option<LarodMap> = None;
@@ -758,7 +766,10 @@ impl PreprocessorBuilder {
         }
 
         if let Some(s) = self.output_size {
-            map.set_int_arr2("image.output.size", s)?;
+            map.set_int_arr2(
+                "image.output.size",
+                (i64::from(s.width), i64::from(s.height)),
+            )?;
         }
 
         let device_name = match self.backend {
@@ -1282,8 +1293,8 @@ mod tests {
         let session = Session::new();
         let mut preprocessor = match Preprocessor::builder()
             .input_format(ImageFormat::NV12)
-            .input_size((1920, 1080))
-            .output_size((1920, 1080))
+            .input_size(1920, 1080)
+            .output_size(1920, 1080)
             .backend(PreProcBackend::LibYUV)
             .load(&session)
         {
@@ -1308,8 +1319,8 @@ mod tests {
         let session = Session::new();
         let mut preprocessor = match Preprocessor::builder()
             .input_format(ImageFormat::NV12)
-            .input_size((1920, 1080))
-            .output_size((1920, 1080))
+            .input_size(1920, 1080)
+            .output_size(1920, 1080)
             .backend(PreProcBackend::LibYUV)
             .load(&session)
         {
