@@ -87,7 +87,7 @@ mod tests {
     };
     use log::debug;
 
-    fn topic() -> anyhow::Result<KeyValueSet> {
+    fn topic() -> anyhow::Result<KeyValueSet<'static>> {
         let mut kvs = KeyValueSet::default();
         kvs.add_key_value(
             c"topic0",

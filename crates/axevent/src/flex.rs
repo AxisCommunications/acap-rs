@@ -7,16 +7,6 @@
 //! * allows everything that can be done (safely) with the C API.
 //!
 //! Please see the ACAP documentation for [`axevent.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/axevent_8h.html).
-use std::{
-    any,
-    collections::HashMap,
-    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
-    fmt::Debug,
-    process, ptr,
-    ptr::NonNull,
-    sync::Mutex,
-};
-
 use axevent_sys::{
     ax_event_free, ax_event_get_key_value_set, ax_event_get_time_stamp2, ax_event_handler_declare,
     ax_event_handler_free, ax_event_handler_new, ax_event_handler_send_event,
@@ -39,6 +29,16 @@ use glib::{
 };
 use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
+use std::marker::PhantomData;
+use std::{
+    any,
+    collections::HashMap,
+    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
+    fmt::Debug,
+    process, ptr,
+    ptr::NonNull,
+    sync::Mutex,
+};
 
 macro_rules! abort_unwind {
     ($f:expr) => {
@@ -134,7 +134,6 @@ pub struct Event {
     raw: *mut AXEvent,
     // TODO: Considering using separate owned and borrowed key value set types.
     // This is a hack to make it possible to hand out references.
-    key_value_set: KeyValueSet,
 }
 
 impl Event {
@@ -142,26 +141,30 @@ impl Event {
     // when safety preconditions must be considered, and when they need not.
     // TODO: Mark as unsafe
     fn from_raw(raw: *mut AXEvent) -> Self {
-        unsafe {
-            // Converting to `*mut` is safe as long as we ensure that none of the mutable methods on
-            // `KeyValueSet` are called, which we do by never handing out a mutable reference to the
-            // `KeyValueSet`.
-            let key_value_set = KeyValueSet::from_raw(ax_event_get_key_value_set(raw) as *mut _);
-            Self { raw, key_value_set }
-        }
+        // Converting to `*mut` is safe as long as we ensure that none of the mutable methods on
+        // `KeyValueSet` are called, which we do by never handing out a mutable reference to the
+        // `KeyValueSet`.
+        Self { raw }
     }
 
     pub fn new2(key_value_set: KeyValueSet, time_stamp: Option<DateTime>) -> Self {
         unsafe {
-            let raw = ax_event_new2(key_value_set.raw, time_stamp.into_glib_ptr());
+            let raw = ax_event_new2(key_value_set.raw(), time_stamp.into_glib_ptr());
             // `ax_event_new2` should return null only iff `key_value_set` is null.
             assert!(!raw.is_null());
             Self::from_raw(raw)
         }
     }
 
-    pub fn key_value_set(&self) -> &KeyValueSet {
-        &self.key_value_set
+    pub fn key_value_set<'a>(&'a self) -> KeyValueSet<'a> {
+        unsafe {
+            KeyValueSet {
+                inner: KeyValueSetInner::Borrowed(
+                    dbg!(ax_event_get_key_value_set(self.raw)) as *mut _
+                ),
+                _marker: PhantomData,
+            }
+        }
     }
 
     pub fn time_stamp2(&self) -> DateTime {
@@ -172,7 +175,6 @@ impl Event {
 impl Drop for Event {
     fn drop(&mut self) {
         debug!("Dropping {}", any::type_name::<Self>());
-        self.key_value_set.raw = ptr::null_mut();
         unsafe {
             ax_event_free(self.raw);
         }
@@ -277,7 +279,7 @@ impl Handler {
             try_func!(
                 ax_event_handler_declare,
                 self.raw,
-                key_value_set.raw,
+                key_value_set.raw(),
                 stateless as c_int,
                 &mut declaration,
                 if raw_callback.is_none() {
@@ -352,7 +354,7 @@ impl Handler {
             try_func!(
                 ax_event_handler_subscribe,
                 self.raw,
-                key_value_set.raw,
+                key_value_set.raw(),
                 &mut subscription,
                 Some(Subscription::handle_callback::<F>),
                 raw_callback as *mut c_void,
@@ -390,39 +392,48 @@ impl Handler {
     }
 }
 
-/// Please see the ACAP documentation for [`ax_event_key_value_set.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event__key__value__set_8h.html).
-pub struct KeyValueSet {
-    raw: *mut AXEventKeyValueSet,
+enum KeyValueSetInner {
+    Owned(*mut AXEventKeyValueSet),
+    Borrowed(*const AXEventKeyValueSet),
 }
 
-impl Default for KeyValueSet {
+/// Please see the ACAP documentation for [`ax_event_key_value_set.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event__key__value__set_8h.html).
+pub struct KeyValueSet<'a> {
+    inner: KeyValueSetInner,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl KeyValueSet<'_> {
+    fn raw(&self) -> *mut AXEventKeyValueSet {
+        match self.inner {
+            KeyValueSetInner::Owned(p) => p,
+            KeyValueSetInner::Borrowed(p) => p as *mut _,
+        }
+    }
+}
+
+impl<'a> Default for KeyValueSet<'a> {
     fn default() -> Self {
         KeyValueSet::new()
     }
 }
 
-impl Drop for KeyValueSet {
+impl<'a> Drop for KeyValueSet<'a> {
     fn drop(&mut self) {
         debug!("Dropping {}", any::type_name::<Self>());
         unsafe {
-            // `Event` sets this to null when it is borrowed and should not be freed.
-            if self.raw.is_null() {
-                return;
-            }
-            ax_event_key_value_set_free(self.raw);
+            // FIXME: I'm pretty sure this is a double free, but I want to verify it.
+            ax_event_key_value_set_free(dbg!(self.raw()));
         }
     }
 }
 
-impl KeyValueSet {
-    fn from_raw(raw: *mut AXEventKeyValueSet) -> Self {
-        Self { raw }
-    }
-
+impl<'a> KeyValueSet<'a> {
     pub fn new() -> Self {
         unsafe {
             Self {
-                raw: ax_event_key_value_set_new(),
+                inner: KeyValueSetInner::Owned(dbg!(ax_event_key_value_set_new())),
+                _marker: PhantomData,
             }
         }
     }
@@ -437,7 +448,7 @@ impl KeyValueSet {
             let value: Option<Value> = value.map(|v| v.into());
             try_func!(
                 ax_event_key_value_set_add_key_value,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -468,7 +479,7 @@ impl KeyValueSet {
         unsafe {
             try_func!(
                 ax_event_key_value_set_mark_as_source,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -483,7 +494,7 @@ impl KeyValueSet {
         unsafe {
             try_func!(
                 ax_event_key_value_set_mark_as_data,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -502,7 +513,7 @@ impl KeyValueSet {
         unsafe {
             try_func!(
                 ax_event_key_value_set_mark_as_user_defined,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -524,7 +535,7 @@ impl KeyValueSet {
         unsafe {
             try_func!(
                 ax_event_key_value_set_add_nice_names,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -548,7 +559,7 @@ impl KeyValueSet {
             let mut value_type = AXEventValueType::default();
             try_func!(
                 ax_event_key_value_set_get_value_type,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -572,7 +583,7 @@ impl KeyValueSet {
             let mut value = c_int::default();
             try_func!(
                 ax_event_key_value_set_get_integer,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -589,7 +600,7 @@ impl KeyValueSet {
             let mut value = gboolean::default();
             try_func!(
                 ax_event_key_value_set_get_boolean,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -610,7 +621,7 @@ impl KeyValueSet {
             let mut value = c_double::default();
             try_func!(
                 ax_event_key_value_set_get_double,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -627,7 +638,7 @@ impl KeyValueSet {
             let mut value: *mut c_char = ptr::null_mut();
             try_func!(
                 ax_event_key_value_set_get_string,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -651,7 +662,7 @@ impl KeyValueSet {
         unsafe {
             try_func!(
                 ax_event_key_value_set_remove_key,
-                self.raw,
+                self.raw(),
                 key.as_ptr(),
                 match namespace {
                     Some(v) => v.as_ptr(),
@@ -663,7 +674,7 @@ impl KeyValueSet {
     }
 }
 
-unsafe impl Send for KeyValueSet {}
+unsafe impl<'a> Send for KeyValueSet<'a> {}
 
 type Result<T> = core::result::Result<T, Error>;
 
