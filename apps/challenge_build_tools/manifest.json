@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.7.0",
+  "acapPackageConf": {
+    "setup": {
+      "appName": "challenge_build_tools",
+      "appId": "0",
+      "architecture": "all",
+      "embeddedSdkVersion": "3.0",
+      "friendlyName": "Challenge Build Tools",
+      "user": {
+        "username": "sdk",
+        "group": "sdk"
+      },
+      "runMode": "never",
+      "runOptions": "my run options",
+      "vendor": "Axis Communications",
+      "vendorUrl": "https:www.axis.com",
+      "version": "1.0.0-alpha+2024"
+    },
+    "installation": {
+      "postInstallScript": "post-install.sh"
+    },
+    "uninstallation": {
+      "preUninstallScript": "pre-uninstall.sh"
+    },
+    "configuration": {
+      "settingPage": "index.html",
+      "httpConfig": [
+        {
+          "type": "fastCgi",
+          "name": "my-fast-cgi",
+          "access": "admin"
+        },
+        {
+          "type": "transferCgi",
+          "name": "my-transfer-cgi",
+          "access": "operator"
+        },
+        {
+          "type": "directory",
+          "access": "viewer"
+        }
+      ],
+      "paramConfig": [
+        {
+          "name": "my-parameter",
+          "default": "yes",
+          "type": "bool:no,yes"
+        }
+      ]
+    },
+    "copyProtection": {
+      "method": "none"
+    }
+  }
+}

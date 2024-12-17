@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! An example of how to send an ONVIF event periodically.
 //!
 //! The audience for this example is users who are familiar with the C APIs and have existing code
@@ -77,16 +78,12 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        ffi::{CStr, CString},
-        time,
-        time::Duration,
-    };
+    use std::{ffi::CStr, time, time::Duration};
 
     use anyhow::bail;
     use axevent::{
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
-        flex::{Event, Handler, KeyValueSet},
+        flex::{CStringPtr, Event, Handler, KeyValueSet},
     };
     use log::debug;
 
@@ -101,7 +98,7 @@ mod tests {
         Ok(kvs)
     }
 
-    fn send_and_receive_event(sent: &CStr) -> anyhow::Result<CString> {
+    fn send_and_receive_event(sent: &CStr) -> anyhow::Result<CStringPtr> {
         let main_loop = MainLoop::new();
 
         let handler = Handler::new();
@@ -152,7 +149,13 @@ mod tests {
 
     #[test]
     fn can_send_and_receive_event() {
-        let expected = c"Hello";
+        // axevent supports keys and values that are not valid UTF-8;
+        // using an invalid UTF-8 string is a low-effort way of ensuring that support is propagated.
+        let expected = c"Hello\xc3\x28";
+
+        // Sanity check
+        assert!(expected.to_str().is_err());
+
         let actual = send_and_receive_event(expected).unwrap();
         assert_eq!(actual.as_c_str(), expected);
     }
@@ -160,8 +163,12 @@ mod tests {
     #[test]
     fn can_declare_without_callback() {
         let handler = Handler::new();
-        handler
+        let declaration = handler
             .declare::<fn(axevent::flex::Declaration)>(&topic().unwrap(), true, None)
             .unwrap();
+        // TODO: Consider refactoring the API to make it harder to make this mistake.
+        handler.undeclare(&declaration).unwrap();
+        let main_context = glib::MainContext::default();
+        while main_context.iteration(false) {}
     }
 }

@@ -1,3 +1,5 @@
+# This file is used to create license files for users;
+# be extra careful with changing it.
 accepted = [
     "MIT",
     "Apache-2.0",
