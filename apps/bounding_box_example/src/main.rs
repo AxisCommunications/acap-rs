@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! An example of how to draw bounding boxes using the Bounding Box API.
 
 use std::{

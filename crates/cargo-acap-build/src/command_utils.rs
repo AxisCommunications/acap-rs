@@ -9,7 +9,6 @@ pub trait RunWith {
         self,
         func: impl FnMut(std::io::Result<String>) -> anyhow::Result<()>,
     ) -> anyhow::Result<()>;
-    fn run_with_logged_stdout(self) -> anyhow::Result<()>;
 }
 
 fn spawn(mut cmd: std::process::Command) -> anyhow::Result<std::process::Child> {
@@ -64,14 +63,5 @@ impl RunWith for std::process::Command {
             anyhow::bail!("Child failed: {status}");
         }
         Ok(())
-    }
-    fn run_with_logged_stdout(self) -> anyhow::Result<()> {
-        self.run_with_processed_stdout(|line| {
-            let line = line?;
-            if !line.is_empty() {
-                debug!("Child said {line:?}.");
-            };
-            Ok(())
-        })
     }
 }

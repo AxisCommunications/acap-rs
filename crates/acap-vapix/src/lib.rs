@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
 use std::{
@@ -67,8 +68,8 @@ fn from_dbus() -> anyhow::Result<HttpClient> {
 }
 
 fn from_env() -> anyhow::Result<HttpClient> {
-    let username = env::var("AXIS_DEVICE_USER")?;
-    let password = env::var("AXIS_DEVICE_PASS")?;
+    let username = env::var("AXIS_DEVICE_USER").unwrap_or("root".into());
+    let password = env::var("AXIS_DEVICE_PASS").unwrap_or("pass".into());
     let host = env::var("AXIS_DEVICE_IP")?;
     let url = Url::parse(&format!("http://{host}"))?;
     debug!("Creating client using username {username} from env");

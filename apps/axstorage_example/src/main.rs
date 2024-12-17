@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! An example of how to handle storage disks using the Edge Storage API.
 
 use std::{
@@ -271,19 +272,13 @@ fn main() -> ExitCode {
 
     glib::timeout_add_seconds(10, || write_data("file1"));
     glib::timeout_add_seconds(10, || write_data("file2"));
-    glib::unix_signal_add(SIGTERM, {
+    glib::unix_signal_add_once(SIGTERM, {
         let main_loop = main_loop.clone();
-        move || {
-            main_loop.quit();
-            ControlFlow::Continue
-        }
+        move || main_loop.quit()
     });
-    glib::unix_signal_add(SIGINT, {
+    glib::unix_signal_add_once(SIGINT, {
         let main_loop = main_loop.clone();
-        move || {
-            main_loop.quit();
-            ControlFlow::Continue
-        }
+        move || main_loop.quit()
     });
 
     main_loop.run();

@@ -1,8 +1,10 @@
+#![forbid(unsafe_code)]
 use std::{env, fs::File, path::PathBuf};
 
 use acap_ssh_utils::{patch_package, run_other, run_package};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use cli_version::version_with_commit_id;
 use log::debug;
 use url::Host;
 
@@ -14,8 +16,14 @@ use url::Host;
 /// - enabled SSH on the device,
 /// - configured the SSH user with a password and the necessary permissions, and
 /// - installed any apps that will be impersonated.
+///
+/// # Warning
+///
+/// Neither the ability to patch an already installed app using SSH nor to run an installed app
+/// with stdout attached to the terminal are officially supported use cases. As such all commands
+/// provided by this program may stop working on future versions AXIS OS.
 #[derive(Clone, Debug, Parser)]
-#[clap(verbatim_doc_comment)]
+#[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
     #[command(flatten)]
     netloc: Netloc,
@@ -40,10 +48,10 @@ struct Netloc {
     #[arg(long, value_parser = url::Host::parse, env="AXIS_DEVICE_IP")]
     host: Host,
     /// The username to use for the ssh connection.
-    #[clap(short, long, env = "AXIS_DEVICE_USER")]
+    #[clap(short, long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
     /// The password to use for the ssh connection.
-    #[clap(short, long, env = "AXIS_DEVICE_PASS")]
+    #[clap(short, long, env = "AXIS_DEVICE_PASS", default_value = "pass")]
     pass: String,
 }
 

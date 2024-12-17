@@ -1,5 +1,5 @@
-SYSROOT_AARCH64="/opt/axis/acapsdk/sysroots/aarch64"
-SYSROOT_ARMV7HF="/opt/axis/acapsdk/sysroots/armv7hf"
+SYSROOT_AARCH64="${ACAP_SDK_LOCATION:-/opt/axis}/acapsdk/sysroots/aarch64"
+SYSROOT_ARMV7HF="${ACAP_SDK_LOCATION:-/opt/axis}/acapsdk/sysroots/armv7hf"
 
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc"
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_AARCH64}"

@@ -5,8 +5,8 @@ use std::{
 };
 
 use acap_vapix::{parameter_management, systemready, HttpClient};
-use anyhow::Context;
-use log::{debug, info};
+use anyhow::{bail, Context};
+use log::{debug, info, warn};
 use tokio::time::sleep;
 use url::{Host, Url};
 
@@ -35,23 +35,8 @@ fn log_stdout(mut cmd: std::process::Command) -> anyhow::Result<()> {
     debug!("Waiting for child...");
     let status = child.wait()?;
     if !status.success() {
-        debug!("Child exited with status {status:?}");
+        bail!("Child exited with status {status:?}");
     }
-    Ok(())
-}
-
-async fn restore_root_ssh_user(client: &HttpClient, pass: &str) -> anyhow::Result<()> {
-    info!("Unsetting restrictRootAccess...");
-    axis_cgi::featureflag1::set(
-        client,
-        vec![("restrictRootAccess".to_string(), false)]
-            .into_iter()
-            .collect(),
-    )
-    .await?;
-
-    info!("Resetting root password...");
-    config::ssh1::update_user(client, "root", pass).await?;
     Ok(())
 }
 
@@ -158,8 +143,21 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
     log_stdout(ssh_keygen)?;
 
     // TODO: Check firmware version, make this call only when needed, and fail failures.
-    if let Err(e) = restore_root_ssh_user(&client, pass).await {
-        info!("Could not restore root ssh user because {e} (this is expected on older firmware)");
+    info!("Unsetting restrictRootAccess...");
+    if let Err(e) = axis_cgi::featureflag1::set(
+        &client,
+        vec![("restrictRootAccess".to_string(), false)]
+            .into_iter()
+            .collect(),
+    )
+    .await
+    {
+        warn!("Failed to unset restrictRootAccess because {e} (this is expected on some firmware)")
+    };
+
+    info!("Resetting root password...");
+    if let Err(e) = config::ssh1::update_user(&client, "root", pass).await {
+        warn!("Failed to reset ssh password because {e} (this is expected on some firmware)")
     }
 
     // TODO: Capture stderr
@@ -171,7 +169,18 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
         .args(["-o", "PubkeyAuthentication=no"])
         .args(["-o", "StrictHostKeyChecking=no"])
         .arg(&format!("root@{}", host));
-    log_stdout(sshpass)?;
+    if let Err(e) = log_stdout(sshpass) {
+        warn!("Failed to copy SSH ID because {e} (this is expected on some firmware)")
+    }
+
+    info!("Allowing unsigned ACAP applications...");
+    let resp = client
+        .get("/axis-cgi/applications/config.cgi?action=set&name=AllowUnsigned&value=true")?
+        .send()
+        .await?;
+    if let Err(e) = resp.error_for_status() {
+        warn!("Could not allow unsigned apps because {e} (this is expected on LTS2022 and earlier)")
+    }
 
     Ok(client)
 }
