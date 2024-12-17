@@ -13,6 +13,7 @@ use std::{
     ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
     fmt::Debug,
     process, ptr,
+    ptr::NonNull,
     sync::Mutex,
 };
 
@@ -36,7 +37,7 @@ use glib::{
     translate::{from_glib_full, from_glib_none, IntoGlibPtr},
     DateTime,
 };
-use glib_sys::{gboolean, gpointer, GError};
+use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
 
 macro_rules! abort_unwind {
@@ -61,6 +62,40 @@ macro_rules! try_func {
         let success = $func($( $arg ),+, &mut error);
         try_into_unit(success, error)
     }}
+}
+
+#[repr(transparent)]
+pub struct CStringPtr(NonNull<c_char>);
+
+impl CStringPtr {
+    /// Create an owned string from a foreign allocation
+    ///
+    /// # Safety
+    ///
+    /// In addition to the safety preconditions for [`CStr::from_ptr`] the memory must have been
+    /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
+    /// users of this memory.
+    unsafe fn from_ptr(ptr: *mut c_char) -> Self {
+        debug_assert!(!ptr.is_null());
+        Self(NonNull::new_unchecked(ptr))
+    }
+
+    pub fn as_c_str(&self) -> &CStr {
+        // SAFETY: The preconditions for instantiating this type include all preconditions
+        // for `CStr::from_ptr`.
+        unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
+    }
+}
+
+impl Drop for CStringPtr {
+    fn drop(&mut self) {
+        // SAFETY: The preconditions for instantiating this type include:
+        // - having full ownership of the memory.
+        // - having allocated the memory in a manner that is compatible with `g_free`.
+        unsafe {
+            g_free(self.0.as_ptr() as *mut c_void);
+        }
+    }
 }
 
 struct Deferred(Option<Box<dyn FnOnce()>>);
@@ -103,6 +138,9 @@ pub struct Event {
 }
 
 impl Event {
+    // Even though this function is private having it as safe makes it difficult to keep track of
+    // when safety preconditions must be considered, and when they need not.
+    // TODO: Mark as unsafe
     fn from_raw(raw: *mut AXEvent) -> Self {
         unsafe {
             // Converting to `*mut` is safe as long as we ensure that none of the mutable methods on
@@ -116,7 +154,9 @@ impl Event {
     pub fn new2(key_value_set: KeyValueSet, time_stamp: Option<DateTime>) -> Self {
         unsafe {
             let raw = ax_event_new2(key_value_set.raw, time_stamp.into_glib_ptr());
-            Self { raw, key_value_set }
+            // `ax_event_new2` should return null only iff `key_value_set` is null.
+            assert!(!raw.is_null());
+            Self::from_raw(raw)
         }
     }
 
@@ -277,8 +317,7 @@ impl Handler {
             self.declaration_callbacks
                 .lock()
                 .unwrap()
-                .remove(declaration)
-                .unwrap();
+                .remove(declaration);
         }
         result
     }
@@ -583,7 +622,7 @@ impl KeyValueSet {
         }
     }
 
-    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<CString> {
+    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<CStringPtr> {
         unsafe {
             let mut value: *mut c_char = ptr::null_mut();
             try_func!(
@@ -596,7 +635,15 @@ impl KeyValueSet {
                 },
                 &mut value,
             )?;
-            Ok(CString::from(CStr::from_ptr(value)))
+            // SAFETY: This is safe because:
+            // - The foreign function sets the error if the value is null in which case we return
+            //   early above.
+            // - The foreign function creates the value with `g_strdup` so it will be nul
+            //   terminated, reads to up to and including the nul terminator are valid, and it may
+            //   be freed using `g_free`.
+            // - This function owns the memory and does not mutate it.
+            // - Values will never be longer than `isize::MAX` in practice.
+            Ok(CStringPtr::from_ptr(value))
         }
     }
 
