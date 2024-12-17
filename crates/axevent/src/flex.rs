@@ -149,7 +149,8 @@ impl Event {
         // - Converting `*const` to `*mut` is safe because it does come from neither a Rust
         //   reference nor a `restricted` C pointer, and we only ever access the resulting
         //   `KeyValueSet` through a non-mutable reference.
-        // - `ax_event_get_key_value_set` never returns null.
+        // - `ax_event_get_key_value_set` never returns null (reasonable assumption).
+        // TODO: Update C API documentation to guarantee this invariant.
         let key_value_set = unsafe {
             KeyValueSet {
                 raw: NonNull::new_unchecked(key_value_set as *mut _),
