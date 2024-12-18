@@ -7,6 +7,17 @@
 //! * allows everything that can be done (safely) with the C API.
 //!
 //! Please see the ACAP documentation for [`axevent.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/axevent_8h.html).
+use std::{
+    any,
+    collections::HashMap,
+    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
+    fmt::Debug,
+    marker::PhantomData,
+    process, ptr,
+    ptr::NonNull,
+    sync::Mutex,
+};
+
 use axevent_sys::{
     ax_event_free, ax_event_get_key_value_set, ax_event_get_time_stamp2, ax_event_handler_declare,
     ax_event_handler_free, ax_event_handler_new, ax_event_handler_send_event,
@@ -29,16 +40,6 @@ use glib::{
 };
 use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
-use std::marker::PhantomData;
-use std::{
-    any,
-    collections::HashMap,
-    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
-    fmt::Debug,
-    process, ptr,
-    ptr::NonNull,
-    sync::Mutex,
-};
 
 macro_rules! abort_unwind {
     ($f:expr) => {
@@ -141,9 +142,6 @@ impl Event {
     // when safety preconditions must be considered, and when they need not.
     // TODO: Mark as unsafe
     fn from_raw(raw: *mut AXEvent) -> Self {
-        // Converting to `*mut` is safe as long as we ensure that none of the mutable methods on
-        // `KeyValueSet` are called, which we do by never handing out a mutable reference to the
-        // `KeyValueSet`.
         Self { raw }
     }
 
@@ -159,9 +157,9 @@ impl Event {
     pub fn key_value_set<'a>(&'a self) -> KeyValueSet<'a> {
         unsafe {
             KeyValueSet {
-                inner: KeyValueSetInner::Borrowed(
-                    dbg!(ax_event_get_key_value_set(self.raw)) as *mut _
-                ),
+                inner: KeyValueSetInner::Borrowed(NonNull::new_unchecked(
+                    ax_event_get_key_value_set(self.raw) as *mut _,
+                )),
                 _marker: PhantomData,
             }
         }
@@ -393,8 +391,8 @@ impl Handler {
 }
 
 enum KeyValueSetInner {
-    Owned(*mut AXEventKeyValueSet),
-    Borrowed(*const AXEventKeyValueSet),
+    Owned(NonNull<AXEventKeyValueSet>),
+    Borrowed(NonNull<AXEventKeyValueSet>),
 }
 
 /// Please see the ACAP documentation for [`ax_event_key_value_set.h`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event__key__value__set_8h.html).
@@ -406,8 +404,8 @@ pub struct KeyValueSet<'a> {
 impl KeyValueSet<'_> {
     fn raw(&self) -> *mut AXEventKeyValueSet {
         match self.inner {
-            KeyValueSetInner::Owned(p) => p,
-            KeyValueSetInner::Borrowed(p) => p as *mut _,
+            KeyValueSetInner::Owned(p) => p.as_ptr(),
+            KeyValueSetInner::Borrowed(p) => p.as_ptr(),
         }
     }
 }
@@ -422,8 +420,8 @@ impl<'a> Drop for KeyValueSet<'a> {
     fn drop(&mut self) {
         debug!("Dropping {}", any::type_name::<Self>());
         unsafe {
-            if let KeyValueSetInner::Owned(ptr) = self.inner {
-                ax_event_key_value_set_free(ptr);
+            if let KeyValueSetInner::Owned(kvs) = self.inner {
+                ax_event_key_value_set_free(kvs.as_ptr());
             }
         }
     }
@@ -433,7 +431,9 @@ impl<'a> KeyValueSet<'a> {
     pub fn new() -> Self {
         unsafe {
             Self {
-                inner: KeyValueSetInner::Owned(dbg!(ax_event_key_value_set_new())),
+                inner: KeyValueSetInner::Owned(
+                    NonNull::new_unchecked(ax_event_key_value_set_new()),
+                ),
                 _marker: PhantomData,
             }
         }
