@@ -4,9 +4,46 @@
 //! * has a similar structure to the C API, and
 //! * allows everything that can be done (safely) with the C API.
 
-use std::ffi::{c_int, CStr};
+use std::{
+    ffi::{c_char, c_int, c_void, CStr},
+    ptr::NonNull,
+};
 
-use glib::{translate::FromGlibPtrFull, GString};
+use glib_sys::g_free;
+
+#[repr(transparent)]
+pub struct CStringPtr(NonNull<c_char>);
+
+impl CStringPtr {
+    /// Create an owned string from a foreign allocation
+    ///
+    /// # Safety
+    ///
+    /// In addition to the safety preconditions for [`CStr::from_ptr`] the memory must have been
+    /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
+    /// users of this memory.
+    unsafe fn from_ptr(ptr: *mut c_char) -> Self {
+        debug_assert!(!ptr.is_null());
+        Self(NonNull::new_unchecked(ptr))
+    }
+
+    pub fn as_c_str(&self) -> &CStr {
+        // SAFETY: The preconditions for instantiating this type include all preconditions
+        // for `CStr::from_ptr`.
+        unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
+    }
+}
+
+impl Drop for CStringPtr {
+    fn drop(&mut self) {
+        // SAFETY: The preconditions for instantiating this type include:
+        // - having full ownership of the memory.
+        // - having allocated the memory in a manner that is compatible with `g_free`.
+        unsafe {
+            g_free(self.0.as_ptr() as *mut c_void);
+        }
+    }
+}
 
 /// Perform a license key check.
 ///
@@ -77,19 +114,32 @@ pub fn licensekey_verify_ex(
 ///
 /// * string with the expiration date in YYYY-MM-DD format.
 /// * `None` if the expiration date couldn't be read.
-pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) -> Option<GString> {
-    unsafe {
-        let ptr = licensekey_sys::licensekey_get_exp_date(
+pub fn licensekey_get_exp_date(
+    app_name: &CStr,
+    licensekey_path: Option<&CStr>,
+) -> Option<CStringPtr> {
+    let ptr = unsafe {
+        licensekey_sys::licensekey_get_exp_date(
             app_name.as_ptr(),
             match licensekey_path {
                 None => std::ptr::null(),
                 Some(p) => p.as_ptr(),
             },
-        );
+        )
+    };
+    // SAFETY: The following are sufficient to make this sound:
+    // - The foreign function creates the string using `g_strdup` meaning (verified assumption):
+    //   - it's null terminated.
+    //   - it's a single allocation.
+    //   - it can be freed with `g_free`.
+    // - The foreign function does not keep the pointer (verified assumption).
+    // - The returned string is shorted than `isize::MAX` (reasonable assumption).
+    // TODO: Make the above assumptions an explicit part of the C API.
+    unsafe {
         if ptr.is_null() {
             None
         } else {
-            Some(GString::from_glib_full(ptr))
+            Some(CStringPtr::from_ptr(ptr))
         }
     }
 }
@@ -104,14 +154,22 @@ pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) 
 ///
 /// * string with license key state message.
 /// * `None` if state is not a valid error state.
-pub fn licensekey_get_state_string(state_code: c_int) -> Option<GString> {
+pub fn licensekey_get_state_string(state_code: c_int) -> Option<CStringPtr> {
     let ptr = unsafe { licensekey_sys::licensekey_get_state_string(state_code as c_int) };
-    if ptr.is_null() {
-        None
-    } else {
-        // SAFETY: The foreign function returns a string created with `g_strdup` that it keeps no
-        // references to. The duplicated strings are all valid UTF-8.
-        unsafe { Some(GString::from_glib_full(ptr)) }
+    // SAFETY: The following are sufficient to make this sound:
+    // - The foreign function creates the string using `g_strdup` meaning (verified assumption):
+    //   - it's null terminated.
+    //   - it's a single allocation.
+    //   - it can be freed with `g_free`.
+    // - The foreign function does not keep the pointer (verified assumption).
+    // - The returned string is shorted than `isize::MAX` (reasonable assumption).
+    // TODO: Make the above assumptions an explicit part of the C API.
+    unsafe {
+        if ptr.is_null() {
+            None
+        } else {
+            Some(CStringPtr::from_ptr(ptr))
+        }
     }
 }
 
@@ -151,7 +209,7 @@ mod tests {
         let mut explanations = std::collections::HashSet::new();
         for i in 0..LicenseKeyState::NUM_LICENSEKEY_STATES as c_int {
             let explanation = licensekey_get_state_string(i).unwrap();
-            assert!(explanations.insert(explanation));
+            assert!(explanations.insert(CString::from(explanation.as_c_str())));
         }
     }
     #[test]
