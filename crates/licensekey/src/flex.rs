@@ -105,13 +105,13 @@ pub fn licensekey_get_exp_date(app_name: &CStr, licensekey_path: Option<&CStr>) 
 /// * string with license key state message.
 /// * `None` if state is not a valid error state.
 pub fn licensekey_get_state_string(state_code: c_int) -> Option<GString> {
-    unsafe {
-        let ptr = licensekey_sys::licensekey_get_state_string(state_code as c_int);
-        if ptr.is_null() {
-            None
-        } else {
-            Some(GString::from_glib_full(ptr))
-        }
+    let ptr = unsafe { licensekey_sys::licensekey_get_state_string(state_code as c_int) };
+    if ptr.is_null() {
+        None
+    } else {
+        // SAFETY: The foreign function returns a string created with `g_strdup` that it keeps no
+        // references to. The duplicated strings are all valid UTF-8.
+        unsafe { Some(GString::from_glib_full(ptr)) }
     }
 }
 
