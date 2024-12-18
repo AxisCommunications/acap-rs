@@ -127,9 +127,8 @@ To use this test method, change the working directory to the top level directory
 Cargo can be configured to invoke a specified runner whenever cargo would normally execute some compiled code such as `cargo run` or `cargo test` [target.\<triple\>.runner](https://doc.rust-lang.org/cargo/reference/config.html#targettriplerunner).
 The basic steps to set up the runner are:
 1. Connect an Axis camera to your network and ensure it is accessible.
-2. The user will likely need to be `root`, such that the Axis camera file system is writable.
-3. Set the `AXIS_DEVICE_IP` and, optionally, `AXIS_DEVICE_USER` environment variables.
-4. Set up an identity based SSH connection to the camera.
+2. Set the `AXIS_DEVICE_IP` and, optionally, `AXIS_DEVICE_USER` environment variables.
+3. Set up an identity based SSH connection to the camera.
    1. Create an ID via `ssh-keygen`
    2. Copy the id to the device via `ssh-copy-id`
 
