@@ -4,7 +4,7 @@
 use std::{ffi::CStr, process::abort, thread::sleep, time::Duration};
 
 use log::{error, info};
-use mdb::{Connection, Subscriber, SubscriberConfig};
+use mdb::{Connection, Error, Subscriber, SubscriberConfig};
 
 const TOPIC: &CStr = c"com.axis.analytics_scene_description.v0.beta";
 const SOURCE: &CStr = c"1";
@@ -12,7 +12,7 @@ const SOURCE: &CStr = c"1";
 fn main() {
     acap_logging::init_logger();
 
-    let connection = Connection::try_new(Some(|e| {
+    let connection = Connection::try_new(Some(|e: &Error| {
         error!("Not connected because {e:?}");
         abort();
     }))
@@ -54,7 +54,7 @@ mod tests {
         let mut droppable_tx = Some(tx);
 
         let connection =
-            Connection::try_new(Some(|e| println!("Not connected because {e:?}"))).unwrap();
+            Connection::try_new(Some(|e: &Error| println!("Not connected because {e:?}"))).unwrap();
         let config = SubscriberConfig::try_new(TOPIC, SOURCE, move |message| {
             let payload = String::from_utf8(message.payload().to_vec());
             let Some(tx) = &droppable_tx else {

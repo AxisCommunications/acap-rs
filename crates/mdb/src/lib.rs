@@ -9,6 +9,7 @@ use libc::c_void;
 use log::{debug, error};
 mod error;
 
+use crate::error::BorrowedError;
 pub use crate::error::Error;
 
 macro_rules! suppress_unwind {
@@ -33,19 +34,19 @@ impl Connection {
     /// Passing `None` as the `on_error` callback requires qualifying the generic like so:
     ///
     /// ```
-    /// let connection = Connection::try_new::<fn(Error)>(None);
+    /// let connection = Connection::try_new::<fn(&Error)>(None);
     /// ```
     ///
     /// otherwise the generic is inferred:
     ///
     /// ```
-    /// let connection = Connection::try_new(Some(|e: Error|
+    /// let connection = Connection::try_new(Some(|e: &Error|
     ///     panic!("Failed to establish a connection: {e}")
     /// ));
     /// ```
     pub fn try_new<F>(on_error: Option<F>) -> Result<Self, Error>
     where
-        F: FnMut(Error) + Send + 'static,
+        F: FnMut(&Error) + Send + 'static,
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
@@ -71,7 +72,7 @@ impl Connection {
                     ptr,
                     _on_error: on_error,
                 }),
-                (true, false) => Err(Error::new_owned(error)),
+                (true, false) => Err(Error::new(error)),
                 (true, true) => {
                     panic!("mdb_connection_create returned neither a connection nor an error");
                 }
@@ -81,14 +82,14 @@ impl Connection {
 
     unsafe extern "C" fn on_error<F>(error: *const mdb_sys::mdb_error_t, user_data: *mut c_void)
     where
-        F: FnMut(Error) + Send + 'static,
+        F: FnMut(&Error) + Send + 'static,
     {
         suppress_unwind!(|| {
             // TODO: Remove excessive logging once we are somewhat confident this works
             debug!("Handling error {error:?} with user_data {user_data:?}");
-            let error = Error::new_borrowed(error);
+            let error = BorrowedError::new(error);
             let callback = &mut *(user_data as *mut F);
-            callback(error);
+            callback(&error);
         });
     }
 }
@@ -161,7 +162,7 @@ impl SubscriberConfig {
                     panic!("mdb_subscriber_config_create returned both a connection and an error")
                 }
                 (false, true) => Ok(Self { ptr, on_message }),
-                (true, false) => Err(Error::new_owned(error)),
+                (true, false) => Err(Error::new(error)),
                 (true, true) => panic!(
                     "mdb_subscriber_config_create returned neither a connection nor an error"
                 ),
@@ -216,7 +217,7 @@ impl<'a> Subscriber<'a> {
         on_done: F,
     ) -> Result<Self, Error>
     where
-        F: FnMut(Option<Error>) + Send + 'static,
+        F: FnMut(Option<&Error>) + Send + 'static,
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
@@ -240,7 +241,7 @@ impl<'a> Subscriber<'a> {
                     _on_done: on_done,
                     _on_message: config.into_callback(),
                 }),
-                (true, false) => Err(Error::new_owned(error)),
+                (true, false) => Err(Error::new(error)),
                 (true, true) => {
                     panic!("mdb_subscriber_create_async returned neither a connection nor an error")
                 }
@@ -250,17 +251,17 @@ impl<'a> Subscriber<'a> {
 
     unsafe extern "C" fn on_done<F>(error: *const mdb_sys::mdb_error_t, user_data: *mut c_void)
     where
-        F: FnMut(Option<Error>) + Send + 'static,
+        F: FnMut(Option<&Error>) + Send + 'static,
     {
         suppress_unwind!(|| {
             // TODO: Remove excessive logging once we are somewhat confident this works
             debug!("Handling on_done {error:?} with user_data {user_data:?}");
             let error = match error.is_null() {
                 true => None,
-                false => Some(Error::new_borrowed(error)),
+                false => Some(BorrowedError::new(error)),
             };
             let callback = &mut *(user_data as *mut F);
-            callback(error);
+            callback(error.as_deref());
         });
     }
 }

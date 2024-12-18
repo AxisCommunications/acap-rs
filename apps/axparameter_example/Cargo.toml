@@ -1,0 +1,12 @@
+[package]
+name = "axparameter_example"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+glib = { workspace = true }
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+axparameter = { workspace = true }
