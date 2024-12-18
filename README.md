@@ -133,7 +133,7 @@ The basic steps to set up the runner are:
    1. Create an ID via `ssh-keygen`
    2. Copy the id to the device via `ssh-copy-id`
 
-Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/workspaces/acap-rs/remote-test.sh"]` line in the `.cargo/config.toml`, tests with the `aarch64-unknown-linux-gnu` target triplet will automatically be copied to the remote camera and executed there.
+Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/workspaces/acap-rs/remote-test.sh"]` line in the `.cargo/config.toml`, tests targeting axis device architectures will automatically be copied to the remote camera and executed there.
 Run these tests via `cargo test --target aarch64-unknown-linux-gnu`.
 This approach is particularly useful if only a specific crate is to be tested, and if `println!` debugging is used.
 An example command line invocation might be `cargo test -p acap-vapix --tests -- --nocapture`.
