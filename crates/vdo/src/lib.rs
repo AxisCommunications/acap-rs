@@ -530,7 +530,7 @@ mod tests {
     use anyhow::Context;
 
     #[test]
-    fn stream_error_with_no_buffers() -> anyhow::Result<()> {
+    fn stream_starts_without_explicit_buffers() -> anyhow::Result<()> {
         env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
@@ -538,19 +538,37 @@ mod tests {
             .resolution(1920, 1080)
             .build()
             .context("Unable to create stream")?;
-        // let settings = stream
-        //     .settings()
-        //     .expect("error while getting stream settings");
-        // settings.dump();
-        // let info = stream.info().expect("error while getting stream info");
-        // info.dump();
         let mut r = stream.start().context("Unable to start stream")?;
         r.stop()?;
         Ok(())
     }
 
     #[test]
-    fn it_starts_stream() -> anyhow::Result<()> {
+    fn stream_starts_with_explicit_buffers() -> anyhow::Result<()> {
+        env_logger::builder().is_test(true).try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
+            .resolution(1920, 1080)
+            .buffers(5)
+            .build()
+            .context("Unable to create stream")?;
+        let mut r = stream.start().context("Unable to start stream")?;
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
+            let size = buff
+                .frame()
+                .context("error fetching frame for buffer")?
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
+        r.stop()?;
+        Ok(())
+    }
+
+    #[test]
+    fn stream_starts_with_rgb() -> anyhow::Result<()> {
         env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
@@ -558,15 +576,108 @@ mod tests {
             .resolution(1920, 1080)
             .build()
             .context("Unable to create stream")?;
-        // let settings = stream
-        //     .settings()
-        //     .expect("error while getting stream settings");
-        // settings.dump();
-        // let info = stream.info().expect("error while getting stream info");
-        // info.dump();
-        // stream.allocate_buffers(5);
         let mut r = stream.start().context("starting stream returned error")?;
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
+            let size = buff
+                .frame()
+                .context("error fetching frame for buffer")?
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
+        r.stop().context("Unable to stop stream")?;
+        Ok(())
+    }
 
+    #[test]
+    fn stream_starts_with_jpeg() -> anyhow::Result<()> {
+        env_logger::builder().is_test(true).try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_JPEG)
+            .resolution(1920, 1080)
+            .build()
+            .context("Unable to create stream")?;
+        let mut r = stream.start().context("starting stream returned error")?;
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
+            let size = buff
+                .frame()
+                .context("error fetching frame for buffer")?
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
+        r.stop().context("Unable to stop stream")?;
+        Ok(())
+    }
+
+    #[test]
+    fn stream_starts_with_yuv() -> anyhow::Result<()> {
+        env_logger::builder().is_test(true).try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_YUV)
+            .resolution(1920, 1080)
+            .build()
+            .context("Unable to create stream")?;
+        let mut r = stream.start().context("starting stream returned error")?;
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
+            let size = buff
+                .frame()
+                .context("error fetching frame for buffer")?
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
+        r.stop().context("Unable to stop stream")?;
+        Ok(())
+    }
+
+    #[test]
+    fn stream_starts_with_h264() -> anyhow::Result<()> {
+        env_logger::builder().is_test(true).try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_H264)
+            .resolution(1920, 1080)
+            .build()
+            .context("Unable to create stream")?;
+        let mut r = stream.start().context("starting stream returned error")?;
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
+            let size = buff
+                .frame()
+                .context("error fetching frame for buffer")?
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
+        r.stop().context("Unable to stop stream")?;
+        Ok(())
+    }
+
+    #[test]
+    fn stream_starts_with_h265() -> anyhow::Result<()> {
+        env_logger::builder().is_test(true).try_init();
+        let mut stream = Stream::builder()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_H265)
+            .resolution(1920, 1080)
+            .build()
+            .context("Unable to create stream")?;
+        let mut r = stream.start().context("starting stream returned error")?;
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
+            let size = buff
+                .frame()
+                .context("error fetching frame for buffer")?
+                .size();
+            info!("frame size: {}", size);
+            assert!(size > 0);
+        }
         r.stop().context("Unable to stop stream")?;
         Ok(())
     }
