@@ -6,7 +6,7 @@ if [ -n "${AXIS_DEVICE_IP}" ]; then
     f=`basename $1`
     scp -p "$1" $CARGO_TEST_CAMERA:/tmp
     shift
-    ssh $CARGO_TEST_CAMERA "/tmp/$f" "$@"
+    ssh $CARGO_TEST_CAMERA ${REMOTE_ENV:-} "/tmp/$f" "$@"
 else
     $@
 fi
