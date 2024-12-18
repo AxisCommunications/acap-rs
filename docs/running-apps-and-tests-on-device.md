@@ -24,4 +24,6 @@ Run these tests via `cargo test --target aarch64-unknown-linux-gnu`.
 This approach is particularly useful if only a specific crate is to be tested, and if `println!` debugging is used.
 An example command line invocation might be `cargo test -p acap-vapix --tests -- --nocapture`.
 
+Note that some programs, such `consume_analytics_metadata`, don't work when running as root.
+
 If you want to run tests locally, just make sure you clear the `AXIS_DEVICE_IP` environment variable via `unset AXIS_DEVICE_IP`.
