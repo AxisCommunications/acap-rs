@@ -127,6 +127,9 @@ grouped in a similar way as in the ACAP Native SDK APIs documentation.
 These are idiomatic and safe bindings for the C APIs.
 Each crate has a corresponding `*-sys`, which is omitted for brevity.
 
+- `axparameter`: Bindings for the Parameter API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axparameter/src/lib.rs)
 - `axevent`: Bindings for the Event API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axevent/src/lib.rs)
@@ -171,6 +174,9 @@ by this project.
 
 ### Example applications
 
+- `axparameter_example`: Creates, reads, updates, deletes, and subscribes to parameters.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/axparameter_example/src/main.rs)
 - `axstorage_example`: Writes data to files on all connected storages.
   - Status: ⚠️ Alpha
   - [Source code](apps/axstorage_example/src/main.rs)
