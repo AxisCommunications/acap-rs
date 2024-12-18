@@ -1,5 +1,6 @@
 #!/bin/sh
-set -e
+set -eu
+
 if [ -n "${CARGO_TEST_CAMERA}" ]; then
     f=`basename $1`
     scp "$1" $CARGO_TEST_CAMERA:.
