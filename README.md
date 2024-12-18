@@ -124,15 +124,19 @@ To use this test method, change the working directory to the top level directory
 `cargo-acap-sdk test --host <host-IP> --user <user> --pass <pass>`.
 
 #### Using cargo test runner
-Cargo can be configured to invoke a specified runner whenever cargo would normally execute some compiled code such as `cargo run` or `cargo test` [[target.\<triple\>.runner](https://doc.rust-lang.org/cargo/reference/config.html#targettriplerunner)]. The basic steps to set up the runner are:
+Cargo can be configured to invoke a specified runner whenever cargo would normally execute some compiled code such as `cargo run` or `cargo test` [target.\<triple\>.runner](https://doc.rust-lang.org/cargo/reference/config.html#targettriplerunner).
+The basic steps to set up the runner are:
 1. Connect an Axis camera to your network and ensure it is accessible.
 2. The user will likely need to be `root`, such that the Axis camera file system is writable.
 3. Set the `AXIS_DEVICE_IP` and, optionally, `AXIS_DEVICE_USER` environment variables.
 4. Set up an identity based SSH connection to the camera.
-  1. Create an ID via `ssh-keygen`
-  2. Copy the id to the device via `ssh-copy-id`
+   1. Create an ID via `ssh-keygen`
+   2. Copy the id to the device via `ssh-copy-id`
 
-Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/workspaces/acap-rs/remote-test.sh"]` line in the .cargo/config.toml, tests with the `aarch64-unknown-linux-gnu` target triplet will automatically be copied to the remote camera and executed there. Run these tests via `cargo test --target aarch64-unknown-linux-gnu`. This approach is particularly useful if only a specific crate is to be tested, and if `println!` debugging is used. An example command line invocation might be `cargo test -p acap-vapix --tests -- --nocapture`.
+Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/workspaces/acap-rs/remote-test.sh"]` line in the `.cargo/config.toml`, tests with the `aarch64-unknown-linux-gnu` target triplet will automatically be copied to the remote camera and executed there.
+Run these tests via `cargo test --target aarch64-unknown-linux-gnu`.
+This approach is particularly useful if only a specific crate is to be tested, and if `println!` debugging is used.
+An example command line invocation might be `cargo test -p acap-vapix --tests -- --nocapture`.
 
 If you want to run tests locally, just make sure you clear the `AXIS_DEVICE_IP` environment variable via `unset AXIS_DEVICE_IP`.
 
