@@ -572,12 +572,11 @@ mod tests {
 
     #[test]
     fn stream_error_with_no_buffers() {
-        env_logger::try_init();
+        env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
-            .width(1920)
-            .height(1080)
+            .resolution(1920, 1080)
             .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
             .expect("Unable to create stream");
@@ -594,12 +593,11 @@ mod tests {
 
     #[test]
     fn it_starts_stream() {
-        env_logger::try_init();
+        env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
-            .width(1920)
-            .height(1080)
+            .resolution(1920, 1080)
             .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
             .expect("Unable to create stream");
@@ -617,20 +615,19 @@ mod tests {
     }
 
     #[test]
-    fn stream_fetches_frames() {
-        env_logger::try_init();
+    fn stream_fetches_frames_explicitly() {
+        env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
-            .width(1920)
-            .height(1080)
+            .resolution(1920, 1080)
             .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
             .expect("Unable to create stream");
         stream.allocate_buffers(5);
         let mut r = stream.start().expect("starting stream returned error");
 
-        {
+        for _ in 0..3 {
             let buff = r.iter().next().expect("failed to fetch frame");
             let size = buff
                 .frame()
