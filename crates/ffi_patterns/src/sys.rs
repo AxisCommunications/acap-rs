@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ffi::c_void;
+use std::ffi::{c_int, c_void};
 
 type Callback = unsafe extern "C" fn(*mut c_void);
 
@@ -51,4 +51,17 @@ pub unsafe extern "C" fn handler_subscribe(
         },
     );
     key
+}
+
+#[allow(non_camel_case_types)]
+pub struct error_t {
+    pub code: c_int,
+}
+
+pub unsafe extern "C" fn error_new() -> *mut error_t {
+    Box::into_raw(Box::new(error_t { code: 42 }))
+}
+
+pub unsafe extern "C" fn error_free(error: *mut error_t) {
+    drop(Box::from_raw(error))
 }
