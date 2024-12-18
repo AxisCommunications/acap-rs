@@ -111,7 +111,8 @@ The focus of these tools are to make less common things possible.
   - Documentation: [README](crates/fleet-manager/README.md)
 
 These can be installed independently and are provided as library crates too for developers who want
-to write their own, tailored tools.
+to write their own,
+tailored tools.
 
 ## Libraries
 
