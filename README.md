@@ -206,7 +206,7 @@ by this project.
 
 ### Articles
 
-- [Running apps and tests on device](docs/running-apps-and-tests-on-device)
+- [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
 
 ## Troubleshooting
 
