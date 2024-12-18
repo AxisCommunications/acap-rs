@@ -109,6 +109,9 @@ impl LarodError {
     }
 }
 
+unsafe impl Send for LarodError {}
+unsafe impl Sync for LarodError {}
+
 impl std::error::Error for LarodError {}
 
 impl Display for LarodError {
