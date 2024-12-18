@@ -12,7 +12,9 @@ use std::{
     collections::HashMap,
     ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
     fmt::Debug,
+    marker::PhantomData,
     mem::ManuallyDrop,
+    ops::Deref,
     process, ptr,
     ptr::NonNull,
     sync::Mutex,
@@ -133,9 +135,6 @@ impl Declaration {
 /// Please see the ACAP documentation for [`ax_event.sh`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/axevent/html/ax__event_8h.html).
 pub struct Event {
     raw: *mut AXEvent,
-    // TODO: Considering using separate owned and borrowed key value set types.
-    // This is a hack to make it possible to hand out references.
-    key_value_set: ManuallyDrop<KeyValueSet>,
 }
 
 impl Event {
@@ -143,23 +142,7 @@ impl Event {
     // when safety preconditions must be considered, and when they need not.
     // TODO: Mark as unsafe
     fn from_raw(raw: *mut AXEvent) -> Self {
-        let key_value_set = unsafe { ax_event_get_key_value_set(raw) };
-        debug_assert!(!key_value_set.is_null());
-        // SAFETY:
-        // - Converting `*const` to `*mut` is safe because it does come from neither a Rust
-        //   reference nor a `restricted` C pointer, and we only ever access the resulting
-        //   `KeyValueSet` through a non-mutable reference.
-        // - `ax_event_get_key_value_set` never returns null (reasonable assumption).
-        // TODO: Update C API documentation to guarantee this invariant.
-        let key_value_set = unsafe {
-            KeyValueSet {
-                raw: NonNull::new_unchecked(key_value_set as *mut _),
-            }
-        };
-        Self {
-            raw,
-            key_value_set: ManuallyDrop::new(key_value_set),
-        }
+        Self { raw }
     }
 
     pub fn new2(key_value_set: KeyValueSet, time_stamp: Option<DateTime>) -> Self {
@@ -171,8 +154,16 @@ impl Event {
         }
     }
 
-    pub fn key_value_set(&self) -> &KeyValueSet {
-        &self.key_value_set
+    pub fn key_value_set<'a>(&'a self) -> Borrowed<'a, KeyValueSet> {
+        let inner = unsafe {
+            ManuallyDrop::new(KeyValueSet {
+                raw: NonNull::new_unchecked(ax_event_get_key_value_set(self.raw) as *mut _),
+            })
+        };
+        Borrowed {
+            inner,
+            _marker: PhantomData,
+        }
     }
 
     pub fn time_stamp2(&self) -> DateTime {
@@ -397,6 +388,19 @@ impl Handler {
                 .unwrap();
         }
         result
+    }
+}
+
+pub struct Borrowed<'a, T> {
+    inner: ManuallyDrop<T>,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<T> Deref for Borrowed<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner.deref()
     }
 }
 
