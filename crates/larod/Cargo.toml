@@ -9,6 +9,9 @@ larod-sys = { workspace = true }
 log.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+env_logger.workspace = true
+
 [features]
 device-tests = []
 
