@@ -422,8 +422,9 @@ impl<'a> Drop for KeyValueSet<'a> {
     fn drop(&mut self) {
         debug!("Dropping {}", any::type_name::<Self>());
         unsafe {
-            // FIXME: I'm pretty sure this is a double free, but I want to verify it.
-            ax_event_key_value_set_free(dbg!(self.raw()));
+            if let KeyValueSetInner::Owned(ptr) = self.inner {
+                ax_event_key_value_set_free(ptr);
+            }
         }
     }
 }
