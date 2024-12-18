@@ -131,6 +131,7 @@ The basic steps to set up the runner are:
 3. Set up an identity based SSH connection to the camera.
    1. Create an ID via `ssh-keygen`
    2. Copy the id to the device via `ssh-copy-id`
+4. Add `bin/` to your path e.g. like `export PATH="$(pwd)/bin:$PATH"`
 
 Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/workspaces/acap-rs/remote-test.sh"]` line in the `.cargo/config.toml`, tests targeting axis device architectures will automatically be copied to the remote camera and executed there.
 Run these tests via `cargo test --target aarch64-unknown-linux-gnu`.
