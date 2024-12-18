@@ -3,6 +3,7 @@
 
 use std::{
     cell::{Cell, RefCell},
+    ffi::CString,
     fs::OpenOptions,
     io::Write,
     path::PathBuf,
@@ -23,7 +24,7 @@ struct DiskItem {
     storage: Option<Storage>,
     storage_type: Option<Type>,
     storage_id: GStringPtr,
-    storage_path: Option<GString>,
+    storage_path: Option<CString>,
     subscription_id: u32,
     setup: bool,
     writable: bool,
@@ -38,7 +39,7 @@ fn write_data(data: &str) -> ControlFlow {
         for item in disks_list.iter() {
             if item.available && item.writable && !item.full && item.setup {
                 let filename =
-                    PathBuf::from(item.storage_path.as_ref().unwrap().as_str()).join(data);
+                    PathBuf::from(item.storage_path.as_ref().unwrap().to_str().unwrap()).join(data);
                 let file = match OpenOptions::new().append(true).create(true).open(&filename) {
                     Ok(f) => f,
                     Err(e) => {
