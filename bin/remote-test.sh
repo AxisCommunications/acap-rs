@@ -2,11 +2,13 @@
 set -eu
 
 if [ -n "${AXIS_DEVICE_IP}" ]; then
-    CARGO_TEST_CAMERA=${AXIS_DEVICE_USER:-root}@${AXIS_DEVICE_IP}
-    f=`basename $1`
-    scp -p "$1" $CARGO_TEST_CAMERA:/tmp
+    LOCAL_PATH="$1"
     shift
-    ssh $CARGO_TEST_CAMERA ${REMOTE_ENV:-} "/tmp/$f" "$@"
+
+    REMOTE_PATH=/tmp/`basename $LOCAL_PATH`
+    CARGO_TEST_CAMERA=${AXIS_DEVICE_USER:-root}@${AXIS_DEVICE_IP}
+    scp -p "$LOCAL_PATH" $CARGO_TEST_CAMERA:$REMOTE_PATH
+    ssh $CARGO_TEST_CAMERA ${REMOTE_ENV:-} $REMOTE_PATH "$@"
 else
     $@
 fi
