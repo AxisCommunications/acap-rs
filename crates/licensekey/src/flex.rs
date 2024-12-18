@@ -4,9 +4,9 @@
 //! * has a similar structure to the C API, and
 //! * allows everything that can be done (safely) with the C API.
 
-use glib::translate::FromGlibPtrFull;
-use glib::GString;
 use std::ffi::{c_int, CStr};
+
+use glib::{translate::FromGlibPtrFull, GString};
 
 /// Perform a license key check.
 ///
