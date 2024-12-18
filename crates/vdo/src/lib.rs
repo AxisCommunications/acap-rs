@@ -220,12 +220,14 @@ pub struct StreamBuilder {
 }
 
 impl Default for StreamBuilder {
+    /// VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT only works for VdoFormat::VDO_FORMAT_YUV and RGB
+    /// VdoBufferStrategy::VDO_BUFFER_STRATEGY_INFINITE works for all VdoFormat's.
     fn default() -> Self {
         StreamBuilder {
             format: VdoFormat::VDO_FORMAT_H264,
             buffer_access: 0,
             buffer_count: 0,
-            buffer_strategy: VdoBufferStrategy::VDO_BUFFER_STRATEGY_NONE,
+            buffer_strategy: VdoBufferStrategy::VDO_BUFFER_STRATEGY_INFINITE,
             input: 0,
             channel: 0,
             width: 0,
@@ -255,8 +257,11 @@ impl StreamBuilder {
         StreamBuilder::default()
     }
 
-    pub fn buffer_strategy(mut self, strategy: VdoBufferStrategy) -> Self {
-        self.buffer_strategy = strategy;
+    /// Set the number of buffers to use for the stream.
+    /// For VdoFormat::VDO_FORMAT_YUV and RGB, the default number of buffers is 3.
+    /// For VdoFormat::VDO_FORMAT_JPEG and h26x this number is ignored.
+    pub fn buffers(mut self, num_buffers: u32) -> Self {
+        self.buffer_count = num_buffers;
         self
     }
 
@@ -282,6 +287,7 @@ impl StreamBuilder {
         map.set_u32("format", self.format as u32)?;
         map.set_u32("width", self.width)?;
         map.set_u32("height", self.height)?;
+        map.set_u32("buffer.count", self.buffer_count)?;
         map.set_u32("buffer.strategy", self.buffer_strategy as u32)?;
         let (stream_raw, maybe_error) = unsafe { try_func!(vdo_stream_new, map.raw, None) };
         if !stream_raw.is_null() {
@@ -438,56 +444,8 @@ impl Stream {
         }
     }
 
-    pub fn allocate_buffer(&mut self) -> Result<()> {
-        let (buffer_ptr, maybe_error) =
-            unsafe { try_func!(vdo_stream_buffer_alloc, self.raw.0, ptr::null_mut()) };
-        if !buffer_ptr.is_null() {
-            debug_assert!(
-                maybe_error.is_none(),
-                "vdo_stream_buffer_alloc returned a buffer pointer AND returned an error!"
-            );
-            self.buffers.push(buffer_ptr);
-            Ok(())
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingVDOError))
-        }
-    }
-
-    pub fn allocate_buffers(&mut self, num: usize) -> Result<()> {
-        for _ in 0..num {
-            let (buffer_ptr, maybe_error) =
-                unsafe { try_func!(vdo_stream_buffer_alloc, self.raw.0, ptr::null_mut()) };
-            if !buffer_ptr.is_null() {
-                debug_assert!(
-                    maybe_error.is_none(),
-                    "vdo_stream_buffer_alloc returned a buffer pointer AND returned an error!"
-                );
-                self.buffers.push(buffer_ptr);
-            } else {
-                return Err(maybe_error.unwrap_or(Error::MissingVDOError));
-            }
-        }
-        Ok(())
-    }
-
     /// Request the Larod service to start fetching frames and passing back buffers.
     pub fn start(&mut self) -> Result<RunningStream> {
-        if self.buffers.is_empty() {
-            return Err(Error::NoBuffersAllocated);
-        }
-        for buffer in self.buffers.iter() {
-            let (success_enqueue, maybe_error) =
-                unsafe { try_func!(vdo_stream_buffer_enqueue, self.raw.0, *buffer) };
-            if success_enqueue == GTRUE {
-                debug!("enqueued buffer to stream");
-                debug_assert!(
-                    maybe_error.is_none(),
-                    "vdo_stream_buffer_enqueue indicated success AND returned an error!"
-                );
-            } else {
-                return Err(maybe_error.unwrap_or(Error::MissingVDOError));
-            }
-        }
         let (success_start, maybe_error) = unsafe { try_func!(vdo_stream_start, self.raw.0) };
         if success_start == GTRUE {
             debug_assert!(
@@ -569,74 +527,73 @@ impl Drop for Stream {
 #[cfg(all(test, target_arch = "aarch64", feature = "device-tests"))]
 mod tests {
     use super::*;
+    use anyhow::Context;
 
     #[test]
-    fn stream_error_with_no_buffers() {
+    fn stream_error_with_no_buffers() -> anyhow::Result<()> {
         env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
             .resolution(1920, 1080)
-            .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
-            .expect("Unable to create stream");
+            .context("Unable to create stream")?;
         // let settings = stream
         //     .settings()
         //     .expect("error while getting stream settings");
         // settings.dump();
         // let info = stream.info().expect("error while getting stream info");
         // info.dump();
-        let r = stream.start();
-        assert!(r.is_err());
-        assert!(matches!(r, Err(Error::NoBuffersAllocated)));
+        let mut r = stream.start().context("Unable to start stream")?;
+        r.stop()?;
+        Ok(())
     }
 
     #[test]
-    fn it_starts_stream() {
+    fn it_starts_stream() -> anyhow::Result<()> {
         env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
             .resolution(1920, 1080)
-            .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
             .build()
-            .expect("Unable to create stream");
+            .context("Unable to create stream")?;
         // let settings = stream
         //     .settings()
         //     .expect("error while getting stream settings");
         // settings.dump();
         // let info = stream.info().expect("error while getting stream info");
         // info.dump();
-        stream.allocate_buffers(5);
-        let mut r = stream.start().expect("starting stream returned error");
+        // stream.allocate_buffers(5);
+        let mut r = stream.start().context("starting stream returned error")?;
 
-        let s = r.stop();
-        assert!(s.is_ok());
+        r.stop().context("Unable to stop stream")?;
+        Ok(())
     }
 
     #[test]
-    fn stream_fetches_frames_explicitly() {
+    fn stream_fetches_frames_infinitely() -> anyhow::Result<()> {
         env_logger::builder().is_test(true).try_init();
         let mut stream = Stream::builder()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_PLANAR_RGB)
             .resolution(1920, 1080)
-            .buffer_strategy(VdoBufferStrategy::VDO_BUFFER_STRATEGY_EXPLICIT)
+            .buffers(5)
             .build()
-            .expect("Unable to create stream");
-        stream.allocate_buffers(5);
-        let mut r = stream.start().expect("starting stream returned error");
+            .context("Unable to create stream")?;
+        let mut r = stream.start().context("starting stream returned error")?;
 
-        for _ in 0..3 {
-            let buff = r.iter().next().expect("failed to fetch frame");
+        for _ in 0..10 {
+            let buff = r.iter().next().context("failed to fetch frame")?;
             let size = buff
                 .frame()
-                .expect("error fetching frame for buffer")
+                .context("error fetching frame for buffer")?
                 .size();
             info!("frame size: {}", size);
             assert!(size > 0);
         }
 
-        let s = r.stop();
+        r.stop().context("Unable to stop stream")?;
+        Ok(())
     }
 }
