@@ -1,5 +1,5 @@
 [target.aarch64-unknown-linux-gnu]
-runner = ["/workspaces/acap-rs/remote-test.sh"]
+runner = ["/workspaces/acap-rs/bin/remote-test.sh"]
 
 [target.thumbv7neon-unknown-linux-gnueabihf]
-runner = ["/workspaces/acap-rs/remote-test.sh"]
+runner = ["/workspaces/acap-rs/bin/remote-test.sh"]
