@@ -54,7 +54,7 @@ mod tests {
         let mut droppable_tx = Some(tx);
 
         let connection =
-            Connection::try_new(Some(|e| println!("Not connected because {e:?}"))).unwrap();
+            Connection::try_new(Some(|e: &Error| println!("Not connected because {e:?}"))).unwrap();
         let config = SubscriberConfig::try_new(TOPIC, SOURCE, move |message| {
             let payload = String::from_utf8(message.payload().to_vec());
             let Some(tx) = &droppable_tx else {
