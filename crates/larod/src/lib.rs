@@ -605,7 +605,7 @@ impl<'a> LarodDevice<'a> {
 pub trait LarodModel {
     fn create_model_inputs(&mut self) -> Result<()>;
     fn num_inputs(&self) -> usize;
-    fn start(&self) -> Result<()>;
+    fn start_job(&self) -> Result<()>;
     fn stop(&self);
 }
 
@@ -876,7 +876,7 @@ impl<'a> LarodModel for Preprocessor<'a> {
         self.num_inputs
     }
 
-    fn start(&self) -> Result<()> {
+    fn start_job(&self) -> Result<()> {
         if self.input_tensors.is_none() || self.output_tensors.is_none() {
             return Err(Error::UnsatisfiedDependencies);
         }
@@ -1006,7 +1006,7 @@ impl<'a> LarodModel for InferenceModel<'a> {
         self.num_inputs
     }
 
-    fn start(&self) -> Result<()> {
+    fn start_job(&self) -> Result<()> {
         Ok(())
     }
     fn stop(&self) {}
@@ -1292,7 +1292,7 @@ mod tests {
     }
 
     #[test]
-    fn it_creates_and_destroys_model() {
+    fn it_creates_and_destroys_preprocessor() {
         let session = Session::new();
         let mut preprocessor = match Preprocessor::builder()
             .input_format(ImageFormat::NV12)
