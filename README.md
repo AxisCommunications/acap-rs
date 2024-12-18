@@ -220,6 +220,10 @@ by this project.
 
 <!-- inspect_env is omitted because it is intended primarily as a test -->
 
+### Articles
+
+- [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
+
 ## Troubleshooting
 
 The docker image may fail to build with the following included in the output:
