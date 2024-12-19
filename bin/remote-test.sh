@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 set -eu
 
-if [ -v AXIS_DEVICE_IP ]; then
+if [ ${AXIS_DEVICE_IP:-} ]; then
     LOCAL_PATH="$1"
     shift
 
