@@ -1252,161 +1252,238 @@ impl std::ops::Drop for Session {
     }
 }
 
-#[cfg(all(test, target_arch = "aarch64", feature = "device-tests"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn it_creates_larod_map() {
-        env_logger::builder().is_test(true).try_init();
-        assert!(LarodMap::new().is_ok());
-    }
+    #[cfg(all(target_arch = "aarch64", feature = "device-tests"))]
+    mod device_test {
+        use super::*;
 
-    #[test]
-    fn it_drops_map() {
-        env_logger::builder().is_test(true).try_init();
-        let map = LarodMap::new().unwrap();
-        std::mem::drop(map);
-    }
+        #[test]
+        fn it_creates_larod_map() {
+            env_logger::builder().is_test(true).try_init();
+            assert!(LarodMap::new().is_ok());
+        }
 
-    #[test]
-    fn larod_map_can_set_str() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_string("test_key", "test_value").unwrap();
-    }
+        #[test]
+        fn it_drops_map() {
+            env_logger::builder().is_test(true).try_init();
+            let map = LarodMap::new().unwrap();
+            std::mem::drop(map);
+        }
 
-    #[test]
-    fn larod_map_can_get_str() {
-        let mut map = LarodMap::new().unwrap();
-        map.set_string("test_key", "this_value").unwrap();
-        let s = map.get_string("test_key").unwrap();
-        assert_eq!(s, String::from("this_value"));
-    }
+        #[test]
+        fn larod_map_can_set_str() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_string("test_key", "test_value").unwrap();
+        }
 
-    #[test]
-    fn larod_map_can_set_int() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_int("test_key", 10).unwrap();
-    }
+        #[test]
+        fn larod_map_can_get_str() {
+            let mut map = LarodMap::new().unwrap();
+            map.set_string("test_key", "this_value").unwrap();
+            let s = map.get_string("test_key").unwrap();
+            assert_eq!(s, String::from("this_value"));
+        }
 
-    #[test]
-    fn larod_map_can_get_int() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_int("test_key", 9).unwrap();
-        let i = map.get_int("test_key").unwrap();
-        assert_eq!(i, 9);
-    }
+        #[test]
+        fn larod_map_can_set_int() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_int("test_key", 10).unwrap();
+        }
 
-    #[test]
-    fn larod_map_can_set_2_tuple() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_int_arr2("test_key", (1, 2)).unwrap();
-    }
-    #[test]
-    fn larod_map_can_get_2_tuple() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_int_arr2("test_key", (5, 6)).unwrap();
-        let arr = map.get_int_arr2("test_key").unwrap();
-        assert_eq!(arr[0], 5);
-        assert_eq!(arr[1], 6);
-    }
+        #[test]
+        fn larod_map_can_get_int() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_int("test_key", 9).unwrap();
+            let i = map.get_int("test_key").unwrap();
+            assert_eq!(i, 9);
+        }
 
-    #[test]
-    fn larod_map_can_set_4_tuple() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
-    }
+        #[test]
+        fn larod_map_can_set_2_tuple() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_int_arr2("test_key", (1, 2)).unwrap();
+        }
+        #[test]
+        fn larod_map_can_get_2_tuple() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_int_arr2("test_key", (5, 6)).unwrap();
+            let arr = map.get_int_arr2("test_key").unwrap();
+            assert_eq!(arr[0], 5);
+            assert_eq!(arr[1], 6);
+        }
 
-    #[test]
-    fn larod_map_can_get_4_tuple() {
-        env_logger::builder().is_test(true).try_init();
-        let mut map = LarodMap::new().unwrap();
-        map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
-        let arr = map.get_int_arr4("test_key").unwrap();
-        assert_eq!(arr[0], 1);
-        assert_eq!(arr[1], 2);
-        assert_eq!(arr[2], 3);
-        assert_eq!(arr[3], 4);
-    }
+        #[test]
+        fn larod_map_can_set_4_tuple() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
+        }
 
-    #[test]
-    fn it_establishes_session() {
-        env_logger::builder().is_test(true).try_init();
-        Session::new();
-    }
+        #[test]
+        fn larod_map_can_get_4_tuple() {
+            env_logger::builder().is_test(true).try_init();
+            let mut map = LarodMap::new().unwrap();
+            map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
+            let arr = map.get_int_arr4("test_key").unwrap();
+            assert_eq!(arr[0], 1);
+            assert_eq!(arr[1], 2);
+            assert_eq!(arr[2], 3);
+            assert_eq!(arr[3], 4);
+        }
 
-    #[test]
-    fn it_lists_devices() {
-        env_logger::builder().is_test(true).try_init();
-        let sess = Session::new();
-        let devices = sess.devices().unwrap();
-        for device in devices {
-            log::info!(
-                "device: {}, id: {}, addr: {:?}",
-                device.name().unwrap(),
-                device.instance().unwrap(),
-                unsafe { std::ptr::addr_of!(*device.ptr) },
-            );
+        #[test]
+        fn it_establishes_session() {
+            env_logger::builder().is_test(true).try_init();
+            Session::new();
+        }
+
+        #[test]
+        fn it_lists_devices() {
+            env_logger::builder().is_test(true).try_init();
+            let sess = Session::new();
+            let devices = sess.devices().unwrap();
+            for device in devices {
+                log::info!(
+                    "device: {}, id: {}, addr: {:?}",
+                    device.name().unwrap(),
+                    device.instance().unwrap(),
+                    unsafe { std::ptr::addr_of!(*device.ptr) },
+                );
+            }
+        }
+
+        #[test]
+        fn it_creates_and_destroys_preprocessor() {
+            env_logger::builder().is_test(true).try_init();
+            let session = Session::new();
+            let mut preprocessor = match Preprocessor::builder()
+                .input_format(ImageFormat::NV12)
+                .input_size(1920, 1080)
+                .output_size(1920, 1080)
+                .backend(PreProcBackend::LibYUV)
+                .load(&session)
+            {
+                Ok(p) => p,
+                Err(Error::LarodError(e)) => {
+                    log::error!("Error building preprocessor: {:?}", e.msg());
+                    panic!()
+                }
+                Err(e) => {
+                    log::error!("Unexpected error while building preprocessor: {:?}", e);
+                    panic!()
+                }
+            };
+            if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
+                log::error!("Error creating preprocessor inputs: {:?}", e.msg());
+            }
+            log::info!("Number of model inputs: {}", preprocessor.num_inputs);
+        }
+
+        #[test]
+        fn model_errors_with_no_tensors() {
+            env_logger::builder().is_test(true).try_init();
+            let session = Session::new();
+            let mut preprocessor = match Preprocessor::builder()
+                .input_format(ImageFormat::NV12)
+                .input_size(1920, 1080)
+                .output_size(1920, 1080)
+                .backend(PreProcBackend::LibYUV)
+                .load(&session)
+            {
+                Ok(p) => p,
+                Err(Error::LarodError(e)) => {
+                    log::error!("Error building preprocessor: {:?}", e.msg());
+                    panic!()
+                }
+                Err(e) => {
+                    log::error!("Unexpected error while building preprocessor: {:?}", e);
+                    panic!()
+                }
+            };
+            if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
+                log::error!("Error creating preprocessor inputs: {:?}", e.msg());
+            }
+            log::info!("Number of model inputs: {}", preprocessor.num_inputs);
+        }
+
+        #[test]
+        fn preprocessor_is_safe_without_model_tensors() {
+            env_logger::builder().is_test(true).try_init();
+            let session = Session::new();
+            let mut preprocessor = match Preprocessor::builder()
+                .input_format(ImageFormat::NV12)
+                .input_size(1920, 1080)
+                .output_size(1920, 1080)
+                .backend(PreProcBackend::LibYUV)
+                .load(&session)
+            {
+                Ok(p) => p,
+                Err(Error::LarodError(e)) => {
+                    log::error!("Error building preprocessor: {:?}", e.msg());
+                    panic!()
+                }
+                Err(e) => {
+                    log::error!("Unexpected error while building preprocessor: {:?}", e);
+                    panic!()
+                }
+            };
+            log::info!("Number of model inputs: {}", preprocessor.num_inputs);
+            if let Some(tensors) = preprocessor.input_tensors() {
+                log::info!("input_tensor size: {}", tensors.len());
+                for t in tensors.iter() {
+                    log::info!("first_tensor dims {:?}", t.dims());
+                }
+            }
+        }
+
+        #[test]
+        fn preprocessor_can_iterate_model_tensors() {
+            env_logger::builder().is_test(true).try_init();
+            let session = Session::new();
+            let mut preprocessor = match Preprocessor::builder()
+                .input_format(ImageFormat::NV12)
+                .input_size(1920, 1080)
+                .output_size(1920, 1080)
+                .backend(PreProcBackend::LibYUV)
+                .load(&session)
+            {
+                Ok(p) => p,
+                Err(Error::LarodError(e)) => {
+                    log::error!("Error building preprocessor: {:?}", e.msg());
+                    panic!()
+                }
+                Err(e) => {
+                    log::error!("Unexpected error while building preprocessor: {:?}", e);
+                    panic!()
+                }
+            };
+            if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
+                log::error!("Error creating preprocessor inputs: {:?}", e.msg());
+            }
+            log::info!("Number of model inputs: {}", preprocessor.num_inputs);
+            if let Some(tensors) = preprocessor.input_tensors() {
+                log::info!("input_tensor size: {}", tensors.len());
+                for t in tensors.iter() {
+                    log::info!("first_tensor dims {:?}", t.dims());
+                }
+            }
         }
     }
 
-    #[test]
-    fn it_creates_and_destroys_preprocessor() {
-        env_logger::builder().is_test(true).try_init();
-        let session = Session::new();
-        let mut preprocessor = match Preprocessor::builder()
-            .input_format(ImageFormat::NV12)
-            .input_size(1920, 1080)
-            .output_size(1920, 1080)
-            .backend(PreProcBackend::LibYUV)
-            .load(&session)
-        {
-            Ok(p) => p,
-            Err(Error::LarodError(e)) => {
-                log::error!("Error building preprocessor: {:?}", e.msg());
-                panic!()
-            }
-            Err(e) => {
-                log::error!("Unexpected error while building preprocessor: {:?}", e);
-                panic!()
-            }
-        };
-        if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
-            log::error!("Error creating preprocessor inputs: {:?}", e.msg());
+    mod compiler_tests {
+        #[test]
+        #[ignore]
+        fn lifetimes() {
+            let t = trybuild::TestCases::new();
+            t.compile_fail("compiler_tests/lifetimes/*.rs");
         }
-        log::info!("Number of model inputs: {}", preprocessor.num_inputs);
-    }
-
-    #[test]
-    fn model_errors_with_no_tensors() {
-        env_logger::builder().is_test(true).try_init();
-        let session = Session::new();
-        let mut preprocessor = match Preprocessor::builder()
-            .input_format(ImageFormat::NV12)
-            .input_size(1920, 1080)
-            .output_size(1920, 1080)
-            .backend(PreProcBackend::LibYUV)
-            .load(&session)
-        {
-            Ok(p) => p,
-            Err(Error::LarodError(e)) => {
-                log::error!("Error building preprocessor: {:?}", e.msg());
-                panic!()
-            }
-            Err(e) => {
-                log::error!("Unexpected error while building preprocessor: {:?}", e);
-                panic!()
-            }
-        };
-        if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
-            log::error!("Error creating preprocessor inputs: {:?}", e.msg());
-        }
-        log::info!("Number of model inputs: {}", preprocessor.num_inputs);
     }
 }
