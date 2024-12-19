@@ -1,6 +1,8 @@
-use std::ffi::{c_char, CStr};
-use std::fmt::{Debug, Display, Formatter};
-use std::marker::PhantomData;
+use std::{
+    ffi::{c_char, CStr},
+    fmt::{Debug, Display, Formatter},
+    marker::PhantomData,
+};
 
 unsafe fn pchar_to_string(p_value: *const c_char) -> String {
     assert!(!p_value.is_null());
@@ -42,6 +44,7 @@ unsafe impl Send for Error {}
 impl std::error::Error for Error {}
 
 impl Error {
+    // TODO: Safety
     pub(crate) fn new(ptr: *mut mdb_sys::mdb_error_t) -> Self {
         Error { ptr }
     }

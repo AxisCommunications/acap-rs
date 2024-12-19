@@ -2,7 +2,7 @@
 3628	target-aarch64/acap/axparameter_example_0_0_0_aarch64.eap
 3698	target-aarch64/acap/axstorage_example_0_0_0_aarch64.eap
 2213	target-aarch64/acap/bounding_box_example_0_0_0_aarch64.eap
-2083	target-aarch64/acap/consume_analytics_metadata_0_0_0_aarch64.eap
+2085	target-aarch64/acap/consume_analytics_metadata_0_0_0_aarch64.eap
 859	target-aarch64/acap/embedded_web_page_0_0_0_aarch64.eap
 2003	target-aarch64/acap/hello_world_0_0_0_aarch64.eap
 2136	target-aarch64/acap/inspect_env_0_0_0_aarch64.eap
