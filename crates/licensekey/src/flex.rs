@@ -11,36 +11,39 @@ use std::{
 
 use glib_sys::g_free;
 
-#[repr(transparent)]
-pub struct CStringPtr(NonNull<c_char>);
+pub struct ForeignString {
+    mem: NonNull<c_char>,
+    free: unsafe extern "C" fn(*mut c_void),
+}
 
-impl CStringPtr {
+impl ForeignString {
     /// Create an owned string from a foreign allocation
     ///
     /// # Safety
     ///
-    /// In addition to the safety preconditions for [`CStr::from_ptr`] the memory must have been
-    /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
-    /// users of this memory.
-    unsafe fn from_ptr(ptr: *mut c_char) -> Self {
-        debug_assert!(!ptr.is_null());
-        Self(NonNull::new_unchecked(ptr))
+    /// In addition to the safety preconditions for [`CStr::from_ptr`] it must be sound for `free`
+    /// to be called with `ptr` any time at least once.
+    unsafe fn new(mem: *mut c_char, free: unsafe extern "C" fn(*mut c_void)) -> Self {
+        debug_assert!(!mem.is_null());
+        Self {
+            mem: NonNull::new_unchecked(mem),
+            free,
+        }
     }
 
     pub fn as_c_str(&self) -> &CStr {
         // SAFETY: The preconditions for instantiating this type include all preconditions
         // for `CStr::from_ptr`.
-        unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
+        unsafe { CStr::from_ptr(self.mem.as_ptr() as *const c_char) }
     }
 }
 
-impl Drop for CStringPtr {
+impl Drop for ForeignString {
     fn drop(&mut self) {
-        // SAFETY: The preconditions for instantiating this type include:
-        // - having full ownership of the memory.
-        // - having allocated the memory in a manner that is compatible with `g_free`.
+        // SAFETY: The safety preconditions for `new` ensure that `self.free` may be called on
+        // `self.mem`.
         unsafe {
-            g_free(self.0.as_ptr() as *mut c_void);
+            (self.free)(self.mem.as_ptr() as *mut c_void);
         }
     }
 }
@@ -117,7 +120,7 @@ pub fn licensekey_verify_ex(
 pub fn licensekey_get_exp_date(
     app_name: &CStr,
     licensekey_path: Option<&CStr>,
-) -> Option<CStringPtr> {
+) -> Option<ForeignString> {
     let ptr = unsafe {
         licensekey_sys::licensekey_get_exp_date(
             app_name.as_ptr(),
@@ -139,7 +142,7 @@ pub fn licensekey_get_exp_date(
         if ptr.is_null() {
             None
         } else {
-            Some(CStringPtr::from_ptr(ptr))
+            Some(ForeignString::new(ptr, libc::free))
         }
     }
 }
@@ -154,7 +157,7 @@ pub fn licensekey_get_exp_date(
 ///
 /// * string with license key state message.
 /// * `None` if state is not a valid error state.
-pub fn licensekey_get_state_string(state_code: c_int) -> Option<CStringPtr> {
+pub fn licensekey_get_state_string(state_code: c_int) -> Option<ForeignString> {
     let ptr = unsafe { licensekey_sys::licensekey_get_state_string(state_code as c_int) };
     // SAFETY: The following are sufficient to make this sound:
     // - The foreign function creates the string using `g_strdup` meaning (verified assumption):
@@ -168,7 +171,7 @@ pub fn licensekey_get_state_string(state_code: c_int) -> Option<CStringPtr> {
         if ptr.is_null() {
             None
         } else {
-            Some(CStringPtr::from_ptr(ptr))
+            Some(ForeignString::new(ptr, g_free))
         }
     }
 }
