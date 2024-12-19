@@ -1,19 +1,20 @@
 use larod::{Error, ImageFormat, LarodModel, PreProcBackend, Preprocessor, Session};
 
 fn main() -> Result<(), Error> {
+    env_logger::init();
     let session = Session::new();
     let devices = match session.devices() {
         Ok(d) => d,
         Err(Error::LarodError(e)) => {
             if let Ok(msg) = e.msg() {
-                eprintln!("Error while listing available devices! {}", msg);
+                log::error!("Error while listing available devices! {}", msg);
             } else {
-                eprintln!("Error while listing available devices. Error returned ")
+                log::error!("Error while listing available devices. Error returned ")
             }
             return Err(Error::LarodError(e));
         }
         Err(e) => {
-            eprintln!("Unknown error while listing devices: {:?}", e);
+            log::error!("Unknown error while listing devices: {:?}", e);
             return Err(e);
         }
     };
@@ -25,26 +26,20 @@ fn main() -> Result<(), Error> {
             d.instance().expect("Couldn't get device instance")
         );
     }
-    let mut preprocessor = match Preprocessor::builder()
+    let mut preprocessor = Preprocessor::builder()
         .input_format(ImageFormat::NV12)
-        .input_size((1920, 1080))
-        .output_size((1920, 1080))
+        .input_size(1920, 1080)
+        .output_size(1920, 1080)
         .backend(PreProcBackend::LibYUV)
-        .load(&session)
-    {
-        Ok(p) => p,
-        Err(Error::LarodError(e)) => {
-            eprintln!("Error building preprocessor: {:?}", e.msg());
-            panic!()
-        }
-        Err(e) => {
-            eprintln!("Unexpected error while building preprocessor: {:?}", e);
-            panic!()
-        }
-    };
+        .load(&session)?;
     if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
-        eprintln!("Error creating preprocessor inputs: {:?}", e.msg());
+        log::error!("Error creating preprocessor inputs: {:?}", e.msg());
     }
-    println!("Number of model inputs: {}", preprocessor.num_inputs());
+    if let Some(tensors) = preprocessor.input_tensors() {
+        log::info!("input_tensor size: {}", tensors.len());
+        for t in tensors.iter() {
+            log::info!("first_tensor dims {:?}", t.dims());
+        }
+    }
     Ok(())
 }
