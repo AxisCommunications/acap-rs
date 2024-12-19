@@ -3,7 +3,7 @@ use std::{any, ffi::CStr, marker::PhantomData};
 use libc::c_void;
 use log::debug;
 
-use crate::{error::BorrowedError, macros::suppress_unwind, Connection, Deferred, Error, Message};
+use crate::{macros::suppress_unwind, on_done_trampoline, Connection, Deferred, Error, Message};
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
@@ -109,7 +109,7 @@ impl<'a> Subscriber<'a> {
             let ptr = mdb_sys::mdb_subscriber_create_async(
                 connection.ptr,
                 config.ptr,
-                Some(Self::on_done::<F>),
+                Some(on_done_trampoline::<F>),
                 raw_on_done as *mut c_void,
                 &mut error,
             );
@@ -129,22 +129,6 @@ impl<'a> Subscriber<'a> {
                 }
             }
         }
-    }
-
-    unsafe extern "C" fn on_done<F>(error: *const mdb_sys::mdb_error_t, user_data: *mut c_void)
-    where
-        F: FnMut(Option<&Error>) + Send + 'static,
-    {
-        suppress_unwind!(|| {
-            // TODO: Remove excessive logging once we are somewhat confident this works
-            debug!("Handling on_done {error:?} with user_data {user_data:?}");
-            let error = match error.is_null() {
-                true => None,
-                false => Some(BorrowedError::new(error)),
-            };
-            let callback = &mut *(user_data as *mut F);
-            callback(error.as_deref());
-        });
     }
 }
 

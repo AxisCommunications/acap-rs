@@ -24,6 +24,100 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct mdb_dict {
+    _unused: [u8; 0],
+}
+pub type mdb_dict_t = mdb_dict;
+extern "C" {
+    pub fn mdb_dict_set_str(
+        self_: *mut mdb_dict_t,
+        key: *const ::std::os::raw::c_char,
+        value: *const ::std::os::raw::c_char,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_dict_get_str(
+        self_: *const mdb_dict_t,
+        key: *const ::std::os::raw::c_char,
+        error: *mut *mut mdb_error_t,
+    ) -> *const ::std::os::raw::c_char;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mdb_channel_info {
+    _unused: [u8; 0],
+}
+pub type mdb_channel_info_t = mdb_channel_info;
+extern "C" {
+    pub fn mdb_channel_info_create(error: *mut *mut mdb_error_t) -> *mut mdb_channel_info_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_copy(
+        self_: *const mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_channel_info_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_get_application_data(
+        self_: *const mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> *const mdb_dict_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_get_application_data_mutable(
+        self_: *mut mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_dict_t;
+}
+extern "C" {
+    pub fn mdb_channel_info_destroy(self_: *mut *mut mdb_channel_info_t);
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mdb_channel_config {
+    _unused: [u8; 0],
+}
+pub type mdb_channel_config_t = mdb_channel_config;
+pub type mdb_channel_on_start_t =
+    ::std::option::Option<unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void)>;
+pub type mdb_channel_on_stop_t =
+    ::std::option::Option<unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void)>;
+extern "C" {
+    pub fn mdb_channel_config_create(
+        topic: *const ::std::os::raw::c_char,
+        source: *const ::std::os::raw::c_char,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_channel_config_t;
+}
+extern "C" {
+    pub fn mdb_channel_config_set_info(
+        self_: *mut mdb_channel_config_t,
+        info: *const mdb_channel_info_t,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_channel_config_set_on_start_callback(
+        self_: *mut mdb_channel_config_t,
+        on_start: mdb_channel_on_start_t,
+        user_data: *mut ::std::os::raw::c_void,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_channel_config_set_on_stop_callback(
+        self_: *mut mdb_channel_config_t,
+        on_stop: mdb_channel_on_stop_t,
+        user_data: *mut ::std::os::raw::c_void,
+        error: *mut *mut mdb_error_t,
+    ) -> bool;
+}
+extern "C" {
+    pub fn mdb_channel_config_destroy(self_: *mut *mut mdb_channel_config_t);
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct mdb_connection {
     _unused: [u8; 0],
 }
@@ -73,54 +167,30 @@ pub type mdb_on_done_t = ::std::option::Option<
 >;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct mdb_dict {
+pub struct mdb_channel {
     _unused: [u8; 0],
 }
-pub type mdb_dict_t = mdb_dict;
+pub type mdb_channel_t = mdb_channel;
 extern "C" {
-    pub fn mdb_dict_set_str(
-        self_: *mut mdb_dict_t,
-        key: *const ::std::os::raw::c_char,
-        value: *const ::std::os::raw::c_char,
+    pub fn mdb_channel_create_async(
+        connection: *mut mdb_connection_t,
+        config: *mut mdb_channel_config_t,
+        on_done: mdb_on_done_t,
+        user_data: *mut ::std::os::raw::c_void,
+        error: *mut *mut mdb_error_t,
+    ) -> *mut mdb_channel_t;
+}
+extern "C" {
+    pub fn mdb_channel_publish_async(
+        self_: *mut mdb_channel_t,
+        message: *mut mdb_message_t,
+        on_done: mdb_on_done_t,
+        user_data: *mut ::std::os::raw::c_void,
         error: *mut *mut mdb_error_t,
     ) -> bool;
 }
 extern "C" {
-    pub fn mdb_dict_get_str(
-        self_: *const mdb_dict_t,
-        key: *const ::std::os::raw::c_char,
-        error: *mut *mut mdb_error_t,
-    ) -> *const ::std::os::raw::c_char;
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct mdb_channel_info {
-    _unused: [u8; 0],
-}
-pub type mdb_channel_info_t = mdb_channel_info;
-extern "C" {
-    pub fn mdb_channel_info_create(error: *mut *mut mdb_error_t) -> *mut mdb_channel_info_t;
-}
-extern "C" {
-    pub fn mdb_channel_info_copy(
-        self_: *const mdb_channel_info_t,
-        error: *mut *mut mdb_error_t,
-    ) -> *mut mdb_channel_info_t;
-}
-extern "C" {
-    pub fn mdb_channel_info_get_application_data(
-        self_: *const mdb_channel_info_t,
-        error: *mut *mut mdb_error_t,
-    ) -> *const mdb_dict_t;
-}
-extern "C" {
-    pub fn mdb_channel_info_get_application_data_mutable(
-        self_: *mut mdb_channel_info_t,
-        error: *mut *mut mdb_error_t,
-    ) -> *mut mdb_dict_t;
-}
-extern "C" {
-    pub fn mdb_channel_info_destroy(self_: *mut *mut mdb_channel_info_t);
+    pub fn mdb_channel_destroy(self_: *mut *mut mdb_channel_t);
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

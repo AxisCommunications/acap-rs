@@ -10,4 +10,17 @@ macro_rules! suppress_unwind {
     };
 }
 
-pub(crate) use suppress_unwind;
+macro_rules! try_func {
+    ($func:ident, $($arg:expr),+ $(,)?) => {{
+        let mut error: *mut ::mdb_sys::mdb_error_t = ::std::ptr::null_mut();
+        let success = $func($( $arg ),+, &mut error);
+        if !error.is_null() {
+            debug_assert!(!success);
+            return Err(crate::error::Error::new(error))
+        } else {
+            debug_assert!(success);
+        }
+    }}
+}
+
+pub(crate) use {suppress_unwind, try_func};

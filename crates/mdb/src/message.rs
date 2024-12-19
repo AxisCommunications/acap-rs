@@ -31,3 +31,13 @@ impl Message<'_> {
         }
     }
 }
+
+pub struct OwnedMessage {
+    ptr: *mut mdb_sys::mdb_message_t,
+}
+
+impl OwnedMessage {
+    pub(crate) fn into_raw(self) -> *mut mdb_sys::mdb_message_t {
+        self.ptr as *mut _
+    }
+}

@@ -1,3 +1,6 @@
+#include <mdb/channel.h>
+#include <mdb/channel_config.h>
+#include <mdb/channel_info.h>
 #include <mdb/connection.h>
 #include <mdb/error.h>
 #include <mdb/message.h>
