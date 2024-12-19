@@ -47,6 +47,8 @@ acap-ssh-utils = { path = "crates/acap-ssh-utils" }
 acap-vapix = { path = "crates/acap-vapix" }
 axevent = { path = "crates/axevent" }
 axevent-sys = { path = "crates/axevent-sys" }
+axparameter = { path = "crates/axparameter" }
+axparameter-sys = { path = "crates/axparameter-sys" }
 axstorage = { path = "crates/axstorage" }
 axstorage-sys = { path = "crates/axstorage-sys" }
 bbox = { path = "crates/bbox" }
