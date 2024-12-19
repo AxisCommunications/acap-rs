@@ -1,5 +1,2 @@
-[target.aarch64-unknown-linux-gnu]
-runner = ["remote-test.sh"]
-
-[target.thumbv7neon-unknown-linux-gnueabihf]
+[target.'cfg(all(not(miri), not(target_arch = "x86_64")))']
 runner = ["remote-test.sh"]

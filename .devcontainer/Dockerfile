@@ -41,7 +41,7 @@ COPY .devhost/install-system-packages.sh ./
 RUN ./install-system-packages.sh \
  && rm install-system-packages.sh
 
-ENV PATH=/usr/local/venv/bin:/workspaces/acap-rs/bin:/usr/local/cargo/bin:$PATH \
+ENV PATH=/usr/local/venv/bin:/usr/local/cargo/bin:$PATH \
     CARGO_HOME=/usr/local/cargo \
     RUSTUP_HOME=/usr/local/rustup \
     VIRTUAL_ENV=/usr/local/venv

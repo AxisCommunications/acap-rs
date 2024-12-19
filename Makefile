@@ -211,7 +211,6 @@ check_lint:
 ## Check that risky FFI patterns are sound using miri
 check_miri:
 	rustup +nightly component add miri
-	AXIS_DEVICE_IP="" \
 	cargo +nightly miri test \
 		--package ffi_patterns \
 		--target aarch64-unknown-linux-gnu \
