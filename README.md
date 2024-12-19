@@ -124,24 +124,37 @@ grouped in a similar way as in the ACAP Native SDK APIs documentation.
 
 ### ACAP Native API bindings
 
-These are idiomatic and safe bindings for the C APIs.
+These are idiomatic and safe bindings for the [C APIs](https://axiscommunications.github.io/acap-documentation/docs/api/native-sdk-api.html#native-sdk-api).
 Each crate has a corresponding `*-sys`, which is omitted for brevity.
 
+- `axparameter`: Bindings for the Parameter API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axparameter/src/lib.rs)
 - `axevent`: Bindings for the Event API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axevent/src/lib.rs)
+- `axoverlay`: Bindings for the Overlay API
+  - Status: 📄 Not started
+- `axserialport`: Bindings for the Serial Port API
+  - Status: 📄 Not started
 - `axstorage`: Bindings for the Edge Storage API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axstorage/src/lib.rs)
 - `bbox`: Bindings for the Bounding Box API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/bbox/src/lib.rs)
+- `larod`: Bindings for the Machine Learning API.
+  - Status: 💡 Started
+  - Documentation: [Pull request](https://github.com/AxisCommunications/acap-rs/pull/120)
 - `licensekey`: Bindings for the License Key API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/licensekey/src/lib.rs)
 - `mdb`: Bindings for the Message Broker API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/mdb/src/lib.rs)
+- `vdo`: Bindings for the Video Capture API.
+  - Status: 💡 Started
+  - Documentation: [Pull request](https://github.com/AxisCommunications/acap-rs/pull/153)
 
 ### VAPIX API bindings
 
@@ -171,6 +184,9 @@ by this project.
 
 ### Example applications
 
+- `axparameter_example`: Creates, reads, updates, deletes, and subscribes to parameters.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/axparameter_example/src/main.rs)
 - `axstorage_example`: Writes data to files on all connected storages.
   - Status: ⚠️ Alpha
   - [Source code](apps/axstorage_example/src/main.rs)
@@ -204,20 +220,9 @@ by this project.
 
 <!-- inspect_env is omitted because it is intended primarily as a test -->
 
-### Testing
-Some items in this workspace rely on libraries or hardware on Axis cameras. This makes testing difficult since these tests cannot run on an arbitrary x86_64 host. Below are some steps to enable running unit test on device.
+### Articles
 
-1. Connect an Axis camera to your network and ensure it is accessible.
-2. The user will likely need to be `root`, such that the Axis camera file system is writable.
-3. Set the `CARGO_TEST_CAMERA` environment variable to the user and IP of the camera with the format `user@ip`
-4. Set up an identity based SSH connection to the camera.
-  1. Create an ID via `ssh-keygen`
-  2. Copy the id to the device via `ssh-copy-id`
-
-Now, via the [remote-test.sh](remote-test.sh) script, and the `runner = ["/workspaces/acap-rs/remote-test.sh"]` line in the .cargo/config.toml, tests with the `aarch64-unknown-linux-gnu` target triplet will automatically be copied to the remote camera and executed there. Run these tests via `cargo test --target aarch64-unknown-linux-gnu`.
-
-If you want to run tests locally, just make sure you clear the `CARGO_TEST_CAMERA` environment variable via `unset CARGO_TEST_CAMERA`.
-
+- [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
 
 ## Troubleshooting
 
