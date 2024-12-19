@@ -3,7 +3,9 @@ use std::{any, ffi::CStr, marker::PhantomData};
 use libc::c_void;
 use log::debug;
 
-use crate::{macros::suppress_unwind, on_done_trampoline, Connection, Deferred, Error, Message};
+use crate::{
+    macros::suppress_unwind, on_done_trampoline, BorrowedMessage, Connection, Deferred, Error,
+};
 
 pub struct SubscriberConfig {
     ptr: *mut mdb_sys::mdb_subscriber_config_t,
@@ -15,7 +17,7 @@ pub struct SubscriberConfig {
 impl SubscriberConfig {
     pub fn try_new<F>(topic: &CStr, source: &CStr, on_message: F) -> Result<Self, Error>
     where
-        F: for<'a> FnMut(Message<'a>) + Send + 'static,
+        F: for<'a> FnMut(BorrowedMessage<'a>) + Send + 'static,
     {
         debug!("Creating {}...", any::type_name::<Self>());
         unsafe {
@@ -60,12 +62,12 @@ impl SubscriberConfig {
         message: *const mdb_sys::mdb_message_t,
         user_data: *mut c_void,
     ) where
-        F: for<'a> FnMut(Message<'a>) + Send + 'static,
+        F: for<'a> FnMut(BorrowedMessage<'a>) + Send + 'static,
     {
         suppress_unwind!(|| {
             debug!("Handling message {message:?} with user_data {user_data:?}");
             debug!("Retrieving message...");
-            let message = Message::from_raw(message);
+            let message = BorrowedMessage::from_raw(message);
             debug!("Retrieving callback...");
             let callback = &mut *(user_data as *mut F);
             debug!("Calling callback...");

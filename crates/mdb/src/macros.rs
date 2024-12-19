@@ -17,10 +17,50 @@ macro_rules! try_func {
         if !error.is_null() {
             debug_assert!(!success);
             return Err(crate::error::Error::new(error))
-        } else {
-            debug_assert!(success);
         }
+        debug_assert!(success);
+
     }}
 }
 
-pub(crate) use {suppress_unwind, try_func};
+// FIXME: Combine
+macro_rules! try_func_mandatory_no_args {
+    ($func:ident) => {{
+        let mut error: *mut ::mdb_sys::mdb_error_t = ::std::ptr::null_mut();
+        let retval = $func(&mut error);
+        if !error.is_null() {
+            return Err(crate::error::Error::new(error));
+        }
+        debug_assert!(!retval.is_null());
+        retval
+    }};
+}
+
+macro_rules! try_func_mandatory {
+    ($func:ident, $($arg:expr),+ $(,)?) => {{
+        let mut error: *mut ::mdb_sys::mdb_error_t = ::std::ptr::null_mut();
+        let retval = $func($( $arg ),+, &mut error);
+        if !error.is_null() {
+            return Err(crate::error::Error::new(error))
+        }
+        debug_assert!(!retval.is_null());
+        retval
+    }}
+}
+
+macro_rules! try_func_optional {
+    ($func:ident, $($arg:expr),+ $(,)?) => {{
+        let mut error: *mut ::mdb_sys::mdb_error_t = ::std::ptr::null_mut();
+        let retval = $func($( $arg ),+, &mut error);
+        if !error.is_null() {
+            return Err(crate::error::Error::new(error))
+        }
+        retval
+    }}
+}
+
+pub(crate) use suppress_unwind;
+pub(crate) use try_func;
+pub(crate) use try_func_mandatory;
+pub(crate) use try_func_mandatory_no_args;
+pub(crate) use try_func_optional;

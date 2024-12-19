@@ -1,11 +1,11 @@
 use std::{marker::PhantomData, slice::from_raw_parts};
 
-pub struct Message<'a> {
+pub struct BorrowedMessage<'a> {
     ptr: *const mdb_sys::mdb_message_t,
     _marker: PhantomData<&'a mdb_sys::mdb_message_t>,
 }
 
-impl Message<'_> {
+impl BorrowedMessage<'_> {
     // FIXME: Safety
     pub(crate) unsafe fn from_raw(ptr: *const mdb_sys::mdb_message_t) -> Self {
         Self {
@@ -32,11 +32,11 @@ impl Message<'_> {
     }
 }
 
-pub struct OwnedMessage {
+pub struct Message {
     ptr: *mut mdb_sys::mdb_message_t,
 }
 
-impl OwnedMessage {
+impl Message {
     pub(crate) fn into_raw(self) -> *mut mdb_sys::mdb_message_t {
         self.ptr as *mut _
     }
