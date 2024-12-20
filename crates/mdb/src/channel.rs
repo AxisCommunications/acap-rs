@@ -143,7 +143,9 @@ impl ChannelInfo {
         Ok(Self { ptr })
     }
 
-    // TODO: Consider renaming to `try_clone`.
+    // In practice this function fails only if the argument is null or if it is unable to allocate
+    // memory.
+    // TODO: Implement `Clone` instead.
     /// Create a deep copy of a channel info object.
     pub fn copy(&self) -> Result<Self, Error> {
         let ptr = unsafe { try_func_mandatory!(mdb_channel_info_copy, self.ptr) };
@@ -251,6 +253,7 @@ impl<'a> Channel<'a> {
     {
         unsafe {
             let raw_on_done = Box::into_raw(Box::new(on_done));
+            // FIXME: Free the closure early if it runs.
             let on_done = Deferred::new(raw_on_done);
             try_func!(
                 mdb_channel_publish_async,

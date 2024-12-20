@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.7.1",
+  "acapPackageConf": {
+    "setup": {
+      "appName": "mdb_test",
+      "vendor": "Axis Communications",
+      "runMode": "never",
+      "version": "0.0.0"
+    }
+  },
+  "resources": {
+    "message-broker": {
+      "consuming": [],
+      "producing": [
+        "test_topic"
+      ]
+    }
+  }
+}

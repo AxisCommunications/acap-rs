@@ -1,0 +1,12 @@
+[package]
+name = "mdb_test"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+libc = { workspace = true }
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+mdb = { workspace = true }
