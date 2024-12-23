@@ -26,6 +26,7 @@ To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCo
   - [Other library crates](#other-library-crates)
 - [**Documentation**](#documentation)
   - [Example applications](#example-applications)
+  - [Articles](#articles)
 - [**Troubleshooting**](#troubleshooting)
 
 ## Getting started
