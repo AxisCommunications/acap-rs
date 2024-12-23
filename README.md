@@ -30,7 +30,7 @@ To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCo
 
 ## Getting started
 
-There are multiple ways to set up a development environment, but the recommended way is using a dev container.
+The recommended setup is using the [dev container](#dev-container) and the most recent LTS version of AXIS OS [^1].
 
 ### Dev container
 
@@ -241,3 +241,5 @@ be resolved by either
 [ACAP]: https://axiscommunications.github.io/acap-documentation/
 
 [Rust]: https://doc.rust-lang.org/
+
+[^1]: Compatibility with various host and target environments are explored and explained in [compatibility](docs/compatibility.md)
