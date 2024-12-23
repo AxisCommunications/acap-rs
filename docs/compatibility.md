@@ -1,4 +1,4 @@
-The primary factor for what this project is compatible with is what is important or fun its contributors, who volunteer.
+The primary factor determining what this project is the personal preferences of its contributors, who volunteer.
 
 That being said these notes should help users manage expectations and guide decisions of contributors.
 
