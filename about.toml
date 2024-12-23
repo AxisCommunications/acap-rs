@@ -1,0 +1,12 @@
+# This file is used to create license files for users;
+# be extra careful with changing it.
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Unicode-DFS-2016",
+]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+no-clearly-defined = true
+private = { ignore = true }

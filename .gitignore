@@ -1,3 +1,6 @@
+/.env
 /.idea/
+/init_env.sh
 /target/
-/venv/
+/target-*/
+/workspaces/*/target/

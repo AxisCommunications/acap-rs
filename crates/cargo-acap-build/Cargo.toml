@@ -1,0 +1,17 @@
+[package]
+name = "cargo-acap-build"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+dirs = { workspace = true }
+env_logger = { workspace = true, default-features = true }
+log = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+
+acap-build = { workspace = true }
+cli-version = { workspace = true }

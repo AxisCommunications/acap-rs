@@ -1,0 +1,18 @@
+SYSROOT_AARCH64="${ACAP_SDK_LOCATION:-/opt/axis}/acapsdk/sysroots/aarch64"
+SYSROOT_ARMV7HF="${ACAP_SDK_LOCATION:-/opt/axis}/acapsdk/sysroots/armv7hf"
+
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc"
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_AARCH64}"
+export CC_aarch64_unknown_linux_gnu="aarch64-linux-gnu-gcc"
+export CXX_aarch64_unknown_linux_gnu="aarch64-linux-gnu-g++"
+export PKG_CONFIG_LIBDIR_aarch64_unknown_linux_gnu="${SYSROOT_AARCH64}/usr/lib/pkgconfig:${SYSROOT_AARCH64}/usr/share/pkgconfig"
+export PKG_CONFIG_PATH_aarch64_unknown_linux_gnu="${SYSROOT_AARCH64}/usr/lib/pkgconfig:${SYSROOT_AARCH64}/usr/share/pkgconfig"
+export PKG_CONFIG_SYSROOT_DIR_aarch64_unknown_linux_gnu="${SYSROOT_AARCH64}"
+
+export CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER="arm-linux-gnueabihf-gcc"
+export CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_ARMV7HF}"
+export CC_thumbv7neon_unknown_linux_gnueabihf="arm-linux-gnueabihf-gcc"
+export CXX_thumbv7neon_unknown_linux_gnueabihf="arm-linux-gnueabihf-g++"
+export PKG_CONFIG_LIBDIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig"
+export PKG_CONFIG_PATH_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig"
+export PKG_CONFIG_SYSROOT_DIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}"

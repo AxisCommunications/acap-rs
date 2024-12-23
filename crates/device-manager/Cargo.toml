@@ -1,0 +1,21 @@
+[package]
+name = "device-manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+dirs = { workspace = true }
+env_logger = { workspace = true, default-features = true }
+log = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true, default-features = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
+
+acap-vapix = { workspace = true }
+cli-version = { workspace = true }

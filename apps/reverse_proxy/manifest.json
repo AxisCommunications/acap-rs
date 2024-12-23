@@ -1,0 +1,42 @@
+{
+    "schemaVersion": "1.5.0",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "reverse_proxy",
+            "vendor": "Axis Communications",
+            "runMode": "never",
+            "version": "0.0.0"
+        },
+        "configuration": {
+            "httpConfig": [
+                {
+                    "access": "viewer",
+                    "type": "directory"
+                }
+            ],
+            "reverseProxy": [
+                {
+                    "apiPath": "api/admin",
+                    "target": "http://localhost:2001",
+                    "access": "admin"
+                },
+                {
+                    "apiPath": "api/operator",
+                    "target": "http://localhost:2001",
+                    "access": "operator"
+                },
+                {
+                    "apiPath": "api/viewer",
+                    "target": "http://localhost:2001",
+                    "access": "viewer"
+                },
+                {
+                    "apiPath": "api/anonymous",
+                    "target": "http://localhost:2001",
+                    "access": "anonymous"
+                }
+            ],
+            "settingPage": "index.html"
+        }
+    }
+}

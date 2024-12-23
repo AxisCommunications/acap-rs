@@ -2,9 +2,11 @@
 name = "licensekey"
 version = "0.0.0"
 edition.workspace = true
+license = "MIT"
 
 [dependencies]
 glib-sys = { workspace = true }
 libc = { workspace = true }
-licensekey-sys = { path = "../licensekey-sys" }
 thiserror = { workspace = true }
+
+licensekey-sys = { workspace = true }

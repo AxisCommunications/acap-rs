@@ -1,0 +1,19 @@
+[package]
+name = "acap-ssh-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# TODO: Remove anyhow usage from library
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+dirs = { workspace = true }
+env_logger = { workspace = true, default-features = true }
+flate2 = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+url = { workspace = true }
+tar = { workspace = true }
+
+cli-version = { workspace = true }

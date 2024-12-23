@@ -1,0 +1,81 @@
+name: on host workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  debian_and_ubuntu:
+    runs-on: ubuntu-24.04
+    # Additionally, this procedure should work on:
+    # - Debian 12 on desktop.
+    # - Ubuntu 22.04 on desktop.
+    #
+    # The setup is split into three parts:
+    #
+    # 1. Global setup: Steps that may have effects anywhere on the system.
+    # 2. Local setup: Steps that have effects only in this project (and in caches).
+    # 3. Shell setup: Steps that have effects only in the current shell.
+    #
+    # These steps are only suggestions, and readers are welcome to install dependencies
+    # differently, or skip them entirely;
+    # not every dependency is needed for every workflow and the way the `init_env.sh` file is
+    # created should allow blending global and local installations as the user sees fit.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Global setup
+        # These steps typically need to be done once per machine, or when the project dependencies change.
+        #
+        # They are divided into multiple scripts to:
+        # - run only what is needed as root if the sdk is installed into `/opt/axis/`.
+        # - give the user insight into and control over how their system is configured.
+        #
+        # One prerequisite not documented explicitly below is Docker.
+        #
+        # More information about what each script does and why may be found in the script itself.
+        working-directory: .devhost
+        run: |
+          mkdir $HOME/axis/
+          ./install-sdk.sh $HOME/axis/
+          sudo ./install-system-packages.sh
+          ./install-rust.sh
+      - name: Local setup
+        # This step typically needs to be done once per repository clone.
+        working-directory: .devhost
+        run: |
+          ./install-venv.sh venv ../init_env.sh
+      - name: Shell setup
+        # This step typically needs to be done once per shell session.
+        # To verify that the procedure has worked, some checks are run as well.
+        # TODO: Simplify shell session setup; exporting two variables seems excessive
+        run: |
+          export ACAP_SDK_LOCATION=$HOME/axis/
+          source ./init_env.sh
+          export ACAP_BUILD_IMPL=equivalent
+          make check_generated_files
+  debian_and_ubuntu_no_sdk:
+    runs-on: ubuntu-24.04
+    # If the sysroots from the ACAP Native SDK are not needed, then the Rust implementation of
+    # `acap-build` can be used for an easier setup:
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install g++-aarch64-linux-gnu g++-arm-linux-gnueabihf
+      - name: Install Rust toolchain
+        run: rustup show
+      - name: Install Cargo package
+        run: |
+          cargo install --locked cargo-about@0.6.2
+          cargo install --locked --path crates/cargo-acap-build
+      - name: Build the app
+        run: |
+          cargo-acap-build -- --package hello_world
+        env:
+          ACAP_BUILD_IMPL: equivalent
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc

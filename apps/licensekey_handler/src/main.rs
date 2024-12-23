@@ -1,10 +1,12 @@
+#![forbid(unsafe_code)]
 //! A simple example application demonstrating how the licensekey crate may be used
 
-use log::{info, warn};
-use std::ffi::{CStr, CString};
-use std::os::unix::ffi::OsStrExt;
+use std::{
+    ffi::{CStr, CString},
+    os::unix::ffi::OsStrExt,
+};
 
-mod app_logging;
+use log::{info, warn};
 
 const APP_ID: i32 = 0;
 const MAJOR_VERSION: i32 = 1;
@@ -18,7 +20,7 @@ fn check_license_status(app_name: &CStr) {
 }
 
 fn main() {
-    app_logging::init_logger();
+    acap_logging::init_logger();
     let app_name = CString::new(
         std::env::current_exe()
             .unwrap()

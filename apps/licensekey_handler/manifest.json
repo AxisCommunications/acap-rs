@@ -6,7 +6,7 @@
       "appId": "0",
       "vendor": "Axis Communications",
       "runMode": "never",
-      "version": "1.0.0"
+      "version": "0.0.0"
     },
     "copyProtection": {
       "method": "axis"

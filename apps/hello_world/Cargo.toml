@@ -1,9 +1,10 @@
 [package]
 name = "hello_world"
-version = "1.0.0"
+version = "0.0.0"
 edition.workspace = true
+publish = false
 
 [dependencies]
 log = { workspace = true }
-env_logger = { workspace = true }
-syslog = { workspace = true }
+
+acap-logging = { workspace = true }

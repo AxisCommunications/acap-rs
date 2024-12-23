@@ -6,11 +6,11 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       default:
         applies-to: version-updates
@@ -18,3 +18,7 @@ updates:
           - "minor"
           - "patch"
     versioning-strategy: lockfile-only
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "monthly"

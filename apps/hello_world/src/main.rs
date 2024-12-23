@@ -1,14 +1,19 @@
+#![forbid(unsafe_code)]
 //! A simple hello world application
 //!
-//! Uses some common logging crates to demonstrate
-//! 1. how to use them in an application, and
-//! 2. how to build and bundle them as an application.
+//! This app demonstrates:
+//! - The effect of printing to stdout and stderr.
+//! - How to configure logging and the effect of logging at various levels.
 
-use log::info;
-
-mod app_logging;
+use log::{debug, error, info, trace, warn};
 
 fn main() {
-    app_logging::init_logger();
-    info!("Hello World!");
+    eprintln!("Hello stderr!");
+    println!("Hello stdout!");
+    acap_logging::init_logger();
+    trace!("Hello trace!");
+    debug!("Hello debug!");
+    info!("Hello info!");
+    warn!("Hello warn!");
+    error!("Hello error!");
 }

@@ -1,0 +1,26 @@
+{
+    "schemaVersion": "1.7.0",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "axparameter_example",
+            "embeddedSdkVersion": "2.0",
+            "vendor": "Axis Communications",
+            "runMode": "never",
+            "version": "0.0.0"
+        },
+        "configuration": {
+            "paramConfig": [
+                {
+                    "name": "TestParameter",
+                    "default": "TestValue2",
+                    "type": "string"
+                },
+                {
+                    "name": "w",
+                    "default": "initial_value",
+                    "type": "string"
+                }
+            ]
+        }
+    }
+}
