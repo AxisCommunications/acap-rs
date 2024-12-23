@@ -222,6 +222,7 @@ by this project.
 
 ### Articles
 
+- [Related projects](docs/related-projects.md)
 - [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
 
 ## Troubleshooting
@@ -233,48 +234,6 @@ be resolved by either
 
 - cloning the code in Windows Subsystem for Linux (WSL), or
 - reconfiguring `git`.
-
-## Related projects
-
-This is not the only initiative to facilitate building Rust applications for Axis devices.
-Below is a survey of other projects known to the author.
-
-### cargo-acap
-
-[cargo-acap] is a Rust binary crate that cross-compiles and packages Rust programs for Axis devices.
-Installing it and building eap files for virtually every architecture can be done like
-```sh
-cargo install cargo-acap
-cargo acap build
-```
-
-Praises
-* Depends only on Cargo et al and Docker.
-* Requires no ACAP specific boilerplate.
-* Supports old products, including ARTPEC-4 and ARTPEC-5.
-
-Reasonable complaints
-* Unaware of the ACAP manifest.
-  * Does not validate the ACAP manifest.
-  * Requires information to be duplicated in `Cargo.toml` if the ACAP manifest is to be used.
-  * Does not use dynamic user.
-* Requires Docker
-  * Cannot easily be used from within a Docker container.
-* The default docker image cannot be used to link the ACAP SDK APIs.
-* Assumes custom target triples with the vendor set to `axis`.
-  * Restricts how docker images can be built.
-  * May cause bugs in crates that use conditional compilation[^1].
-* Does not support workspace projects
-* Does not support bundling target-specific files[^2].
-
-Unreasonable complaints
-* Does not facilitate any interaction with the device including
-  * compiling and running tests
-  * installing the built `.eap` file
-
-[cargo-acap]: https://github.com/trunnion/cargo-acap
-[^1]: https://github.com/trunnion/cargo-acap/commit/6748c52ef1c13a6a12cc327a65a333c012c5725b
-[^2]: This has been discussed but not implemented https://github.com/trunnion/cargo-acap/pull/5
 
 ## License
 
