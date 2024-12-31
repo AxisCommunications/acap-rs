@@ -1,23 +1,25 @@
-use larod::{Error, ImageFormat, LarodModel, PreProcBackend, Preprocessor, Session};
+use anyhow::Context;
+use larod::{ImageFormat, LarodModel, PreProcBackend, Preprocessor, Session};
+use std::{fs, path::Path};
 
-fn main() -> Result<(), Error> {
+fn get_file(name: &str) -> anyhow::Result<std::fs::File> {
+    let path = Path::new(name);
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
+    fs::remove_file(path)?;
+    Ok(file)
+}
+
+fn main() -> anyhow::Result<()> {
     env_logger::init();
     let session = Session::new();
-    let devices = match session.devices() {
-        Ok(d) => d,
-        Err(Error::LarodError(e)) => {
-            if let Ok(msg) = e.msg() {
-                log::error!("Error while listing available devices! {}", msg);
-            } else {
-                log::error!("Error while listing available devices. Error returned ")
-            }
-            return Err(Error::LarodError(e));
-        }
-        Err(e) => {
-            log::error!("Unknown error while listing devices: {:?}", e);
-            return Err(e);
-        }
-    };
+    let devices = session
+        .devices()
+        .context("could not list available devices")?;
     println!("Devices:");
     for d in devices {
         println!(
@@ -32,14 +34,21 @@ fn main() -> Result<(), Error> {
         .output_size(1920, 1080)
         .backend(PreProcBackend::LibYUV)
         .load(&session)?;
-    if let Err(Error::LarodError(e)) = preprocessor.create_model_inputs() {
-        log::error!("Error creating preprocessor inputs: {:?}", e.msg());
-    }
-    if let Some(tensors) = preprocessor.input_tensors() {
+    preprocessor
+        .create_model_inputs()
+        .context("Error while creating model inputs")?;
+    if let Some(tensors) = preprocessor.input_tensors_mut() {
         log::info!("input_tensor size: {}", tensors.len());
-        for t in tensors.iter() {
+        for t in tensors.iter_mut() {
+            log::info!("first_tensor layout {:?}", t.layout());
             log::info!("first_tensor dims {:?}", t.dims());
+            log::info!("first_tensor pitches {:?}", t.pitches());
+            let pitches = t.pitches()?;
+            let file = get_file("/tmp/acap-rs-larod-preproc-1")?;
+            file.set_len(pitches[0] as u64)?;
+            t.set_buffer(file)?;
         }
     }
+
     Ok(())
 }
