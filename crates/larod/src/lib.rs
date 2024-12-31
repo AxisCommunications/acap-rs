@@ -457,8 +457,12 @@ impl<'a> LarodTensorContainer<'a> {
         self.tensors.as_slice()
     }
 
-    pub fn iter(&self) -> Iter<Tensor> {
+    pub fn iter(&self) -> impl Iterator<Item = &Tensor> {
         self.tensors.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Tensor<'a>> {
+        self.tensors.iter_mut()
     }
 
     pub fn len(&self) -> usize {
@@ -468,6 +472,7 @@ impl<'a> LarodTensorContainer<'a> {
 
 pub struct Tensor<'a> {
     ptr: *mut larodTensor,
+    buffer: Option<File>,
     phantom: PhantomData<&'a Session>,
 }
 
@@ -481,7 +486,23 @@ impl<'a> Tensor<'a> {
         self.ptr
     }
 
-    pub fn name() {}
+    pub fn name(&self) -> Result<&str> {
+        let (c_str_ptr, maybe_error) = unsafe { try_func!(larodGetTensorName, self.ptr) };
+        if !c_str_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorName indicated success AND returned an error!"
+            );
+            let c_str = unsafe { CStr::from_ptr(c_str_ptr) };
+            if let Ok(s) = c_str.to_str() {
+                Ok(s)
+            } else {
+                Err(Error::PointerToInvalidData)
+            }
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
 
     pub fn byte_size() {}
 
@@ -528,14 +549,67 @@ impl<'a> Tensor<'a> {
         }
     }
 
-    pub fn pitches() {}
+    pub fn pitches(&self) -> Result<&[usize]> {
+        let (pitches_raw, maybe_error) =
+            unsafe { try_func!(larodGetTensorPitches, self.ptr.cast_const()) };
+        if !pitches_raw.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorPitches indicated success AND returned an error!"
+            );
+            // let d = unsafe {
+            //     (*dims)
+            //         .dims
+            //         .into_iter()
+            //         .take((*dims).len)
+            //         .collect::<Vec<usize>>()
+            // };
+            let (left, _) = unsafe { (*pitches_raw).pitches.split_at((*pitches_raw).len) };
+            Ok(left)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn set_pitches() {}
     pub fn data_type() {}
     pub fn set_data_type() {}
-    pub fn layout() {}
+    pub fn layout(&self) -> Result<larodTensorLayout> {
+        let (layout, maybe_error) =
+            unsafe { try_func!(larodGetTensorLayout, self.ptr.cast_const()) };
+        if maybe_error.is_none() {
+            Ok(layout)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn set_layout() {}
-    pub fn fd() {}
-    pub fn set_fd() {}
+    pub fn fd(&self) -> Option<std::os::fd::BorrowedFd<'_>> {
+        self.buffer.as_ref().map(|f| f.as_fd())
+    }
+
+    /// Use a memory mapped file as a buffer for this tensor.
+    /// The method name here differs a bit from the larodSetTensorFd,
+    /// but aligns better with the need for the tensor to own the
+    /// file descriptor it is using as a buffer.
+    pub fn set_buffer(&mut self, file: File) -> Result<()> {
+        self.buffer = Some(file);
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larodSetTensorFd,
+                self.ptr,
+                self.buffer.as_mut().unwrap().as_raw_fd()
+            )
+        };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorFd indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn fd_size() {}
     pub fn set_fd_size() {}
     pub fn fd_offset() {}
@@ -561,6 +635,7 @@ impl<'a> From<*mut larodTensor> for Tensor<'a> {
     fn from(value: *mut larodTensor) -> Self {
         Self {
             ptr: value,
+            buffer: None,
             phantom: PhantomData,
         }
     }
@@ -631,10 +706,11 @@ impl<'a> LarodDevice<'a> {
     }
 }
 
-pub trait LarodModel {
+pub trait LarodModel<'a> {
     fn create_model_inputs(&mut self) -> Result<()>;
     fn num_inputs(&self) -> usize;
-    fn input_tensors(&self) -> Option<&LarodTensorContainer>;
+    fn input_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
+    fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
     fn start_job(&self) -> Result<()>;
     fn stop(&self);
 }
@@ -881,7 +957,7 @@ impl<'a> Preprocessor<'a> {
     }
 }
 
-impl<'a> LarodModel for Preprocessor<'a> {
+impl<'a> LarodModel<'a> for Preprocessor<'a> {
     fn create_model_inputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelInputs, self.ptr, &mut self.num_inputs) };
@@ -913,8 +989,12 @@ impl<'a> LarodModel for Preprocessor<'a> {
         self.num_inputs
     }
 
-    fn input_tensors(&self) -> Option<&LarodTensorContainer> {
+    fn input_tensors(&self) -> Option<&LarodTensorContainer<'a>> {
         self.input_tensors.as_ref()
+    }
+
+    fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>> {
+        self.input_tensors.as_mut()
     }
 
     fn start_job(&self) -> Result<()> {
@@ -1024,7 +1104,7 @@ impl<'a> InferenceModel<'a> {
     }
 }
 
-impl<'a> LarodModel for InferenceModel<'a> {
+impl<'a> LarodModel<'a> for InferenceModel<'a> {
     fn create_model_inputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelInputs, self.ptr, &mut self.num_inputs) };
@@ -1054,8 +1134,12 @@ impl<'a> LarodModel for InferenceModel<'a> {
         self.num_inputs
     }
 
-    fn input_tensors(&self) -> Option<&LarodTensorContainer> {
+    fn input_tensors(&self) -> Option<&LarodTensorContainer<'a>> {
         self.input_tensors.as_ref()
+    }
+
+    fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>> {
+        self.input_tensors.as_mut()
     }
 
     fn start_job(&self) -> Result<()> {
