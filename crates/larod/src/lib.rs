@@ -45,10 +45,8 @@ use std::{
     fmt::Display,
     fs::File,
     marker::PhantomData,
-    os::fd::AsRawFd,
-    path::Path,
-    ptr::{self, slice_from_raw_parts},
-    slice::Iter,
+    os::fd::{AsFd, AsRawFd},
+    ptr::{self},
 };
 
 type Result<T> = std::result::Result<T, Error>;
@@ -1262,20 +1260,20 @@ mod tests {
 
         #[test]
         fn it_creates_larod_map() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             assert!(LarodMap::new().is_ok());
         }
 
         #[test]
         fn it_drops_map() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let map = LarodMap::new().unwrap();
             std::mem::drop(map);
         }
 
         #[test]
         fn larod_map_can_set_str() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_string("test_key", "test_value").unwrap();
         }
@@ -1290,14 +1288,14 @@ mod tests {
 
         #[test]
         fn larod_map_can_set_int() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_int("test_key", 10).unwrap();
         }
 
         #[test]
         fn larod_map_can_get_int() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_int("test_key", 9).unwrap();
             let i = map.get_int("test_key").unwrap();
@@ -1306,13 +1304,13 @@ mod tests {
 
         #[test]
         fn larod_map_can_set_2_tuple() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_int_arr2("test_key", (1, 2)).unwrap();
         }
         #[test]
         fn larod_map_can_get_2_tuple() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_int_arr2("test_key", (5, 6)).unwrap();
             let arr = map.get_int_arr2("test_key").unwrap();
@@ -1322,14 +1320,14 @@ mod tests {
 
         #[test]
         fn larod_map_can_set_4_tuple() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
         }
 
         #[test]
         fn larod_map_can_get_4_tuple() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let mut map = LarodMap::new().unwrap();
             map.set_int_arr4("test_key", (1, 2, 3, 4)).unwrap();
             let arr = map.get_int_arr4("test_key").unwrap();
@@ -1341,13 +1339,13 @@ mod tests {
 
         #[test]
         fn it_establishes_session() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             Session::new();
         }
 
         #[test]
         fn it_lists_devices() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let sess = Session::new();
             let devices = sess.devices().unwrap();
             for device in devices {
@@ -1362,7 +1360,7 @@ mod tests {
 
         #[test]
         fn it_creates_and_destroys_preprocessor() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let session = Session::new();
             let mut preprocessor = match Preprocessor::builder()
                 .input_format(ImageFormat::NV12)
@@ -1389,7 +1387,7 @@ mod tests {
 
         #[test]
         fn model_errors_with_no_tensors() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let session = Session::new();
             let mut preprocessor = match Preprocessor::builder()
                 .input_format(ImageFormat::NV12)
@@ -1416,9 +1414,9 @@ mod tests {
 
         #[test]
         fn preprocessor_is_safe_without_model_tensors() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let session = Session::new();
-            let mut preprocessor = match Preprocessor::builder()
+            let preprocessor = match Preprocessor::builder()
                 .input_format(ImageFormat::NV12)
                 .input_size(1920, 1080)
                 .output_size(1920, 1080)
@@ -1446,7 +1444,7 @@ mod tests {
 
         #[test]
         fn preprocessor_can_iterate_model_tensors() {
-            env_logger::builder().is_test(true).try_init();
+            let _ = env_logger::builder().is_test(true).try_init();
             let session = Session::new();
             let mut preprocessor = match Preprocessor::builder()
                 .input_format(ImageFormat::NV12)
