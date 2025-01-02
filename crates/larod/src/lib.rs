@@ -741,6 +741,10 @@ pub trait LarodModel<'a> {
     fn num_inputs(&self) -> usize;
     fn input_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
     fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
+    fn create_model_outputs(&mut self) -> Result<()>;
+    fn num_outputs(&self) -> usize;
+    fn output_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
+    fn output_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
     fn start_job(&self) -> Result<()>;
     fn stop(&self);
 }
@@ -1007,8 +1011,31 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                 tensors,
                 num_tensors: self.num_inputs,
             });
-            // let tensor_slice =
-            //     unsafe { slice::from_raw_parts::<*mut larodTensor>(tensors, self.num_inputs) };
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
+    fn create_model_outputs(&mut self) -> Result<()> {
+        let (tensors_ptr, maybe_error) =
+            unsafe { try_func!(larodCreateModelOutputs, self.ptr, &mut self.num_outputs) };
+        if !tensors_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodCreateModelOutputs indicated success AND returned an error!"
+            );
+            let tensors_raw: &[*mut larodTensor] =
+                unsafe { slice::from_raw_parts_mut(tensors_ptr, self.num_outputs) };
+            let tensors: Vec<Tensor> = tensors_raw
+                .iter()
+                .map(|t_raw| Tensor::from(*t_raw))
+                .collect();
+            self.output_tensors = Some(LarodTensorContainer {
+                ptr: tensors_ptr,
+                tensors,
+                num_tensors: self.num_outputs,
+            });
             Ok(())
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
@@ -1025,6 +1052,18 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
 
     fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>> {
         self.input_tensors.as_mut()
+    }
+
+    fn num_outputs(&self) -> usize {
+        self.num_outputs
+    }
+
+    fn output_tensors(&self) -> Option<&LarodTensorContainer<'a>> {
+        self.output_tensors.as_ref()
+    }
+
+    fn output_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>> {
+        self.output_tensors.as_mut()
     }
 
     fn start_job(&self) -> Result<()> {
@@ -1101,6 +1140,8 @@ pub struct InferenceModel<'a> {
     ptr: *mut larodModel,
     input_tensors: Option<LarodTensorContainer<'a>>,
     num_inputs: usize,
+    output_tensors: Option<LarodTensorContainer<'a>>,
+    num_outputs: usize,
 }
 
 impl<'a> InferenceModel<'a> {
@@ -1160,6 +1201,31 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
         }
     }
 
+    fn create_model_outputs(&mut self) -> Result<()> {
+        let (tensors_ptr, maybe_error) =
+            unsafe { try_func!(larodCreateModelOutputs, self.ptr, &mut self.num_outputs) };
+        if !tensors_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodCreateModelInputs indicated success AND returned an error!"
+            );
+            let tensors_raw: &[*mut larodTensor] =
+                unsafe { slice::from_raw_parts_mut(tensors_ptr, self.num_outputs) };
+            let tensors: Vec<Tensor> = tensors_raw
+                .iter()
+                .map(|t_raw| Tensor::from(*t_raw))
+                .collect();
+            self.output_tensors = Some(LarodTensorContainer {
+                ptr: tensors_ptr,
+                tensors,
+                num_tensors: self.num_outputs,
+            });
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
     fn num_inputs(&self) -> usize {
         self.num_inputs
     }
@@ -1170,6 +1236,18 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
 
     fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>> {
         self.input_tensors.as_mut()
+    }
+
+    fn num_outputs(&self) -> usize {
+        self.num_outputs
+    }
+
+    fn output_tensors(&self) -> Option<&LarodTensorContainer<'a>> {
+        self.output_tensors.as_ref()
+    }
+
+    fn output_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>> {
+        self.output_tensors.as_mut()
     }
 
     fn start_job(&self) -> Result<()> {
