@@ -480,6 +480,13 @@ impl<'a> ops::Deref for LarodTensorContainer<'a> {
     }
 }
 
+impl<'a> ops::DerefMut for LarodTensorContainer<'a> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [Tensor<'a>] {
+        self.tensors.as_mut_slice()
+    }
+}
+
 pub struct Tensor<'a> {
     ptr: *mut larodTensor,
     buffer: Option<File>,

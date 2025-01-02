@@ -49,7 +49,10 @@ fn main() -> anyhow::Result<()> {
             t.set_buffer(file)?;
         }
     }
-    let Some(input_tensor) = preprocessor.input_tensors().and_then(|tc| tc.first()) else {
+    let Some(input_tensor) = preprocessor
+        .input_tensors_mut()
+        .and_then(|tc| tc.first_mut())
+    else {
         return Err(anyhow::anyhow!("preprocessor has no input tensors"));
     };
 
