@@ -326,6 +326,32 @@ pub struct StreamBuffer<'a> {
 }
 
 impl<'a> StreamBuffer<'a> {
+    pub fn capacity(&self) -> usize {
+        unsafe { vdo_buffer_get_capacity(self.buffer.raw) }
+    }
+    pub fn as_slice(&self) -> Result<&[u8]> {
+        let buffer_data = unsafe { vdo_buffer_get_data(self.buffer.raw) };
+        if !buffer_data.is_null() {
+            let slice =
+                unsafe { std::slice::from_raw_parts(buffer_data as *mut u8, self.capacity()) } as _;
+            Ok(slice)
+        } else {
+            Err(Error::NullPointer)
+        }
+    }
+
+    pub fn as_mut_slice(&self) -> Result<&mut [u8]> {
+        let buffer_data = unsafe { vdo_buffer_get_data(self.buffer.raw) };
+        if !buffer_data.is_null() {
+            let slice =
+                unsafe { std::slice::from_raw_parts_mut(buffer_data as *mut u8, self.capacity()) }
+                    as _;
+            Ok(slice)
+        } else {
+            Err(Error::NullPointer)
+        }
+    }
+
     pub fn frame(&self) -> Result<Frame> {
         let frame = unsafe { vdo_buffer_get_frame(self.buffer.raw) };
         Ok(Frame {
