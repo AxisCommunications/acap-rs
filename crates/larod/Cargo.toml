@@ -1,0 +1,21 @@
+[package]
+name = "larod"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+larod-sys = { workspace = true }
+log.workspace = true
+thiserror.workspace = true
+memmap2 = "0.9.5"
+
+[dev-dependencies]
+env_logger.workspace = true
+anyhow.workspace = true
+trybuild = "1.0.101"
+
+[features]
+device-tests = []
+
+[[example]]
+name = "basic"
