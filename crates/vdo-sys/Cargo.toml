@@ -9,4 +9,4 @@ pkg-config = { workspace = true }
 
 [dependencies]
 glib-sys = { workspace = true }
-gobject-sys = "0.20.4"
+gobject-sys = "0.19.5"

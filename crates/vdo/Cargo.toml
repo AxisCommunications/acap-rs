@@ -9,7 +9,7 @@ log.workspace = true
 anyhow.workspace = true
 glib.workspace = true
 glib-sys.workspace = true
-gobject-sys = "0.20.4"
+gobject-sys = "0.19.5"
 thiserror.workspace = true
 
 [features]
