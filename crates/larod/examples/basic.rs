@@ -1,6 +1,6 @@
 use anyhow::Context;
 use larod::{ImageFormat, LarodModel, PreProcBackend, Preprocessor, Session};
-use std::{fs, path::Path};
+use std::{fs, iter::Iterator, path::Path};
 
 fn get_file(name: &str) -> anyhow::Result<std::fs::File> {
     let path = Path::new(name);
@@ -49,6 +49,9 @@ fn main() -> anyhow::Result<()> {
             t.set_buffer(file)?;
         }
     }
+    let Some(input_tensor) = preprocessor.input_tensors().and_then(|tc| tc.first()) else {
+        return Err(anyhow::anyhow!("preprocessor has no input tensors"));
+    };
 
     Ok(())
 }

@@ -45,6 +45,7 @@ use std::{
     fmt::Display,
     fs::File,
     marker::PhantomData,
+    ops,
     os::fd::{AsFd, AsRawFd},
     ptr::{self},
 };
@@ -467,6 +468,15 @@ impl<'a> LarodTensorContainer<'a> {
 
     pub fn len(&self) -> usize {
         self.tensors.len()
+    }
+}
+
+impl<'a> ops::Deref for LarodTensorContainer<'a> {
+    type Target = [Tensor<'a>];
+
+    #[inline]
+    fn deref(&self) -> &[Tensor<'a>] {
+        self.tensors.as_slice()
     }
 }
 
