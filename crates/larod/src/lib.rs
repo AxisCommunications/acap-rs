@@ -745,8 +745,7 @@ pub trait LarodModel<'a> {
     fn num_outputs(&self) -> usize;
     fn output_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
     fn output_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
-    fn start_job(&self) -> Result<()>;
-    fn stop(&self);
+    fn create_job(&self) -> Result<JobRequest>;
 }
 
 #[derive(Default)]
@@ -1066,11 +1065,11 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
         self.output_tensors.as_mut()
     }
 
-    fn start_job(&self) -> Result<()> {
+    fn create_job(&self) -> Result<JobRequest> {
         if self.input_tensors.is_none() || self.output_tensors.is_none() {
             return Err(Error::UnsatisfiedDependencies);
         }
-        unsafe {
+        let (job_ptr, maybe_error) = unsafe {
             try_func!(
                 larodCreateJobRequest,
                 self.ptr,
@@ -1081,11 +1080,21 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                 self.crop
                     .as_ref()
                     .map_or(ptr::null_mut::<larodMap>(), |m| m.raw)
+            )
+        };
+        if !job_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodCreateJobRequest indicated success AND returned an error!"
             );
+            Ok(JobRequest {
+                raw: job_ptr,
+                session: self.session,
+            })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
-        Ok(())
     }
-    fn stop(&self) {}
 }
 
 impl<'a> Drop for Preprocessor<'a> {
@@ -1102,6 +1111,34 @@ impl<'a> Drop for Preprocessor<'a> {
             };
         }
         unsafe { larodDestroyModel(&mut self.ptr) };
+    }
+}
+
+pub struct JobRequest<'a> {
+    raw: *mut larodJobRequest,
+    session: &'a Session,
+}
+
+impl<'a> JobRequest<'a> {
+    pub fn run_job(&self) -> Result<()> {
+        let (success, maybe_error) = unsafe { try_func!(larodRunJob, self.session.conn, self.raw) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodRunJob indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+}
+
+impl<'a> Drop for JobRequest<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            larodDestroyJobRequest(&mut self.raw);
+        }
     }
 }
 
@@ -1250,10 +1287,12 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
         self.output_tensors.as_mut()
     }
 
-    fn start_job(&self) -> Result<()> {
-        Ok(())
+    fn create_job(&self) -> Result<JobRequest> {
+        Ok(JobRequest {
+            raw: ptr::null_mut(),
+            session: self.session,
+        })
     }
-    fn stop(&self) {}
 }
 
 impl<'a> Drop for InferenceModel<'a> {
