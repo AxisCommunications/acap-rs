@@ -40,6 +40,7 @@
 use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 use larod_sys::*;
+use memmap2::{Mmap, MmapMut};
 use std::{
     ffi::{c_char, CStr, CString},
     fmt::Display,
@@ -490,6 +491,7 @@ impl<'a> ops::DerefMut for LarodTensorContainer<'a> {
 pub struct Tensor<'a> {
     ptr: *mut larodTensor,
     buffer: Option<File>,
+    mmap: Option<MmapMut>,
     phantom: PhantomData<&'a Session>,
 }
 
@@ -609,7 +611,6 @@ impl<'a> Tensor<'a> {
     /// but aligns better with the need for the tensor to own the
     /// file descriptor it is using as a buffer.
     pub fn set_buffer(&mut self, file: File) -> Result<()> {
-        self.buffer = Some(file);
         let (success, maybe_error) = unsafe {
             try_func!(
                 larodSetTensorFd,
@@ -622,6 +623,17 @@ impl<'a> Tensor<'a> {
                 maybe_error.is_none(),
                 "larodSetTensorFd indicated success AND returned an error!"
             );
+            self.buffer = Some(file);
+            unsafe {
+                match MmapMut::map_mut(self.buffer.as_ref().unwrap()) {
+                    Ok(m) => {
+                        self.mmap = Some(m);
+                    }
+                    Err(e) => {
+                        return Err(Error::IOError(e));
+                    }
+                };
+            }
             Ok(())
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
@@ -633,6 +645,11 @@ impl<'a> Tensor<'a> {
     pub fn set_fd_offset() {}
     pub fn fd_props() {}
     pub fn set_fd_props() {}
+    pub fn copy_from_slice(&mut self, slice: &[u8]) {
+        if let Some(mmap) = self.mmap.as_mut() {
+            mmap.copy_from_slice(slice);
+        }
+    }
     // pub fn destroy(mut self, session: &Session) -> Result<()> {
     //     let (success, maybe_error) =
     //         unsafe { try_func!(larodDestroyTensors, session.conn, &mut self.ptr, 1) };
@@ -653,6 +670,7 @@ impl<'a> From<*mut larodTensor> for Tensor<'a> {
         Self {
             ptr: value,
             buffer: None,
+            mmap: None,
             phantom: PhantomData,
         }
     }
