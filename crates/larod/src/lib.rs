@@ -611,13 +611,8 @@ impl<'a> Tensor<'a> {
     /// but aligns better with the need for the tensor to own the
     /// file descriptor it is using as a buffer.
     pub fn set_buffer(&mut self, file: File) -> Result<()> {
-        let (success, maybe_error) = unsafe {
-            try_func!(
-                larodSetTensorFd,
-                self.ptr,
-                self.buffer.as_mut().unwrap().as_raw_fd()
-            )
-        };
+        let (success, maybe_error) =
+            unsafe { try_func!(larodSetTensorFd, self.ptr, file.as_raw_fd()) };
         if success {
             debug_assert!(
                 maybe_error.is_none(),
