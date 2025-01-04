@@ -1,7 +1,4 @@
 [package]
-name = "cli-version"
+name = "ffi_patterns"
 version = "0.0.0"
 edition.workspace = true
-
-[lib]
-proc-macro = true

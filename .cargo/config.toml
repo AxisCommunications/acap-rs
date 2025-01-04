@@ -1,0 +1,2 @@
+[target.'cfg(all(not(miri), not(target_arch = "x86_64")))']
+runner = ["remote-test.sh"]

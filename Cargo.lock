@@ -205,6 +205,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "axparameter"
+version = "0.0.0"
+dependencies = [
+ "axparameter-sys",
+ "glib",
+ "glib-sys",
+ "log",
+ "syslog",
+]
+
+[[package]]
+name = "axparameter-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen",
+ "glib-sys",
+ "pkg-config",
+]
+
+[[package]]
+name = "axparameter_example"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "axparameter",
+ "glib",
+ "log",
+]
+
+[[package]]
 name = "axstorage"
 version = "0.0.0"
 dependencies = [
@@ -538,7 +568,7 @@ checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
 name = "cli-version"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "colorchoice"
@@ -762,6 +792,10 @@ name = "fastrand"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
+
+[[package]]
+name = "ffi_patterns"
+version = "0.0.0"
 
 [[package]]
 name = "filetime"

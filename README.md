@@ -26,11 +26,12 @@ To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCo
   - [Other library crates](#other-library-crates)
 - [**Documentation**](#documentation)
   - [Example applications](#example-applications)
+  - [Articles](#articles)
 - [**Troubleshooting**](#troubleshooting)
 
 ## Getting started
 
-There are multiple ways to set up a development environment, but the recommended way is using a dev container.
+The recommended setup is using the [dev container](#dev-container) and the most recent LTS version of AXIS OS [^1].
 
 ### Dev container
 
@@ -124,24 +125,37 @@ grouped in a similar way as in the ACAP Native SDK APIs documentation.
 
 ### ACAP Native API bindings
 
-These are idiomatic and safe bindings for the C APIs.
+These are idiomatic and safe bindings for the [C APIs](https://axiscommunications.github.io/acap-documentation/docs/api/native-sdk-api.html#native-sdk-api).
 Each crate has a corresponding `*-sys`, which is omitted for brevity.
 
+- `axparameter`: Bindings for the Parameter API.
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/axparameter/src/lib.rs)
 - `axevent`: Bindings for the Event API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axevent/src/lib.rs)
+- `axoverlay`: Bindings for the Overlay API
+  - Status: 📄 Not started
+- `axserialport`: Bindings for the Serial Port API
+  - Status: 📄 Not started
 - `axstorage`: Bindings for the Edge Storage API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axstorage/src/lib.rs)
 - `bbox`: Bindings for the Bounding Box API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/bbox/src/lib.rs)
+- `larod`: Bindings for the Machine Learning API.
+  - Status: 💡 Started
+  - Documentation: [Pull request](https://github.com/AxisCommunications/acap-rs/pull/120)
 - `licensekey`: Bindings for the License Key API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/licensekey/src/lib.rs)
 - `mdb`: Bindings for the Message Broker API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/mdb/src/lib.rs)
+- `vdo`: Bindings for the Video Capture API.
+  - Status: 💡 Started
+  - Documentation: [Pull request](https://github.com/AxisCommunications/acap-rs/pull/153)
 
 ### VAPIX API bindings
 
@@ -171,6 +185,9 @@ by this project.
 
 ### Example applications
 
+- `axparameter_example`: Creates, reads, updates, deletes, and subscribes to parameters.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/axparameter_example/src/main.rs)
 - `axstorage_example`: Writes data to files on all connected storages.
   - Status: ⚠️ Alpha
   - [Source code](apps/axstorage_example/src/main.rs)
@@ -204,6 +221,11 @@ by this project.
 
 <!-- inspect_env is omitted because it is intended primarily as a test -->
 
+### Articles
+
+- [Related projects](docs/related-projects.md)
+- [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
+
 ## Troubleshooting
 
 The docker image may fail to build with the following included in the output:
@@ -221,3 +243,5 @@ be resolved by either
 [ACAP]: https://axiscommunications.github.io/acap-documentation/
 
 [Rust]: https://doc.rust-lang.org/
+
+[^1]: Compatibility with various host and target environments are explored and explained in [compatibility](docs/compatibility.md)
