@@ -1,4 +1,10 @@
-use std::{mem, mem::ManuallyDrop, ptr};
+use std::{
+    ffi::{c_char, c_void, CStr},
+    mem,
+    mem::ManuallyDrop,
+    ptr,
+    ptr::NonNull,
+};
 
 use axstorage_sys::{
     ax_storage_error_quark, ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id,
@@ -18,9 +24,9 @@ use glib::{
     error::ErrorDomain,
     ffi::GError,
     translate::{from_glib, FromGlibPtrFull},
-    GString, GStringPtr, List, Quark,
+    GStringPtr, List, Quark,
 };
-use glib_sys::{gpointer, GTRUE};
+use glib_sys::{g_free, g_strdup, gpointer, GTRUE};
 
 // The documentation states that we are responsible for freeing the callbacks, but it does state
 // when it is safe to do so making it impossible to create a Rust abstraction that both:
@@ -46,6 +52,52 @@ macro_rules! try_func {
         }
         retval
     }};
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct CStringPtr(NonNull<c_char>);
+
+impl CStringPtr {
+    /// Create an owned string from a foreign allocation
+    ///
+    /// # Safety
+    ///
+    /// In addition to the safety preconditions for [`CStr::from_ptr`] the memory must have been
+    /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
+    /// users of this memory.
+    unsafe fn from_ptr(ptr: *mut c_char) -> Self {
+        debug_assert!(!ptr.is_null());
+        Self(NonNull::new_unchecked(ptr))
+    }
+
+    pub fn as_c_str(&self) -> &CStr {
+        // SAFETY: The preconditions for instantiating this type include all preconditions
+        // for `CStr::from_ptr`.
+        unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
+    }
+
+    // TODO: Consider implementing infallible conversion to OsString on Unix.
+}
+
+impl Clone for CStringPtr {
+    fn clone(&self) -> Self {
+        // SAFETY: The constructor guarantees that the pointer is not dangling and that the string
+        // is null terminated.
+        let ptr = unsafe { g_strdup(self.0.as_ptr()) };
+        Self(NonNull::new(ptr).unwrap())
+    }
+}
+
+impl Drop for CStringPtr {
+    fn drop(&mut self) {
+        // SAFETY: The preconditions for instantiating this type include:
+        // - having full ownership of the memory.
+        // - having allocated the memory in a manner that is compatible with `g_free`.
+        unsafe {
+            g_free(self.0.as_ptr() as *mut c_void);
+        }
+    }
 }
 
 /// A storage that is, or was, set up.
@@ -328,20 +380,17 @@ where
 }
 
 /// Returns the location on the storage where the client should save its files.
-pub fn get_path(storage: &mut Storage) -> Result<GString, glib::Error> {
+pub fn get_path(storage: &mut Storage) -> Result<CStringPtr, glib::Error> {
     // TODO: SAFETY
-    unsafe {
-        let path = try_func!(ax_storage_get_path, storage.raw);
-        // TODO: Consider making these con
-        // SAFETY: This is safe because:
-        // - The foreign function sets the error if the path is null in which case we return early
-        //   above.
-        // - The foreign function creates the value with `g_strdup` so it will be nul terminated
-        //   and reads to up to and including the nul terminator are valid.
-        // - This function owns the memory and does not mutate it.
-        // - Paths will never be longer than `isize::MAX` in practice.
-        Ok(GString::from_glib_full(path))
-    }
+    let path = unsafe { try_func!(ax_storage_get_path, storage.raw) };
+    // SAFETY: This is safe because:
+    // - The foreign function sets the error if the path is null in which case we return early
+    //   above.
+    // - The foreign function creates the value with `g_strdup` so it will be nul terminated
+    //   and reads to up to and including the nul terminator are valid.
+    // - This function owns the memory and does not mutate it.
+    // - Paths will never be longer than `isize::MAX` in practice.
+    unsafe { Ok(CStringPtr::from_ptr(path)) }
 }
 
 /// Returns the status of the provided event.
