@@ -745,7 +745,7 @@ pub trait LarodModel<'a> {
     fn num_outputs(&self) -> usize;
     fn output_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
     fn output_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
-    fn create_job(&self) -> Result<JobRequest>;
+    fn create_job(&self) -> Result<JobRequest<'a>>;
 }
 
 #[derive(Default)]
@@ -837,7 +837,7 @@ impl PreprocessorBuilder {
         self
     }
 
-    pub fn load(self, session: &Session) -> Result<Preprocessor> {
+    pub fn load(self, session: &Session) -> Result<Preprocessor<'_>> {
         let mut map = LarodMap::new()?;
         match self.input_format {
             ImageFormat::NV12 => map.set_string("image.input.format", "nv12")?,
@@ -1065,7 +1065,7 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
         self.output_tensors.as_mut()
     }
 
-    fn create_job(&self) -> Result<JobRequest> {
+    fn create_job(&self) -> Result<JobRequest<'a>> {
         if self.input_tensors.is_none() || self.output_tensors.is_none() {
             return Err(Error::UnsatisfiedDependencies);
         }
@@ -1287,7 +1287,7 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
         self.output_tensors.as_mut()
     }
 
-    fn create_job(&self) -> Result<JobRequest> {
+    fn create_job(&self) -> Result<JobRequest<'a>> {
         Ok(JobRequest {
             raw: ptr::null_mut(),
             session: self.session,
