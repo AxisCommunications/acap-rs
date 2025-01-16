@@ -640,6 +640,9 @@ impl<'a> Tensor<'a> {
     pub fn set_fd_offset() {}
     pub fn fd_props() {}
     pub fn set_fd_props() {}
+    pub fn as_slice(&self) -> Option<&[u8]> {
+        self.mmap.as_deref()
+    }
     pub fn copy_from_slice(&mut self, slice: &[u8]) {
         if let Some(mmap) = self.mmap.as_mut() {
             mmap.copy_from_slice(slice);
@@ -1120,7 +1123,7 @@ pub struct JobRequest<'a> {
 }
 
 impl<'a> JobRequest<'a> {
-    pub fn run_job(&self) -> Result<()> {
+    pub fn run(&self) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodRunJob, self.session.conn, self.raw) };
         if success {
             debug_assert!(
@@ -1288,10 +1291,34 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
     }
 
     fn create_job(&self) -> Result<JobRequest<'a>> {
-        Ok(JobRequest {
-            raw: ptr::null_mut(),
-            session: self.session,
-        })
+        if self.input_tensors.is_none() || self.output_tensors.is_none() {
+            return Err(Error::UnsatisfiedDependencies);
+        }
+        let (job_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodCreateJobRequest,
+                self.ptr,
+                self.input_tensors.as_ref().unwrap().ptr,
+                self.num_inputs,
+                self.output_tensors.as_ref().unwrap().ptr,
+                self.num_outputs,
+                self.params
+                    .as_ref()
+                    .map_or(ptr::null_mut::<larodMap>(), |m| m.raw)
+            )
+        };
+        if !job_ptr.is_null() {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodCreateJobRequest indicated success AND returned an error!"
+            );
+            Ok(JobRequest {
+                raw: job_ptr,
+                session: self.session,
+            })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 }
 
