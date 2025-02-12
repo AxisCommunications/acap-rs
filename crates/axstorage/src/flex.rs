@@ -71,19 +71,25 @@ impl CStringPtr {
         Self(NonNull::new_unchecked(ptr))
     }
 
+    /// Create a [`CStr`] slice from the underlying pointer.
     pub fn to_c_str(&self) -> &CStr {
         // SAFETY: The preconditions for instantiating this type include all preconditions
         // for `CStr::from_ptr`.
         unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
     }
 
+    /// Create an [`OsStr`] slice from the underlying pointer.
     #[cfg(unix)]
-    pub fn to_path(&self) -> &Path {
+    pub fn to_os_str(&self) -> &OsStr {
         use std::os::unix::ffi::OsStrExt;
-        OsStr::from_bytes(self.to_c_str().to_bytes()).as_ref()
+        OsStr::from_bytes(self.to_c_str().to_bytes())
     }
 
-    // TODO: Consider implementing infallible conversion to OsString on Unix.
+    /// Create a [`Path`] slice from the underlying pointer.
+    #[cfg(unix)]
+    pub fn to_path(&self) -> &Path {
+        self.to_os_str().as_ref()
+    }
 }
 
 impl Clone for CStringPtr {
