@@ -29,7 +29,9 @@ impl RunCommand {
         } = deploy_options;
 
         let mut host = address.to_string();
-        host.push_str(":22");
+        if !host.contains(":") {
+            host.push_str(":22");
+        }
         let tcp = TcpStream::connect(host).unwrap();
         let mut session = Session::new().unwrap();
         session.set_tcp_stream(tcp);

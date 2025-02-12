@@ -151,7 +151,12 @@ fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    let tcp = TcpStream::connect(cli.netloc.host.to_string()).unwrap();
+    let mut host = cli.netloc.host.to_string();
+    if !host.contains(":") {
+        host.push_str(":22");
+    }
+
+    let tcp = TcpStream::connect(host).unwrap();
     let mut sess = Session::new().unwrap();
     sess.set_tcp_stream(tcp);
     sess.handshake().unwrap();
