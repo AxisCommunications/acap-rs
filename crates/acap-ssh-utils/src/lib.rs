@@ -27,24 +27,27 @@ impl RemoteCommand {
         args: Option<&[&str]>,
     ) -> Self {
         let mut cmd = if let Some(user) = user {
-            format!("su {user} -c \"")
+            let mut cmd = std::process::Command::new("su");
+            cmd.arg(user);
+            cmd
         } else {
-            "su".to_string()
+            std::process::Command::new("sh")
         };
 
-        for (k, v) in env.unwrap_or(&[]) {
-            cmd.push_str(&format!("{}={}", k.as_ref(), v.as_ref()));
-            cmd.push(' ');
-        }
-        // channel.setenv("G_SLICE", "always-malloc")?;
-        cmd.push_str(executable);
-        for arg in args.unwrap_or(&[]) {
-            cmd.push(' ');
-            cmd.push_str(arg.as_ref());
-        }
-        cmd.push('\"');
+        cmd.arg("-c");
 
-        Self { cmd }
+        if let Some(env) = env {
+            cmd.envs(env.iter().map(|(k, v)| (k.as_ref(), v.as_ref())));
+        }
+
+        cmd.arg(executable);
+        if let Some(args) = args {
+            cmd.args(args);
+        }
+
+        Self {
+            cmd: format!("{cmd:?}"),
+        }
     }
 
     pub fn exec(&self, channel: &mut Channel) -> Result<(), anyhow::Error> {
