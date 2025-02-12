@@ -523,7 +523,20 @@ impl<'a> Tensor<'a> {
         }
     }
 
-    pub fn byte_size() {}
+    pub fn byte_size(&self) -> Result<usize> {
+        let mut byte_size: usize = 0;
+        let (success, maybe_error) =
+            unsafe { try_func!(larodGetTensorByteSize, self.ptr, &mut byte_size) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorByteSize indicated success AND returned an error!"
+            );
+            Ok(byte_size)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
 
     pub fn dims(&self) -> Result<&[usize]> {
         let (dims, maybe_error) = unsafe { try_func!(larodGetTensorDims, self.ptr) };
@@ -532,13 +545,6 @@ impl<'a> Tensor<'a> {
                 maybe_error.is_none(),
                 "larodGetTensorDims indicated success AND returned an error!"
             );
-            // let d = unsafe {
-            //     (*dims)
-            //         .dims
-            //         .into_iter()
-            //         .take((*dims).len)
-            //         .collect::<Vec<usize>>()
-            // };
             let (left, _) = unsafe { (*dims).dims.split_at((*dims).len) };
             Ok(left)
         } else {
@@ -547,13 +553,15 @@ impl<'a> Tensor<'a> {
     }
 
     pub fn set_dims(&self, dims: &[usize]) -> Result<()> {
-        let mut dim_array: [usize; 12] = [0; 12];
-        for (idx, dim) in dims.iter().take(12).enumerate() {
-            dim_array[idx] = *dim;
+        if dims.len() > 12 {
+            return Err(Error::InvalidInput);
         }
+
+        let mut dim_array: [usize; 12] = [0; 12];
+        dim_array[..12.min(dims.len())].copy_from_slice(&dims[..12.min(dims.len())]);
         let dims_struct = larodTensorDims {
             dims: dim_array,
-            len: dims.len(),
+            len: dims.len().min(12),
         };
         let (success, maybe_error) =
             unsafe { try_func!(larodSetTensorDims, self.ptr, &dims_struct) };
@@ -589,7 +597,29 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    pub fn set_pitches() {}
+    pub fn set_pitches(&mut self, pitches: &[usize]) -> Result<()> {
+        if pitches.len() > 12 {
+            return Err(Error::InvalidInput);
+        }
+
+        let mut pitch_array: [usize; 12] = [0; 12];
+        pitch_array[..12.min(pitches.len())].copy_from_slice(&pitches[..12.min(pitches.len())]);
+        let pitch_struct = larodTensorPitches {
+            pitches: pitch_array,
+            len: pitches.len().min(12),
+        };
+        let (success, maybe_error) =
+            unsafe { try_func!(larodSetTensorPitches, self.ptr, &pitch_struct) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorPitches indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn data_type() {}
     pub fn set_data_type() {}
     pub fn layout(&self) -> Result<larodTensorLayout> {
@@ -601,9 +631,37 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    pub fn set_layout() {}
+    pub fn set_layout(&mut self, layout: TensorLayout) -> Result<()> {
+        let (success, maybe_error) = unsafe { try_func!(larodSetTensorLayout, self.ptr, layout) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorLayout indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn fd(&self) -> Option<std::os::fd::BorrowedFd<'_>> {
         self.buffer.as_ref().map(|f| f.as_fd())
+    }
+
+    /// Set the file descriptor for the tensor to use.
+    pub fn set_fd(&mut self, fd: BorrowedFd) -> Result<()> {
+        let (success, maybe_error) =
+            unsafe { try_func!(larodSetTensorFd, self.ptr, fd.as_raw_fd()) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorFd indicated success AND returned an error!"
+            );
+            self.mmap = None;
+            self.buffer = None;
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 
     /// Use a memory mapped file as a buffer for this tensor.
@@ -635,13 +693,27 @@ impl<'a> Tensor<'a> {
         }
     }
     pub fn fd_size() {}
-    pub fn set_fd_size() {}
+    pub fn set_fd_size(&mut self, size: usize) -> Result<()> {
+        let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdSize, self.ptr, size) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorFdSize indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn fd_offset() {}
     pub fn set_fd_offset() {}
     pub fn fd_props() {}
     pub fn set_fd_props() {}
     pub fn as_slice(&self) -> Option<&[u8]> {
         self.mmap.as_deref()
+    }
+    pub fn as_mut_slice(&mut self) -> Option<&mut [u8]> {
+        self.mmap.as_deref_mut()
     }
     pub fn copy_from_slice(&mut self, slice: &[u8]) {
         if let Some(mmap) = self.mmap.as_mut() {
