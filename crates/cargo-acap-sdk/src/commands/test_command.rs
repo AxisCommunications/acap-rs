@@ -1,5 +1,7 @@
 use cargo_acap_build::{AppBuilder, Architecture, Artifact};
 use log::debug;
+use ssh2::Session;
+use std::net::TcpStream;
 
 use crate::{BuildOptions, DeployOptions, ResolvedBuildOptions};
 
@@ -31,34 +33,35 @@ impl TestCommand {
 
         build_args.push("--tests".to_string());
 
+        let tcp = TcpStream::connect(address.to_string()).unwrap();
+        let mut session = Session::new().unwrap();
+        session.set_tcp_stream(tcp);
+        session.handshake().unwrap();
+
+        session.userauth_password(&username, &password).unwrap();
+
         let artifacts = AppBuilder::from_targets([Architecture::from(target)])
             .args(build_args)
             .execute()?;
 
         for artifact in artifacts {
             debug!("Running {:?}", artifact);
-            let envs = vec![("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")]
-                .into_iter()
-                .collect();
+            let envs = [("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")];
             let test_args = ["--test-threads=1"];
             match artifact {
                 Artifact::Eap { path, name } => {
                     // TODO: Install instead of patch when needed
                     debug!("Patching app {name}");
-                    acap_ssh_utils::patch_package(&path, &username, &password, &address)?;
+                    acap_ssh_utils::patch_package(&path, &session)?;
                     debug!("Running app {name}");
-                    acap_ssh_utils::run_package(
-                        &username, &password, &address, &name, envs, &test_args,
-                    )?
+                    acap_ssh_utils::run_package(&session, &name, &envs, &test_args)?
                 }
                 Artifact::Exe { path } => {
                     debug!(
                         "Running exe {}",
                         path.file_name().unwrap().to_string_lossy()
                     );
-                    acap_ssh_utils::run_other(
-                        &path, &username, &password, &address, envs, &test_args,
-                    )?;
+                    acap_ssh_utils::run_other(&path, &session, &envs, &test_args)?;
                 }
             }
         }

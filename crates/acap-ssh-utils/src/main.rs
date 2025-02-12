@@ -6,6 +6,8 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use cli_version::version_with_commit_id;
 use log::debug;
+use ssh2::Session;
+use std::net::TcpStream;
 use url::Host;
 
 /// Utilities for interacting with Axis devices over SSH.
@@ -32,12 +34,11 @@ struct Cli {
 }
 
 impl Cli {
-    fn exec(self) -> anyhow::Result<()> {
-        let Self { netloc, command } = self;
-        match command {
-            Command::Patch(cmd) => cmd.exec(netloc),
-            Command::RunApp(cmd) => cmd.exec(netloc),
-            Command::RunOther(cmd) => cmd.exec(netloc),
+    fn exec(self, session: &Session) -> anyhow::Result<()> {
+        match self.command {
+            Command::Patch(cmd) => cmd.exec(session),
+            Command::RunApp(cmd) => cmd.exec(session),
+            Command::RunOther(cmd) => cmd.exec(session),
         }
     }
 }
@@ -72,8 +73,8 @@ struct Patch {
 }
 
 impl Patch {
-    fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
-        patch_package(&self.package, &netloc.user, &netloc.pass, &netloc.host)
+    fn exec(self, session: &Session) -> anyhow::Result<()> {
+        patch_package(&self.package, session)
     }
 }
 
@@ -92,16 +93,11 @@ struct RunApp {
 }
 
 impl RunApp {
-    fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
+    fn exec(self, session: &Session) -> anyhow::Result<()> {
         run_package(
-            &netloc.user,
-            &netloc.pass,
-            &netloc.host,
+            session,
             &self.package,
-            self.environment
-                .iter()
-                .map(|(k, v)| (k.as_str(), v.as_str()))
-                .collect(),
+            &self.environment,
             &self.args.iter().map(String::as_str).collect::<Vec<_>>(),
         )
     }
@@ -122,16 +118,11 @@ struct RunOther {
 }
 
 impl RunOther {
-    fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
+    fn exec(self, session: &Session) -> anyhow::Result<()> {
         run_other(
             &self.package,
-            &netloc.user,
-            &netloc.pass,
-            &netloc.host,
-            self.environment
-                .iter()
-                .map(|(k, v)| (k.as_str(), v.as_str()))
-                .collect(),
+            session,
+            &self.environment,
             &self.args.iter().map(String::as_str).collect::<Vec<_>>(),
         )
     }
@@ -158,7 +149,18 @@ fn main() -> anyhow::Result<()> {
     };
     debug!("Logging initialized");
 
-    match Cli::parse().exec() {
+    let cli = Cli::parse();
+
+    let tcp = TcpStream::connect(cli.netloc.host.to_string()).unwrap();
+    let mut sess = Session::new().unwrap();
+    sess.set_tcp_stream(tcp);
+    sess.handshake().unwrap();
+
+    sess.userauth_password(&cli.netloc.user, &cli.netloc.pass)
+        .unwrap();
+    sess.set_blocking(false);
+
+    match Cli::parse().exec(&sess) {
         Ok(()) => Ok(()),
         Err(e) => {
             if let Some(log_file) = log_file {
