@@ -320,6 +320,10 @@ impl<'a> Frame<'a> {
     pub fn size(&self) -> usize {
         unsafe { vdo_frame_get_size(self.raw) }
     }
+
+    pub fn get_type(&self) -> VdoFrameType {
+        unsafe { vdo_frame_get_frame_type(self.raw) }
+    }
 }
 
 pub struct Buffer {
