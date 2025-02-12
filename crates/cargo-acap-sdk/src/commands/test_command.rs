@@ -46,7 +46,11 @@ impl TestCommand {
 
         for artifact in artifacts {
             debug!("Running {:?}", artifact);
-            let envs = [("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")];
+            let envs = [
+                ("RUST_LOG", "debug"),
+                ("RUST_LOG_STYLE", "always"),
+                ("G_SLICE", "always-malloc"),
+            ];
             let test_args = ["--test-threads=1"];
             match artifact {
                 Artifact::Eap { path, name } => {

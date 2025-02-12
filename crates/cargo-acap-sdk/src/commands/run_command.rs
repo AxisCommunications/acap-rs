@@ -43,7 +43,11 @@ impl RunCommand {
             .args(args)
             .execute()?;
         for artifact in artifacts {
-            let envs = [("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")];
+            let envs = [
+                ("RUST_LOG", "debug"),
+                ("RUST_LOG_STYLE", "always"),
+                ("G_SLICE", "always-malloc"),
+            ];
             match artifact {
                 Artifact::Eap { path, name } => {
                     // TODO: Install instead of patch when needed
