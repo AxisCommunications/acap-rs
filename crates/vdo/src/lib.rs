@@ -281,12 +281,18 @@ impl StreamBuilder {
         self
     }
 
+    pub fn framerate(mut self, framerate: u32) -> Self {
+        self.framerate = framerate;
+        self
+    }
+
     pub fn build(self) -> Result<Stream> {
         let map = Map::new()?;
         map.set_u32("channel", self.channel)?;
         map.set_u32("format", self.format as u32)?;
         map.set_u32("width", self.width)?;
         map.set_u32("height", self.height)?;
+        map.set_u32("framerate", self.framerate)?;
         map.set_u32("buffer.count", self.buffer_count)?;
         map.set_u32("buffer.strategy", self.buffer_strategy as u32)?;
         let (stream_raw, maybe_error) = unsafe { try_func!(vdo_stream_new, map.raw, None) };
