@@ -36,9 +36,10 @@
 //! # TODOs:
 //! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
 //!     indicates it may fail to "kill a session." What are the implications if it fails to kill a session? Can we clear the sessions?
-
+use crate::inference::PrivateSupportedBackend;
 use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
+pub use larod_sys::larodTensorLayout as TensorLayout;
 use larod_sys::*;
 use memmap2::{Mmap, MmapMut};
 use std::{
@@ -47,7 +48,8 @@ use std::{
     fs::File,
     marker::PhantomData,
     ops,
-    os::fd::{AsFd, AsRawFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd},
+    path::Path,
     ptr::{self},
 };
 
@@ -153,6 +155,8 @@ pub enum Error {
     IOError(std::io::Error),
     #[error("attempted operation without satisfying all required dependencies")]
     UnsatisfiedDependencies,
+    #[error("an input parameter was incorrect")]
+    InvalidInput,
 }
 
 // impl LarodError {
@@ -844,11 +848,30 @@ pub enum PreProcBackend {
     RemoteOpenCLGPU,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
+pub enum Device {
+    CPU,
+    ARTPEC7GPU,
+    ARTPEC8DLPU,
+    ARTPEC9DLPU,
+}
+
+#[derive(Debug)]
 pub enum InferenceChip {
-    #[default]
-    TFLiteCPU,
-    TFLiteDLPU,
+    TFLite(Device),
+}
+
+impl InferenceChip {
+    pub fn as_str(&self) -> &str {
+        match self {
+            InferenceChip::TFLite(d) => match d {
+                Device::CPU => "cpu-tflite",
+                Device::ARTPEC7GPU => "axis-a7-gpu-tflite",
+                Device::ARTPEC8DLPU => "axis-a8-dlpu-tflite",
+                Device::ARTPEC9DLPU => "a9-dlpu-tflite",
+            },
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -1218,19 +1241,19 @@ impl<'a> Drop for JobRequest<'a> {
 }
 
 // #[derive(Default)]
-// pub struct ModelBuilder {
-//     file_path: Option<PathBuf>,
+// pub struct ModelBuilder<'a> {
+//     file_path: Option<&'a Path>,
 //     device: InferenceChip,
 //     crop: Option<(u32, u32, u32, u32)>,
 // }
 
-// impl ModelBuilder {
+// impl<'a> ModelBuilder<'a> {
 //     pub fn new() -> Self {
 //         ModelBuilder::default()
 //     }
 
-//     pub fn source_file(mut self, path: PathBuf) -> Self {
-//         self.file_path = Some(path);
+//     pub fn source_file<P: AsRef<Path>>(mut self, path: &'a P) -> Self {
+//         self.file_path = Some(path.as_ref());
 //         self
 //     }
 
@@ -1239,12 +1262,111 @@ impl<'a> Drop for JobRequest<'a> {
 //         self
 //     }
 
-//     pub fn with_crop(mut self, crop: (u32, u32, u32, u32)) -> Self {
-//         self.crop = Some(crop);
-//         self
+//     pub fn load(self, session: Session) -> Model {
+//         File::open(s)
 //     }
+// }
 
-//     pub fn load(self, session: Session) -> Model {}
+mod inference {
+    pub trait PrivateSupportedBackend {
+        fn as_str() -> &'static str;
+    }
+}
+
+// pub trait SupportedBackend: inference::PrivateSupportedBackend {
+//     fn as_str() -> &'static str;
+// }
+
+// Marker types
+pub struct TFLite;
+pub struct CVFlowNN;
+pub struct Native;
+
+// Hardware types that specify which modes they support
+pub struct CPU;
+pub struct EdgeTPU;
+pub struct GPU;
+pub struct Artpec7GPU;
+pub struct Artpec8DLPU;
+pub struct Artpec9DLPU;
+pub struct ArmNNCPU;
+
+impl inference::PrivateSupportedBackend for (TFLite, CPU) {
+    fn as_str() -> &'static str {
+        "cpu-tflite"
+    }
+}
+impl inference::PrivateSupportedBackend for (TFLite, Artpec7GPU) {
+    fn as_str() -> &'static str {
+        "axis-a7-gpu-tflite"
+    }
+}
+impl inference::PrivateSupportedBackend for (TFLite, Artpec8DLPU) {
+    fn as_str() -> &'static str {
+        "axis-a8-dlpu-tflite"
+    }
+}
+impl inference::PrivateSupportedBackend for (TFLite, Artpec9DLPU) {
+    fn as_str() -> &'static str {
+        "a9-dlpu-tflite"
+    }
+}
+
+// // A type-safe configuration
+// pub struct InferenceBackend<M, H> {
+//     mode: M,
+//     hardware: H,
+// }
+
+// impl SupportedBackend for (TFLite, CPU) {
+//     fn as_str() -> &'static str {
+//         "cpu-tflite"
+//     }
+// }
+
+// impl SupportedBackend for (TFLite, Artpec8DLPU) {
+//     fn new() -> (TFLite, Artpec8DLPU) {
+//         (TFLite, Artpec8DLPU)
+//     }
+//     fn as_str() -> &str {
+//         "cpu-tflite"
+//     }
+// }
+
+// impl SupportedBackend for InferenceBackend<TFLite, Artpec7GPU> {
+//     fn new() -> InferenceBackend<TFLite, Artpec7GPU> {
+//         InferenceBackend {
+//             mode: TFLite,
+//             hardware: Artpec7GPU,
+//         }
+//     }
+//     fn as_str(&self) -> &str {
+//         "axis-a7-gpu-tflite"
+//     }
+// }
+
+// impl SupportedBackend for InferenceBackend<TFLite, Artpec8DLPU> {
+//     fn new() -> InferenceBackend<TFLite, Artpec8DLPU> {
+//         InferenceBackend {
+//             mode: TFLite,
+//             hardware: Artpec8DLPU,
+//         }
+//     }
+//     fn as_str(&self) -> &str {
+//         "axis-a8-dlpu-tflite"
+//     }
+// }
+
+// impl SupportedBackend for InferenceBackend<TFLite, Artpec9DLPU> {
+//     fn new() -> InferenceBackend<TFLite, Artpec9DLPU> {
+//         InferenceBackend {
+//             mode: TFLite,
+//             hardware: Artpec9DLPU,
+//         }
+//     }
+//     fn as_str(&self) -> &str {
+//         "a9-dlpu-tflite"
+//     }
 // }
 
 pub struct InferenceModel<'a> {
@@ -1254,9 +1376,68 @@ pub struct InferenceModel<'a> {
     num_inputs: usize,
     output_tensors: Option<LarodTensorContainer<'a>>,
     num_outputs: usize,
+    params: Option<LarodMap>,
 }
 
 impl<'a> InferenceModel<'a> {
+    pub fn new<M, H, P>(
+        session: &'a Session,
+        model_file: P,
+        // chip: InferenceBackend<M, H>,
+        access: LarodAccess,
+        name: &str,
+        params: Option<LarodMap>,
+    ) -> Result<InferenceModel<'a>>
+    where
+        (M, H): inference::PrivateSupportedBackend,
+        P: AsRef<Path>,
+    {
+        let f = File::open(model_file).map_err(Error::IOError)?;
+        let Ok(device_name) = CString::new(<(M, H)>::as_str()) else {
+            return Err(Error::CStringAllocation);
+        };
+        let (device, maybe_device_error) =
+            unsafe { try_func!(larodGetDevice, session.conn, device_name.as_ptr(), 0) };
+        if !device.is_null() {
+            debug_assert!(
+                maybe_device_error.is_none(),
+                "larodGetDevice indicated success AND returned an error!"
+            );
+        } else {
+            return Err(maybe_device_error.unwrap_or(Error::MissingLarodError));
+        }
+        let Ok(name) = CString::new(name) else {
+            return Err(Error::CStringAllocation);
+        };
+        let (larod_model_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodLoadModel,
+                session.conn,
+                f.as_raw_fd(),
+                device,
+                access,
+                name.as_ptr(),
+                params.map_or_else(|| ptr::null(), |p| p.raw)
+            )
+        };
+        if !larod_model_ptr.is_null() {
+            debug_assert!(
+                maybe_device_error.is_none(),
+                "larodLoadModel indicated success AND returned an error!"
+            );
+            Ok(InferenceModel {
+                session: session,
+                ptr: larod_model_ptr,
+                input_tensors: None,
+                num_inputs: 0,
+                output_tensors: None,
+                num_outputs: 0,
+                params: None,
+            })
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn id() -> Result<()> {
         Ok(())
     }
