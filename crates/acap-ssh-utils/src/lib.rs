@@ -198,7 +198,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
     let package_dir = PathBuf::from("/usr/local/packages").join(app_name);
     let sftp = session.sftp()?;
     if sftp.stat(&package_dir).is_err() {
-        return Err(anyhow::anyhow!("Package doesn't exist"));
+        bail!("Package doesn't exist!");
     }
 
     let mut full = Archive::new(GzDecoder::new(File::open(package)?));
