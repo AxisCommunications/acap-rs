@@ -64,6 +64,14 @@ impl RemoteCommand {
             stdout.flush()?;
         }
 
+        channel.wait_eof()?;
+        channel.wait_close()?;
+        let code = channel.exit_status()?;
+
+        if code != 0 {
+            bail!("{} exited with status {}", self.cmd, code);
+        }
+
         Ok(())
     }
 
@@ -72,6 +80,15 @@ impl RemoteCommand {
         let mut stdout = channel.stream(0);
         let mut buf = [0; 4096];
         let n = stdout.read(&mut buf)?;
+
+        channel.wait_eof()?;
+        channel.wait_close()?;
+        let code = channel.exit_status()?;
+
+        if code != 0 {
+            bail!("{} exited with status {}", self.cmd, code);
+        }
+
         Ok(std::str::from_utf8(&buf[..n])?.to_string())
     }
 }
