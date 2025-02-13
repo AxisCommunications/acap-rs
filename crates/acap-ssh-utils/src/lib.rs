@@ -78,14 +78,14 @@ impl RemoteCommand {
         Ok(())
     }
 
-    pub fn exec_capture_stdout(&self, session: &Session) -> Result<String, anyhow::Error> {
+    pub fn exec_capture_stdout(&self, session: &Session) -> Result<Vec<u8>, anyhow::Error> {
         let mut channel = session.channel_session()?;
         channel.handle_extended_data(ssh2::ExtendedData::Merge)?;
 
         channel.exec(&self.cmd)?;
         let mut stdout = channel.stream(0);
-        let mut buf = [0; 4096];
-        let n = stdout.read(&mut buf)?;
+        let mut output = Vec::new();
+        stdout.read_to_end(&mut output)?;
 
         channel.wait_eof()?;
         channel.wait_close()?;
@@ -95,7 +95,7 @@ impl RemoteCommand {
             bail!("{} exited with status {}", self.cmd, code);
         }
 
-        Ok(std::str::from_utf8(&buf[..n])?.to_string())
+        Ok(output)
     }
 }
 
@@ -120,7 +120,7 @@ pub fn run_other<S: AsRef<str>>(
         .exec_capture_stdout(session)?;
 
     // The output from `mktemp -u` contains a trailing '\n'
-    let path = tmp.strip_suffix('\n').unwrap_or(&tmp);
+    let path = std::str::from_utf8(&tmp)?.strip_suffix('\n').unwrap();
 
     {
         let path = Path::new(&path);
