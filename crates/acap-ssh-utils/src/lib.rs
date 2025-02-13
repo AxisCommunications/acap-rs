@@ -39,6 +39,7 @@ impl RemoteCommand {
         if let Some(env) = env {
             cmd.envs(env.iter().map(|(k, v)| (k.as_ref(), v.as_ref())));
         }
+        cmd.env("G_SLICE", "always-malloc");
 
         cmd.arg(executable);
         if let Some(args) = args {
