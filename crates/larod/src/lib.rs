@@ -696,6 +696,12 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+    pub fn buffer(&self) -> Option<&File> {
+        self.buffer.as_ref()
+    }
+    pub fn buffer_mut(&mut self) -> Option<&mut File> {
+        self.buffer.as_mut()
+    }
     pub fn fd_size() {}
     pub fn set_fd_size(&mut self, size: usize) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdSize, self.ptr, size) };
