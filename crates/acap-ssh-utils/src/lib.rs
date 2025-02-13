@@ -9,6 +9,7 @@ use std::{
 
 use anyhow::bail;
 use flate2::read::GzDecoder;
+use log::debug;
 use tar::Archive;
 
 use ssh2::{FileStat, Session};
@@ -219,7 +220,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
                 size: None,
             };
             _ = entry.read_to_end(&mut buf)?;
-            println!("Writing file: {:?}", entry.path()?);
+            debug!("Writing file: {:?}", entry.path()?);
             let mut file = sftp.create(&package_dir.join(&entry.path()?))?;
             file.write_all(&buf)?;
             file.setstat(stat)?;
