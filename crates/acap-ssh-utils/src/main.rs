@@ -163,7 +163,6 @@ fn main() -> anyhow::Result<()> {
 
     sess.userauth_password(&cli.netloc.user, &cli.netloc.pass)
         .unwrap();
-    sess.set_blocking(false);
 
     match Cli::parse().exec(&sess) {
         Ok(()) => Ok(()),
