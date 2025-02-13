@@ -11,7 +11,7 @@ use anyhow::bail;
 use flate2::read::GzDecoder;
 use tar::Archive;
 
-use ssh2::{Channel, FileStat, Session};
+use ssh2::{FileStat, Session};
 
 use crate::acap::Manifest;
 
@@ -51,7 +51,10 @@ impl RemoteCommand {
         }
     }
 
-    pub fn exec(&self, channel: &mut Channel) -> Result<(), anyhow::Error> {
+    pub fn exec(&self, session: &Session) -> Result<(), anyhow::Error> {
+        let mut channel = session.channel_session()?;
+        channel.handle_extended_data(ssh2::ExtendedData::Merge)?;
+
         channel.exec(&self.cmd)?;
         let mut stdout = channel.stream(0);
         let mut buf = [0; 4096];
@@ -75,7 +78,10 @@ impl RemoteCommand {
         Ok(())
     }
 
-    pub fn exec_capture_stdout(&self, channel: &mut Channel) -> Result<String, anyhow::Error> {
+    pub fn exec_capture_stdout(&self, session: &Session) -> Result<String, anyhow::Error> {
+        let mut channel = session.channel_session()?;
+        channel.handle_extended_data(ssh2::ExtendedData::Merge)?;
+
         channel.exec(&self.cmd)?;
         let mut stdout = channel.stream(0);
         let mut buf = [0; 4096];
@@ -110,16 +116,26 @@ pub fn run_other<S: AsRef<str>>(
     env: &[(S, S)],
     args: &[&str],
 ) -> anyhow::Result<()> {
-    let sftp = session.sftp()?;
-    let mut channel = session.channel_session()?;
+    let tmp = RemoteCommand::new(None, None::<&[(&str, &str)]>, "mktemp -u", None)
+        .exec_capture_stdout(session)?;
 
-    let tmp = RemoteCommand::new(None, None::<&[(&str, &str)]>, "mktemp", None)
-        .exec_capture_stdout(&mut channel)?;
+    // The output from `mktemp -u` contains a trailing '\n'
+    let path = tmp.strip_suffix('\n').unwrap_or(&tmp);
 
-    sftp.create(Path::new(&tmp))?
-        .write_all(&std::fs::read(prog)?)?;
+    {
+        let path = Path::new(&path);
 
-    RemoteCommand::new(None, Some(env), &tmp, Some(args)).exec(&mut channel)
+        let sftp = session.sftp()?;
+        sftp.create(path)?.write_all(&std::fs::read(prog)?)?;
+        let mut stat = sftp.stat(path)?;
+        // `sftp.create` creates a new file with write-only permissions,
+        // but since we expect to run this program we need to mark it executable
+        // for the user
+        stat.perm = Some(0o100744);
+        sftp.setstat(path, stat)?;
+    }
+
+    RemoteCommand::new(None, Some(env), &path, Some(args)).exec(session)
 }
 
 // TODO: Consider abstracting away the difference between devices that support developer mode, and
@@ -142,16 +158,14 @@ pub fn run_package<S: AsRef<str>>(
     env: &[(S, S)],
     args: &[&str],
 ) -> anyhow::Result<()> {
-    let mut channel = session.channel_session()?;
     let cmd = RemoteCommand::new(
         Some(&format!("acap-{package}")),
         Some(env),
         &format!("/usr/local/packages/{package}/{package}"),
         Some(args),
     );
-    channel.handle_extended_data(ssh2::ExtendedData::Merge)?;
 
-    cmd.exec(&mut channel)
+    cmd.exec(session)
 }
 
 /// Update ACAP app on device without installing it
