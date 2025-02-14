@@ -33,7 +33,7 @@ impl TestCommand {
 
         build_args.push("--tests".to_string());
 
-        let tcp = TcpStream::connect(address.to_string()).unwrap();
+        let tcp = TcpStream::connect(format!("{}:22", address)).unwrap();
         let mut session = Session::new().unwrap();
         session.set_tcp_stream(tcp);
         session.handshake().unwrap();

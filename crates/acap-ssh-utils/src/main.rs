@@ -152,10 +152,7 @@ fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    let mut host = cli.netloc.host.to_string();
-    if !host.contains(":") {
-        host.push_str(":22");
-    }
+    let host = format!("{}:22", cli.netloc.host);
 
     let tcp = TcpStream::connect(host).unwrap();
     let mut sess = Session::new().unwrap();
