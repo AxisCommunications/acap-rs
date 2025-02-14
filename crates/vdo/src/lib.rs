@@ -4,7 +4,7 @@
 //! frame data in them.
 //!
 
-use glib_sys::{gpointer, GError, GTRUE};
+use glib_sys::{GError, GTRUE};
 use gobject_sys::{g_object_unref, GObject};
 use log::error;
 use std::ffi::{CStr, CString};
@@ -189,6 +189,7 @@ impl Drop for Map {
     }
 }
 
+#[allow(dead_code)]
 pub struct StreamBuilder {
     format: VdoFormat,
     buffer_access: u32,
@@ -370,7 +371,7 @@ impl<'a> StreamBuffer<'a> {
 
 impl<'a> Drop for StreamBuffer<'a> {
     fn drop(&mut self) {
-        let (success, maybe_error) = unsafe {
+        let (_success, _maybe_error) = unsafe {
             try_func!(
                 vdo_stream_buffer_unref,
                 self.stream.raw.0,
@@ -551,7 +552,7 @@ impl Drop for Stream {
             vdo_stream_stop(self.raw.0);
         }
         for mut buffer in mem::take(&mut self.buffers).into_iter() {
-            let (success, maybe_error) =
+            let (_success, _maybe_error) =
                 unsafe { try_func!(vdo_stream_buffer_unref, self.raw.0, &mut buffer) };
         }
     }
