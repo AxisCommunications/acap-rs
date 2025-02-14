@@ -736,7 +736,18 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    pub fn fd_offset() {}
+    pub fn fd_offset(&self) -> Result<i64> {
+        let (offset, maybe_error) = unsafe { try_func!(larodGetTensorFdOffset, self.ptr) };
+        if offset != -1 {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorFdProps indicated success AND returned an error!"
+            );
+            Ok(offset)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn set_fd_offset() {}
     pub fn fd_props() {}
     pub fn set_fd_props(&mut self, flags: FDAccessFlag) -> Result<()> {
