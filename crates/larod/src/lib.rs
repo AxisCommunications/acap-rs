@@ -41,7 +41,8 @@ use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 pub use larod_sys::larodTensorLayout as TensorLayout;
 use larod_sys::*;
-use memmap2::{Mmap, MmapMut};
+use memmap2::MmapMut;
+use std::ops::BitOr;
 use std::{
     ffi::{c_char, CStr, CString},
     fmt::Display,
@@ -75,6 +76,26 @@ macro_rules! try_func {
         }
 
     }}
+}
+
+#[allow(non_camel_case_types)]
+#[repr(u32)]
+#[derive(Debug)]
+pub enum FDAccessFlag {
+    PROP_READWRITE = 1,
+    PROP_MAP = 2,
+    TYPE_DISK = 3,
+    PROP_DMABUF = 4,
+    TYPE_DMA = 6,
+}
+
+impl BitOr for FDAccessFlag {
+    type Output = u32;
+
+    // rhs is the "right-hand side" of the expression `a | b`
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self as u32 | rhs as u32
+    }
 }
 
 // Most larod functions require a `NULL`` pointer to a larodError AND may
@@ -718,7 +739,19 @@ impl<'a> Tensor<'a> {
     pub fn fd_offset() {}
     pub fn set_fd_offset() {}
     pub fn fd_props() {}
-    pub fn set_fd_props() {}
+    pub fn set_fd_props(&mut self, flags: FDAccessFlag) -> Result<()> {
+        let (success, maybe_error) =
+            unsafe { try_func!(larodSetTensorFdProps, self.ptr, flags as u32) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorFdProps indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
     pub fn as_slice(&self) -> Option<&[u8]> {
         self.mmap.as_deref()
     }
