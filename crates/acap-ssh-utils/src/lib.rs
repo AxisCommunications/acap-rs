@@ -223,7 +223,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
                 mtime: Some(header.mtime()?),
                 size: None,
             };
-            _ = entry.read_to_end(&mut buf)?;
+            entry.read_to_end(&mut buf)?;
             debug!("Writing file: {:?}", entry.path()?);
             let mut file = sftp.create(&package_dir.join(&entry.path()?))?;
             file.write_all(&buf)?;
