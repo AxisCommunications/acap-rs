@@ -4,17 +4,14 @@
 //! frame data in them.
 //!
 
-use glib::translate::from_glib_full;
-use glib_sys::{gboolean, gpointer, GError, GTRUE};
+use glib_sys::{gpointer, GError, GTRUE};
 use gobject_sys::{g_object_unref, GObject};
-use log::{debug, error, info};
+use log::error;
 use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::mem;
-use std::sync::{mpsc, Arc, Mutex, PoisonError};
-use std::thread::JoinHandle;
-use std::{ptr, thread};
+use std::ptr;
 use vdo_sys::*;
 pub use vdo_sys::{VdoBufferStrategy, VdoFormat};
 
