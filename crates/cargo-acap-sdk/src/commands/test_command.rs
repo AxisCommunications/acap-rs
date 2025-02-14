@@ -54,7 +54,13 @@ impl TestCommand {
                     debug!("Patching app {name}");
                     acap_ssh_utils::patch_package(&path, &session)?;
                     debug!("Running app {name}");
-                    acap_ssh_utils::run_package(&session, &name, &envs, &test_args)?
+                    acap_ssh_utils::run_package(
+                        &session,
+                        &name,
+                        &envs,
+                        &test_args,
+                        username == "root",
+                    )?
                 }
                 Artifact::Exe { path } => {
                     debug!(

@@ -34,10 +34,10 @@ struct Cli {
 }
 
 impl Cli {
-    fn exec(self, session: &Session) -> anyhow::Result<()> {
+    fn exec(self, session: &Session, as_root: bool) -> anyhow::Result<()> {
         match self.command {
             Command::Patch(cmd) => cmd.exec(session),
-            Command::RunApp(cmd) => cmd.exec(session),
+            Command::RunApp(cmd) => cmd.exec(session, as_root),
             Command::RunOther(cmd) => cmd.exec(session),
         }
     }
@@ -93,12 +93,13 @@ struct RunApp {
 }
 
 impl RunApp {
-    fn exec(self, session: &Session) -> anyhow::Result<()> {
+    fn exec(self, session: &Session, as_root: bool) -> anyhow::Result<()> {
         run_package(
             session,
             &self.package,
             &self.environment,
             &self.args.iter().map(String::as_str).collect::<Vec<_>>(),
+            as_root,
         )
     }
 }
@@ -164,7 +165,7 @@ fn main() -> anyhow::Result<()> {
     sess.userauth_password(&cli.netloc.user, &cli.netloc.pass)
         .unwrap();
 
-    match Cli::parse().exec(&sess) {
+    match Cli::parse().exec(&sess, cli.netloc.user == "root") {
         Ok(()) => Ok(()),
         Err(e) => {
             if let Some(log_file) = log_file {

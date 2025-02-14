@@ -22,14 +22,14 @@ struct RemoteCommand {
 
 impl RemoteCommand {
     pub fn new(
-        user: Option<&str>,
+        user: Option<impl AsRef<str>>,
         env: Option<&[(impl AsRef<str>, impl AsRef<str>)]>,
         executable: &str,
         args: Option<&[&str]>,
     ) -> Self {
         let mut cmd = if let Some(user) = user {
             let mut cmd = std::process::Command::new("su");
-            cmd.arg(user);
+            cmd.arg(user.as_ref());
             cmd
         } else {
             std::process::Command::new("sh")
@@ -117,7 +117,7 @@ pub fn run_other<S: AsRef<str>>(
     env: &[(S, S)],
     args: &[&str],
 ) -> anyhow::Result<()> {
-    let tmp = RemoteCommand::new(None, None::<&[(&str, &str)]>, "mktemp -u", None)
+    let tmp = RemoteCommand::new(None::<&str>, None::<&[(&str, &str)]>, "mktemp -u", None)
         .exec_capture_stdout(session)?;
 
     // The output from `mktemp -u` contains a trailing '\n'
@@ -136,7 +136,7 @@ pub fn run_other<S: AsRef<str>>(
         sftp.setstat(path, stat)?;
     }
 
-    RemoteCommand::new(None, Some(env), &path, Some(args)).exec(session)
+    RemoteCommand::new(None::<&str>, Some(env), &path, Some(args)).exec(session)
 }
 
 // TODO: Consider abstracting away the difference between devices that support developer mode, and
@@ -158,9 +158,10 @@ pub fn run_package<S: AsRef<str>>(
     package: &str,
     env: &[(S, S)],
     args: &[&str],
+    as_root: bool,
 ) -> anyhow::Result<()> {
     let cmd = RemoteCommand::new(
-        Some(&format!("acap-{package}")),
+        as_root.then(|| format!("acap-{package}")),
         Some(env),
         &format!("/usr/local/packages/{package}/{package}"),
         Some(args),
