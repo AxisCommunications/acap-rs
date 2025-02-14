@@ -185,10 +185,13 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
     let mut full = Archive::new(GzDecoder::new(File::open(package)?));
     let mut entries = full.entries()?;
 
-    let app_name = if let Some(entry) = entries
-        .by_ref()
-        .find(|e| e.as_ref().unwrap().path().unwrap_or_default() == Path::new("manifest.json"))
-    {
+    let app_name = if let Some(entry) = entries.by_ref().find(|e| {
+        e.as_ref()
+            .expect("The entry should be valid")
+            .path()
+            .unwrap_or_default()
+            == Path::new("manifest.json")
+    }) {
         let mut manifest = String::new();
         entry?.read_to_string(&mut manifest)?;
         let manifest: Manifest = serde_json::from_str(&manifest)?;
