@@ -1,5 +1,17 @@
-//! A safe warpper around the larod-sys bindings to the larod C library.
+//! A safe-ish wrapper around the larod-sys bindings to the larod C library. The
+//! larod library is itself a library enabling interprocess communication with
+//! code that is able to directly interface with peripheral accelerators. As
+//! such, many functions indicate to the backend how data is expected to be
+//! used or accessed. The vast majority of this communication is done using raw
+//! C-style pointers. Every attempt has been made to ensure the Rust code
+//! handles the lifetimes of these pointers appropriately and takes that burden
+//! off the user of this crate.
 //!
+//! However, this crate is a relatively thin wrapper around the larod library.
+//! So, while it will be safe in the sense of handling pointers *it is still
+//! entirely possible to provide the larod library incorrect information about
+//! e.g. data layout. **Doing so will still cause program crashes and undefined
+//! behavior!**
 //!
 //! Example
 //! ```rust
@@ -11,8 +23,8 @@
 //! # Gotchas
 //! Many of the C functions return either a bool or a pointer to some object.
 //! Additionally, one of the out arguments is a pointer to a larodError
-//! object. If the normal return type is true, or not NULL in the case of a
-//! pointer, the pointer to the larodError struct is expected to be NULL. This
+//! object. If the normal return type is `true`, or not `NULL` in the case of a
+//! pointer, the pointer to the larodError struct is expected to be `NULL`. This
 //! represents two potentially conflicting indicators of whether the function
 //! succeeded.
 //!
@@ -98,6 +110,10 @@ impl BitOr for FDAccessFlag {
     }
 }
 
+/// A wrapper for the [`larodError`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/structlarodError.html)
+/// type and provides convenient Rust native types list String and Rust enums for
+/// `msg()` and `code()`.
+
 // Most larod functions require a `NULL`` pointer to a larodError AND may
 // produce either a `NULL`` output pointer or `false` if an error occurs. This
 // results in two potential indicators of whether the function succeeded. If we
@@ -156,6 +172,7 @@ impl Drop for LarodError {
     }
 }
 
+/// The error type returned from any fallible functions in this library.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -179,29 +196,6 @@ pub enum Error {
     #[error("an input parameter was incorrect")]
     InvalidInput,
 }
-
-// impl LarodError {
-//     /// Convert from liblarod larodError to LarodError
-//     /// If larodError is not NULL, it must be dealocated by calling larodClearError
-//     fn from(e: *mut larodError) -> Self {
-//         if e.is_null() {
-//             Self::default()
-//         } else {
-//             let le = unsafe { *e };
-//             let msg: String = unsafe {
-//                 CStr::from_ptr(le.msg)
-//                     .to_str()
-//                     .unwrap_or("Error message invalid")
-//                     .into()
-//             };
-//             let code: LarodErrorCode = le.code.into();
-//             // unsafe {
-//             //     larodClearError(&mut e);
-//             // }
-//             Self { msg, code }
-//         }
-//     }
-// }
 
 /// A type representing a larodMap.
 pub struct LarodMap {
@@ -467,12 +461,8 @@ impl std::ops::Drop for LarodMap {
     }
 }
 
-// #[derive(Eq, PartialEq, Hash)]
-// pub struct Tensor<'a> {
-//     ptr: *mut *mut larodTensor,
-//     phantom: PhantomData<&'a Session>,
-// }
-
+/// A wrapper for the container type for [`larodTensor`]'s returned from some
+/// functions.
 pub struct LarodTensorContainer<'a> {
     ptr: *mut *mut larodTensor,
     tensors: Vec<Tensor<'a>>,
@@ -480,18 +470,22 @@ pub struct LarodTensorContainer<'a> {
 }
 
 impl<'a> LarodTensorContainer<'a> {
+    /// Return the container as a slice.
     pub fn as_slice(&self) -> &[Tensor] {
         self.tensors.as_slice()
     }
 
+    /// Returns an iterator over the [`Tensor`]s.
     pub fn iter(&self) -> impl Iterator<Item = &Tensor> {
         self.tensors.iter()
     }
 
+    /// Returns an iterator that allows modifying the contained [`Tensor`]s.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Tensor<'a>> {
         self.tensors.iter_mut()
     }
 
+    /// Returns the number of `Tensor`s in the container.
     pub fn len(&self) -> usize {
         self.tensors.len()
     }
@@ -513,6 +507,7 @@ impl<'a> ops::DerefMut for LarodTensorContainer<'a> {
     }
 }
 
+/// A type representing a larod tensor.
 pub struct Tensor<'a> {
     ptr: *mut larodTensor,
     buffer: Option<File>,
@@ -530,6 +525,7 @@ impl<'a> Tensor<'a> {
         self.ptr
     }
 
+    /// Return the name of the tensor.
     pub fn name(&self) -> Result<&str> {
         let (c_str_ptr, maybe_error) = unsafe { try_func!(larodGetTensorName, self.ptr) };
         if !c_str_ptr.is_null() {
@@ -548,6 +544,7 @@ impl<'a> Tensor<'a> {
         }
     }
 
+    /// Returns the size of the tensor in bytes.
     pub fn byte_size(&self) -> Result<usize> {
         let mut byte_size: usize = 0;
         let (success, maybe_error) =
@@ -563,6 +560,7 @@ impl<'a> Tensor<'a> {
         }
     }
 
+    /// Get the dimensions of the tensor.
     pub fn dims(&self) -> Result<&[usize]> {
         let (dims, maybe_error) = unsafe { try_func!(larodGetTensorDims, self.ptr) };
         if !dims.is_null() {
@@ -577,6 +575,17 @@ impl<'a> Tensor<'a> {
         }
     }
 
+    /// Set the dimensions of the tensor.
+    ///
+    /// Tensors can have up to 12 dimensions. Passing a slice with more than 12
+    /// elements will return an [Error::InvalidInput].
+    ///
+    /// <div class="warning">
+    ///
+    /// Setting dimensions that are out of sync with [`Tensor::set_pitches()`] or
+    /// [`Tensor::set_layout()`] may result in crashes or undefined behavior.
+    ///
+    /// </div>
     pub fn set_dims(&self, dims: &[usize]) -> Result<()> {
         if dims.len() > 12 {
             return Err(Error::InvalidInput);
@@ -601,6 +610,8 @@ impl<'a> Tensor<'a> {
         }
     }
 
+    /// Get pitches of a tensor. See [larodTensorPitches](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/structlarodTensorPitches.html)
+    /// for more information.
     pub fn pitches(&self) -> Result<&[usize]> {
         let (pitches_raw, maybe_error) =
             unsafe { try_func!(larodGetTensorPitches, self.ptr.cast_const()) };
@@ -622,6 +633,22 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
+    /// Set the pitches of the tensor.
+    ///
+    /// Tensors can have up to 12 dimensions and so can have the pitch for each
+    /// dimension set. Passing a slice with more than 12
+    /// elements will return an [Error::InvalidInput].
+    ///
+    /// See [larodTensorPitches](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/structlarodTensorPitches.html)
+    /// for more information.
+    ///
+    /// <div class="warning">
+    ///
+    /// Setting pitches that are out of sync with [`Tensor::set_dims()`] or
+    /// [`Tensor::set_layout()`] may result in crashes or undefined behavior.
+    ///
+    /// </div>
     pub fn set_pitches(&mut self, pitches: &[usize]) -> Result<()> {
         if pitches.len() > 12 {
             return Err(Error::InvalidInput);
@@ -645,8 +672,16 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
-    pub fn data_type() {}
-    pub fn set_data_type() {}
+
+    pub fn data_type() {
+        todo!();
+    }
+
+    pub fn set_data_type() {
+        todo!();
+    }
+
+    /// Get the memory layout of the tensor.
     pub fn layout(&self) -> Result<larodTensorLayout> {
         let (layout, maybe_error) =
             unsafe { try_func!(larodGetTensorLayout, self.ptr.cast_const()) };
@@ -656,6 +691,8 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
+    /// Set the memory lout of the tensor.
     pub fn set_layout(&mut self, layout: TensorLayout) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodSetTensorLayout, self.ptr, layout) };
         if success {
@@ -668,6 +705,8 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
+    /// Get the file descriptor being used by the tensor.
     pub fn fd(&self) -> Option<std::os::fd::BorrowedFd<'_>> {
         self.buffer.as_ref().map(|f| f.as_fd())
     }
@@ -1489,32 +1528,32 @@ impl<'a> InferenceModel<'a> {
         }
     }
     pub fn id() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn chip() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn device() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn size() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn name() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn access() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn num_inputs() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn num_outputs() -> Result<()> {
-        Ok(())
+        todo!();
     }
 
     pub fn create_model_outputs() -> Result<()> {
-        Ok(())
+        todo!();
     }
 }
 
@@ -1685,9 +1724,15 @@ impl Session {
     pub fn new() -> Session {
         SessionBuilder::new().build().expect("Session::new()")
     }
+
+    /// Creates a `SessionBuilder` to configure a `Session`.
+    ///
+    /// This is the same as `SessionBuilder::new()`.
     pub fn builder() -> SessionBuilder {
         SessionBuilder::new()
     }
+
+    /// Disconnect the current `Session`.
     pub fn disconnect(&mut self) -> Result<()> {
         let (success, maybe_error): (bool, Option<Error>) =
             unsafe { try_func!(larodDisconnect, &mut self.conn) };
@@ -1701,8 +1746,10 @@ impl Session {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
+    /// Get the number of currently active larod sessions.
     pub fn num_sessions() -> Result<()> {
-        Ok(())
+        todo!();
     }
 
     /// Returns a reference to an available device
@@ -1724,10 +1771,6 @@ impl Session {
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
-    }
-
-    pub fn list_chips() -> Result<()> {
-        Ok(())
     }
 
     /// Get a reference to a HashMap of name LarodDevice pairs.
@@ -1753,19 +1796,19 @@ impl Session {
     }
 
     pub fn models() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn delete_model(&self) -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn alloc_model_inputs() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn alloc_model_outputs() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn destroy_tensors() -> Result<()> {
-        Ok(())
+        todo!();
     }
     // pub fn track_tensor(&self, tensor: &Tensor) -> Result<()> {
     //     let (success, maybe_error) =
@@ -1780,17 +1823,18 @@ impl Session {
     //         Err(maybe_error.unwrap_or(Error::MissingLarodError))
     //     }
     // }
+
     pub fn run_job() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn run_inference() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn chip_id() -> Result<()> {
-        Ok(())
+        todo!();
     }
     pub fn chip_type() -> Result<()> {
-        Ok(())
+        todo!();
     }
 }
 
