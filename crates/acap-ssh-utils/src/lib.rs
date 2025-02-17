@@ -142,7 +142,7 @@ pub fn run_other<S: AsRef<str>>(
             .context(format!("Updating stat on {:?}", path))?;
     }
 
-    RemoteCommand::new(None::<&str>, Some(env), &path, Some(args)).exec(session)
+    RemoteCommand::new(None::<&str>, Some(env), path, Some(args)).exec(session)
 }
 
 // TODO: Consider abstracting away the difference between devices that support developer mode, and
