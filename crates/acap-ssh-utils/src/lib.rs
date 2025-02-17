@@ -44,6 +44,7 @@ impl RemoteCommand {
 
         cmd.arg(executable);
         if let Some(args) = args {
+            cmd.arg("--"); // They should be passed to the process, not to 'su'
             cmd.args(args);
         }
 
