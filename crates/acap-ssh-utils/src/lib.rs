@@ -7,9 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 use flate2::read::GzDecoder;
-use log::debug;
 use tar::Archive;
 
 use ssh2::{FileStat, Session};
@@ -127,14 +126,20 @@ pub fn run_other<S: AsRef<str>>(
     {
         let path = Path::new(&path);
 
-        let sftp = session.sftp()?;
-        sftp.create(path)?.write_all(&std::fs::read(prog)?)?;
-        let mut stat = sftp.stat(path)?;
+        let sftp = session.sftp().context("Creating sftp session")?;
+        sftp.create(path)
+            .context(format!("Creating {:?}", path))?
+            .write_all(&std::fs::read(prog)?)
+            .context(format!("Writing {:?}", prog))?;
+        let mut stat = sftp
+            .stat(path)
+            .context(format!("Running `stat` on {:?}", path))?;
         // `sftp.create` creates a new file with write-only permissions,
         // but since we expect to run this program we need to mark it executable
         // for the user
         stat.perm = Some(0o100744);
-        sftp.setstat(path, stat)?;
+        sftp.setstat(path, stat)
+            .context(format!("Updating stat on {:?}", path))?;
     }
 
     RemoteCommand::new(None::<&str>, Some(env), &path, Some(args)).exec(session)
@@ -202,7 +207,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
     };
 
     let package_dir = PathBuf::from("/usr/local/packages").join(app_name);
-    let sftp = session.sftp()?;
+    let sftp = session.sftp().context("Creating sftp session")?;
     if sftp.stat(&package_dir).is_err() {
         bail!("Package doesn't exist!");
     }
@@ -229,22 +234,21 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
                 // If the directory can't be opened, then it doesn't exist so we need to create it.
                 // TODO: What if permissions has changed?
                 if sftp.opendir(entry.path()?).is_err() {
-                    debug!(
-                        "Creating directory: {:?} with mode: {:o}",
-                        header.path()?,
-                        header.mode()?
-                    );
-                    sftp.mkdir(&header.path()?, header.mode()? as i32)?;
+                    sftp.mkdir(&header.path()?, header.mode()? as i32)
+                        .context(format!("Creating directory {:?}", entry.path()?))?;
                 }
 
                 continue;
             }
 
             entry.read_to_end(&mut buf)?;
-            debug!("Writing file: {:?}", entry.path()?);
-            let mut file = sftp.create(&package_dir.join(&entry.path()?))?;
-            file.write_all(&buf)?;
-            file.setstat(stat)?;
+            let mut file = sftp
+                .create(&package_dir.join(&entry.path()?))
+                .context(format!("Creating {:?}", entry.path()?))?;
+            file.write_all(&buf)
+                .context(format!("Writing to {:?}", entry.path()?))?;
+            file.setstat(stat)
+                .context(format!("Updating stat on {:?}", entry.path()?))?;
         }
     }
 
