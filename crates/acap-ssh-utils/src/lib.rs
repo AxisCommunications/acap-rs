@@ -223,6 +223,22 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
                 mtime: Some(header.mtime()?),
                 size: None,
             };
+
+            if header.entry_type().is_dir() {
+                // If the directory can't be opened, then it doesn't exist so we need to create it.
+                // TODO: What if permissions has changed?
+                if sftp.opendir(entry.path()?).is_err() {
+                    debug!(
+                        "Creating directory: {:?} with mode: {:o}",
+                        header.path()?,
+                        header.mode()?
+                    );
+                    sftp.mkdir(&header.path()?, header.mode()? as i32)?;
+                }
+
+                continue;
+            }
+
             entry.read_to_end(&mut buf)?;
             debug!("Writing file: {:?}", entry.path()?);
             let mut file = sftp.create(&package_dir.join(&entry.path()?))?;
