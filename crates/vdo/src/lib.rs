@@ -315,12 +315,47 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
+    /// Returns the type of the frame
+    pub fn get_type(&self) -> VdoFrameType {
+        unsafe { vdo_frame_get_frame_type(self.raw) }
+    }
+
+    /// Returns the sequence number of the frame.
+    /// The sequence number starts at 0. The point at which the sequence number
+    /// wraps around is undefined.
+    pub fn sequence_number(&self) -> u32 {
+        unsafe { vdo_frame_get_sequence_nbr(self.raw) }
+    }
+
+    /// Return the timestamp of the frame. The time stamp is the number of
+    /// microseconds since boot.
+    pub fn timestamp(&self) -> u64 {
+        unsafe { vdo_frame_get_timestamp(self.raw) }
+    }
+
+    /// Return the custom timestamp of the frame.
+    pub fn custom_timestamp(&self) -> i64 {
+        unsafe { vdo_frame_get_custom_timestamp(self.raw) }
+    }
+
+    /// Return the size of the frame in bytes.
     pub fn size(&self) -> usize {
         unsafe { vdo_frame_get_size(self.raw) }
     }
 
-    pub fn get_type(&self) -> VdoFrameType {
-        unsafe { vdo_frame_get_frame_type(self.raw) }
+    pub fn header_size(&self) -> isize {
+        unsafe { vdo_frame_get_header_size(self.raw) }
+    }
+
+    pub fn file_descriptor(&self) -> std::os::fd::BorrowedFd {
+        unsafe {
+            let fd = vdo_frame_get_fd(self.raw);
+            std::os::fd::BorrowedFd::borrow_raw(fd)
+        }
+    }
+
+    pub fn is_last_buffer(&self) -> bool {
+        unsafe { vdo_frame_get_is_last_buffer(self.raw) != 0 }
     }
 }
 
@@ -405,7 +440,6 @@ impl<'a> Iterator for StreamIterator<'a> {
                 maybe_error.is_none(),
                 "vdo_stream_get_buffer returned an stream pointer AND returned an error!"
             );
-            debug!("fetched buffer from vdo stream");
             Some(StreamBuffer {
                 buffer: Buffer { raw: buffer_ptr },
                 stream: self.stream,
