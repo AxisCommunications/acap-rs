@@ -19,3 +19,6 @@ device-tests = []
 
 [[example]]
 name = "basic"
+
+[[example]]
+name = "simple-file"
