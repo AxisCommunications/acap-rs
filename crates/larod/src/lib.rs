@@ -52,6 +52,7 @@ use crate::inference::PrivateSupportedBackend;
 use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 pub use larod_sys::larodTensorLayout as TensorLayout;
+pub use larod_sys::larodTensorDataType as TensorDataType;
 use larod_sys::*;
 use memmap2::MmapMut;
 use std::ops::BitOr;
@@ -673,12 +674,32 @@ impl<'a> Tensor<'a> {
         }
     }
 
-    pub fn data_type() {
-        todo!();
+    /// Returns the tensor data type.
+    pub fn data_type(&self) -> Result<TensorDataType> {
+        let (data_type, maybe_error) = unsafe { try_func!(larodGetTensorDataType, self.ptr) };
+        if !matches(data_type, TensorDataType::LAROD_TENSOR_DATA_TYPE_INVALID) {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorDataType indicated success AND returned an error!"
+            );
+            Ok(data_type)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 
-    pub fn set_data_type() {
-        todo!();
+    /// Set the tensor data type.
+    pub fn set_data_type(&mut self, data_type: TensorDataType) -> Result<()> {
+        let (success, maybe_error) = unsafe { try_func!(larodSetTensorDataType, self.ptr, data_type) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorDataType indicated success AND returned an error!"
+            );
+            Ok(()))
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 
     /// Get the memory layout of the tensor.
@@ -762,7 +783,9 @@ impl<'a> Tensor<'a> {
     pub fn buffer_mut(&mut self) -> Option<&mut File> {
         self.buffer.as_mut()
     }
-    pub fn fd_size() {}
+    pub fn fd_size() {
+        todo!()
+    }
     pub fn set_fd_size(&mut self, size: usize) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdSize, self.ptr, size) };
         if success {
@@ -1748,8 +1771,19 @@ impl Session {
     }
 
     /// Get the number of currently active larod sessions.
-    pub fn num_sessions() -> Result<()> {
-        todo!();
+    pub fn num_sessions() -> Result<u64> {
+        let mut num_sessions: u64 = 0;
+        let (success, maybe_error) =
+            unsafe { try_func!(larodGetNumSessions, self.conn, &mut num_sessions) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetNumSessions indicated success AND returned an error!"
+            );
+            Ok(num_sessions)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 
     /// Returns a reference to an available device
