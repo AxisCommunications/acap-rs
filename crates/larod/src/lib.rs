@@ -20,6 +20,11 @@
 //! let devices = session.devices();
 //! ```
 //!
+//! # Errors
+//!
+//! Functions in this library will generally return an error if the underlying
+//! larod library returns an error.
+//!
 //! # Gotchas
 //! Many of the C functions return either a bool or a pointer to some object.
 //! Additionally, one of the out arguments is a pointer to a larodError
@@ -30,8 +35,8 @@
 //!
 //! Crucially, objects pointed to by returned pointers *AND* a non-NULL pointer
 //! to a larodError struct need to be dealocated. That is handled appropriately
-//! by constructing the LarodError struct if the larodError pointer is non-NULL
-//! and the impl Drop for LarodError will dealocate the object appropriately.
+//! by constructing the `LarodError` struct if the larodError pointer is non-NULL
+//! and the impl Drop for `LarodError` will dealocate the object appropriately.
 //!
 //! ## Tensors
 //! The larod library supports [creating tensors](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#aededa9e269d87d0f1b7636a007760cb2).
@@ -53,6 +58,7 @@ use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 pub use larod_sys::larodTensorDataType as TensorDataType;
 pub use larod_sys::larodTensorLayout as TensorLayout;
+#[allow(clippy::wildcard_imports)]
 use larod_sys::*;
 use memmap2::MmapMut;
 use std::ops::BitOr;
@@ -130,6 +136,10 @@ pub struct LarodError {
 }
 
 impl LarodError {
+    /// # Errors
+    ///
+    /// Will return `Err` if the larod library returned a null pointer to an
+    /// error.
     pub fn msg(&self) -> Result<String> {
         if self.inner.is_null() {
             Err(Error::NullLarodPointer)
@@ -208,14 +218,14 @@ impl LarodMap {
     pub fn new() -> Result<Self> {
         let (map, maybe_error): (*mut larodMap, Option<Error>) =
             unsafe { try_func!(larodCreateMap) };
-        if !map.is_null() {
+        if map.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateMap allocated a map AND returned an error!"
             );
             Ok(Self { raw: map })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -227,6 +237,15 @@ impl LarodMap {
     /// let map = LarodMap::new().expect("Error creating map");
     /// map.set_string("key", "value").expect("Error setting string value for larodMap");
     /// ```
+    ///
+    ///  # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// This function will also return an error if the larod library returned
+    /// an error.
     pub fn set_string(&mut self, k: &str, v: &str) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
             return Err(Error::CStringAllocation);
@@ -261,6 +280,14 @@ impl LarodMap {
     /// let map = LarodMap::new().expect("Error creating map");
     /// map.set_int("key", 45).expect("Error setting integer value for larodMap");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn set_int(&mut self, k: &str, v: i64) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
             return Err(Error::CStringAllocation);
@@ -286,6 +313,14 @@ impl LarodMap {
     /// let map = LarodMap::new().expect("Error creating map");
     /// map.set_int_arr2("key", (45, 64)).expect("Error setting integer array for larodMap");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn set_int_arr2(&mut self, k: &str, v: (i64, i64)) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
             return Err(Error::CStringAllocation);
@@ -312,6 +347,14 @@ impl LarodMap {
     /// let map = LarodMap::new().expect("Error creating map");
     /// map.set_int_arr4("key", (45, 64, 36, 23)).expect("Error setting integer array for larodMap");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn set_int_arr4(&mut self, k: &str, v: (i64, i64, i64, i64)) -> Result<()> {
         let Ok(key_cstr) = CString::new(k.as_bytes()) else {
             return Err(Error::CStringAllocation);
@@ -348,6 +391,14 @@ impl LarodMap {
     /// map.set_string("key", "value").expect("Error setting string value for larodMap");
     /// let returned_string = map.get_string("key").expect("Unable to return value for \"key\"");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn get_string(&self, k: &str) -> Result<String> {
         let Ok(key_cstr) = CString::new(k) else {
             return Err(Error::CStringAllocation);
@@ -375,6 +426,14 @@ impl LarodMap {
     /// map.set_int("key", 45).expect("Error setting integer array for larodMap");
     /// let value = map.get_int("key").expect("Unable to get array values for \"key\"");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn get_int(&self, k: &str) -> Result<i64> {
         let Ok(key_cstr) = CString::new(k) else {
             return Err(Error::CStringAllocation);
@@ -402,13 +461,23 @@ impl LarodMap {
     /// map.set_int_arr2("key", (45, 64)).expect("Error setting integer array for larodMap");
     /// let returned_array = map.get_int_arr2("key").expect("Unable to get array values for \"key\"");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn get_int_arr2(&self, k: &str) -> Result<&[i64; 2]> {
         let Ok(key_cstr) = CString::new(k) else {
             return Err(Error::CStringAllocation);
         };
         let (out_arr, maybe_error) =
             unsafe { try_func!(larodMapGetIntArr2, self.raw, key_cstr.as_ptr()) };
-        if !out_arr.is_null() {
+        if out_arr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodMapGetInt indicated success AND returned an error!"
@@ -418,8 +487,6 @@ impl LarodMap {
                     .try_into()
                     .or(Err(Error::PointerToInvalidData))
             }
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -432,13 +499,23 @@ impl LarodMap {
     /// map.set_int_arr4("key", (45, 64, 36, 23)).expect("Error setting integer array for larodMap");
     /// let returned_array = map.get_int_arr4("key").expect("Unable to get array values for \"key\"");
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if the key or value cannot be converted to a `CString`.
+    /// See [CString::new](https://doc.rust-lang.org/std/ffi/struct.CString.html#method.new)
+    /// for more information.
+    ///
+    /// Will return `Err` if the larod library returned an error.
     pub fn get_int_arr4(&self, k: &str) -> Result<&[i64; 4]> {
         let Ok(key_cstr) = CString::new(k) else {
             return Err(Error::CStringAllocation);
         };
         let (out_arr, maybe_error) =
             unsafe { try_func!(larodMapGetIntArr4, self.raw, key_cstr.as_ptr()) };
-        if !out_arr.is_null() {
+        if out_arr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodMapGetIntArr4 indicated success AND returned an error!"
@@ -448,8 +525,6 @@ impl LarodMap {
                     .try_into()
                     .or(Err(Error::PointerToInvalidData))
             }
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 }
@@ -490,6 +565,10 @@ impl<'a> LarodTensorContainer<'a> {
     pub fn len(&self) -> usize {
         self.tensors.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.tensors.is_empty()
+    }
 }
 
 impl<'a> ops::Deref for LarodTensorContainer<'a> {
@@ -529,7 +608,9 @@ impl<'a> Tensor<'a> {
     /// Return the name of the tensor.
     pub fn name(&self) -> Result<&str> {
         let (c_str_ptr, maybe_error) = unsafe { try_func!(larodGetTensorName, self.ptr) };
-        if !c_str_ptr.is_null() {
+        if c_str_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodGetTensorName indicated success AND returned an error!"
@@ -540,8 +621,6 @@ impl<'a> Tensor<'a> {
             } else {
                 Err(Error::PointerToInvalidData)
             }
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -564,22 +643,22 @@ impl<'a> Tensor<'a> {
     /// Get the dimensions of the tensor.
     pub fn dims(&self) -> Result<&[usize]> {
         let (dims, maybe_error) = unsafe { try_func!(larodGetTensorDims, self.ptr) };
-        if !dims.is_null() {
+        if dims.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodGetTensorDims indicated success AND returned an error!"
             );
             let (left, _) = unsafe { (*dims).dims.split_at((*dims).len) };
             Ok(left)
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
     /// Set the dimensions of the tensor.
     ///
     /// Tensors can have up to 12 dimensions. Passing a slice with more than 12
-    /// elements will return an [Error::InvalidInput].
+    /// elements will return an [`Error::InvalidInput`].
     ///
     /// <div class="warning">
     ///
@@ -616,7 +695,9 @@ impl<'a> Tensor<'a> {
     pub fn pitches(&self) -> Result<&[usize]> {
         let (pitches_raw, maybe_error) =
             unsafe { try_func!(larodGetTensorPitches, self.ptr.cast_const()) };
-        if !pitches_raw.is_null() {
+        if pitches_raw.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodGetTensorPitches indicated success AND returned an error!"
@@ -630,8 +711,6 @@ impl<'a> Tensor<'a> {
             // };
             let (left, _) = unsafe { (*pitches_raw).pitches.split_at((*pitches_raw).len) };
             Ok(left)
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -639,7 +718,7 @@ impl<'a> Tensor<'a> {
     ///
     /// Tensors can have up to 12 dimensions and so can have the pitch for each
     /// dimension set. Passing a slice with more than 12
-    /// elements will return an [Error::InvalidInput].
+    /// elements will return an [`Error::InvalidInput`].
     ///
     /// See [larodTensorPitches](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/structlarodTensorPitches.html)
     /// for more information.
@@ -677,14 +756,14 @@ impl<'a> Tensor<'a> {
     /// Returns the tensor data type.
     pub fn data_type(&self) -> Result<TensorDataType> {
         let (data_type, maybe_error) = unsafe { try_func!(larodGetTensorDataType, self.ptr) };
-        if !matches!(data_type, TensorDataType::LAROD_TENSOR_DATA_TYPE_INVALID) {
+        if matches!(data_type, TensorDataType::LAROD_TENSOR_DATA_TYPE_INVALID) {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodGetTensorDataType indicated success AND returned an error!"
             );
             Ok(data_type)
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -778,15 +857,19 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
     pub fn buffer(&self) -> Option<&File> {
         self.buffer.as_ref()
     }
+
     pub fn buffer_mut(&mut self) -> Option<&mut File> {
         self.buffer.as_mut()
     }
+
     pub fn fd_size() {
         todo!()
     }
+
     pub fn set_fd_size(&mut self, size: usize) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdSize, self.ptr, size) };
         if success {
@@ -799,20 +882,24 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
     pub fn fd_offset(&self) -> Result<i64> {
         let (offset, maybe_error) = unsafe { try_func!(larodGetTensorFdOffset, self.ptr) };
-        if offset != -1 {
+        if offset == -1 {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodSetTensorFdProps indicated success AND returned an error!"
             );
             Ok(offset)
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
     pub fn set_fd_offset() {}
+
     pub fn fd_props() {}
+
     pub fn set_fd_props(&mut self, flags: FDAccessFlag) -> Result<()> {
         let (success, maybe_error) =
             unsafe { try_func!(larodSetTensorFdProps, self.ptr, flags as u32) };
@@ -826,12 +913,15 @@ impl<'a> Tensor<'a> {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
+
     pub fn as_slice(&self) -> Option<&[u8]> {
         self.mmap.as_deref()
     }
+
     pub fn as_mut_slice(&mut self) -> Option<&mut [u8]> {
         self.mmap.as_deref_mut()
     }
+
     pub fn copy_from_slice(&mut self, slice: &[u8]) {
         if let Some(mmap) = self.mmap.as_mut() {
             mmap.copy_from_slice(slice);
@@ -864,8 +954,8 @@ impl<'a> From<*mut larodTensor> for Tensor<'a> {
 }
 
 /// A type representing a larodDevice.
-/// The lifetime of LarodDevice is explicitly tied to the lifetime of a
-/// [Session]. So using a LarodDevice after the Session it was acquired from
+/// The lifetime of `LarodDevice` is explicitly tied to the lifetime of a
+/// [Session]. So using a `LarodDevice` after the Session it was acquired from
 /// will cause compilation to fail.
 /// ```compile_fail
 /// use larod::Session;
@@ -892,7 +982,9 @@ impl<'a> LarodDevice<'a> {
     pub fn name(&self) -> Result<String> {
         unsafe {
             let (c_char_ptr, maybe_error) = try_func!(larodGetDeviceName, self.ptr);
-            if !c_char_ptr.is_null() {
+            if c_char_ptr.is_null() {
+                Err(maybe_error.unwrap_or(Error::MissingLarodError))
+            } else {
                 debug_assert!(
                     maybe_error.is_none(),
                     "larodGetDeviceName returned an object pointer AND returned an error!"
@@ -902,8 +994,6 @@ impl<'a> LarodDevice<'a> {
                     .to_str()
                     .map(String::from)
                     .map_err(|_e| Error::InvalidLarodMessage)
-            } else {
-                Err(maybe_error.unwrap_or(Error::MissingLarodError))
             }
         }
     }
@@ -1058,9 +1148,8 @@ impl PreprocessorBuilder {
                     PreProcBackend::LibYUV | PreProcBackend::RemoteLibYuv
                 ) {
                     return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
-                } else {
-                    map.set_string("image.input.format", "rgb-interleaved")?;
                 }
+                map.set_string("image.input.format", "rgb-interleaved")?;
             }
             ImageFormat::RGBPlanar => {
                 if !matches!(
@@ -1068,38 +1157,34 @@ impl PreprocessorBuilder {
                     PreProcBackend::LibYUV | PreProcBackend::RemoteLibYuv
                 ) {
                     return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
-                } else {
-                    map.set_string("image.input.format", "rgb-planar")?;
                 }
+                map.set_string("image.input.format", "rgb-planar")?;
             }
         }
         match self.output_format {
             ImageFormat::NV12 => {
-                if matches!(
+                if !matches!(
                     self.backend,
                     PreProcBackend::LibYUV | PreProcBackend::RemoteLibYuv
                 ) {
-                    map.set_string("image.output.format", "nv12")?;
-                } else {
                     return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
                 }
+                map.set_string("image.output.format", "nv12")?;
             }
             ImageFormat::RGBInterleaved => {
                 if matches!(self.backend, PreProcBackend::VProc) {
                     return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
-                } else {
-                    map.set_string("image.output.format", "rgb-interleaved")?;
                 }
+                map.set_string("image.output.format", "rgb-interleaved")?;
             }
             ImageFormat::RGBPlanar => {
-                if matches!(
+                if !matches!(
                     self.backend,
                     PreProcBackend::LibYUV | PreProcBackend::VProc | PreProcBackend::RemoteLibYuv
                 ) {
-                    map.set_string("image.output.format", "rgb-planar")?;
-                } else {
                     return Err(Error::PreprocessorError(PreProcError::UnsupportedOperation));
                 }
+                map.set_string("image.output.format", "rgb-planar")?;
             }
         }
         if let Some(s) = self.input_size {
@@ -1165,7 +1250,9 @@ impl PreprocessorBuilder {
                 map.raw
             )
         };
-        if !model_ptr.is_null() {
+        if model_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodLoadModel indicated success AND returned an error!"
@@ -1179,8 +1266,6 @@ impl PreprocessorBuilder {
                 num_outputs: 0,
                 crop: crop_map,
             })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 }
@@ -1205,7 +1290,9 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
     fn create_model_inputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelInputs, self.ptr, &mut self.num_inputs) };
-        if !tensors_ptr.is_null() {
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateModelInputs indicated success AND returned an error!"
@@ -1222,15 +1309,15 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                 num_tensors: self.num_inputs,
             });
             Ok(())
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
     fn create_model_outputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelOutputs, self.ptr, &mut self.num_outputs) };
-        if !tensors_ptr.is_null() {
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateModelOutputs indicated success AND returned an error!"
@@ -1247,8 +1334,6 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                 num_tensors: self.num_outputs,
             });
             Ok(())
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -1293,7 +1378,9 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                     .map_or(ptr::null_mut::<larodMap>(), |m| m.raw)
             )
         };
-        if !job_ptr.is_null() {
+        if job_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateJobRequest indicated success AND returned an error!"
@@ -1302,8 +1389,6 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                 raw: job_ptr,
                 session: self.session,
             })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 }
@@ -1511,13 +1596,13 @@ impl<'a> InferenceModel<'a> {
         };
         let (device, maybe_device_error) =
             unsafe { try_func!(larodGetDevice, session.conn, device_name.as_ptr(), 0) };
-        if !device.is_null() {
+        if device.is_null() {
+            return Err(maybe_device_error.unwrap_or(Error::MissingLarodError));
+        } else {
             debug_assert!(
                 maybe_device_error.is_none(),
                 "larodGetDevice indicated success AND returned an error!"
             );
-        } else {
-            return Err(maybe_device_error.unwrap_or(Error::MissingLarodError));
         }
         let Ok(name) = CString::new(name) else {
             return Err(Error::CStringAllocation);
@@ -1533,13 +1618,15 @@ impl<'a> InferenceModel<'a> {
                 params.map_or_else(|| ptr::null(), |p| p.raw)
             )
         };
-        if !larod_model_ptr.is_null() {
+        if larod_model_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_device_error.is_none(),
                 "larodLoadModel indicated success AND returned an error!"
             );
             Ok(InferenceModel {
-                session: session,
+                session,
                 ptr: larod_model_ptr,
                 input_tensors: None,
                 num_inputs: 0,
@@ -1547,8 +1634,6 @@ impl<'a> InferenceModel<'a> {
                 num_outputs: 0,
                 params: None,
             })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
     pub fn id() -> Result<()> {
@@ -1585,7 +1670,9 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
     fn create_model_inputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelInputs, self.ptr, &mut self.num_inputs) };
-        if !tensors_ptr.is_null() {
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateModelInputs indicated success AND returned an error!"
@@ -1602,15 +1689,15 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
                 num_tensors: self.num_inputs,
             });
             Ok(())
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
     fn create_model_outputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelOutputs, self.ptr, &mut self.num_outputs) };
-        if !tensors_ptr.is_null() {
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateModelInputs indicated success AND returned an error!"
@@ -1627,8 +1714,6 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
                 num_tensors: self.num_outputs,
             });
             Ok(())
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
@@ -1673,7 +1758,9 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
                     .map_or(ptr::null_mut::<larodMap>(), |m| m.raw)
             )
         };
-        if !job_ptr.is_null() {
+        if job_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodCreateJobRequest indicated success AND returned an error!"
@@ -1682,8 +1769,6 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
                 raw: job_ptr,
                 session: self.session,
             })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 }
@@ -1794,7 +1879,9 @@ impl Session {
         };
         let (device_ptr, maybe_error) =
             unsafe { try_func!(larodGetDevice, self.conn, name_cstr.as_ptr(), instance) };
-        if !device_ptr.is_null() {
+        if device_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodGetDevice indicated success AND returned an error!"
@@ -1803,12 +1890,10 @@ impl Session {
                 ptr: device_ptr,
                 phantom: PhantomData,
             })
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
-    /// Get a reference to a HashMap of name LarodDevice pairs.
+    /// Get a reference to a `HashMap` of name `LarodDevice` pairs.
     pub fn devices(&self) -> Result<Vec<LarodDevice>> {
         let mut num_devices: usize = 0;
         let (dev_ptr, maybe_error) =

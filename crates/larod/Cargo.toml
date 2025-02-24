@@ -14,6 +14,9 @@ env_logger.workspace = true
 anyhow.workspace = true
 trybuild = "1.0.101"
 
+[lints.clippy]
+pedantic = "warn"
+
 [features]
 device-tests = []
 
