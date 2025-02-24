@@ -51,8 +51,8 @@
 use crate::inference::PrivateSupportedBackend;
 use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
-pub use larod_sys::larodTensorLayout as TensorLayout;
 pub use larod_sys::larodTensorDataType as TensorDataType;
+pub use larod_sys::larodTensorLayout as TensorLayout;
 use larod_sys::*;
 use memmap2::MmapMut;
 use std::ops::BitOr;
@@ -677,7 +677,7 @@ impl<'a> Tensor<'a> {
     /// Returns the tensor data type.
     pub fn data_type(&self) -> Result<TensorDataType> {
         let (data_type, maybe_error) = unsafe { try_func!(larodGetTensorDataType, self.ptr) };
-        if !matches(data_type, TensorDataType::LAROD_TENSOR_DATA_TYPE_INVALID) {
+        if !matches!(data_type, TensorDataType::LAROD_TENSOR_DATA_TYPE_INVALID) {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodGetTensorDataType indicated success AND returned an error!"
@@ -690,13 +690,14 @@ impl<'a> Tensor<'a> {
 
     /// Set the tensor data type.
     pub fn set_data_type(&mut self, data_type: TensorDataType) -> Result<()> {
-        let (success, maybe_error) = unsafe { try_func!(larodSetTensorDataType, self.ptr, data_type) };
+        let (success, maybe_error) =
+            unsafe { try_func!(larodSetTensorDataType, self.ptr, data_type) };
         if success {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodSetTensorDataType indicated success AND returned an error!"
             );
-            Ok(()))
+            Ok(())
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
@@ -1771,7 +1772,7 @@ impl Session {
     }
 
     /// Get the number of currently active larod sessions.
-    pub fn num_sessions() -> Result<u64> {
+    pub fn num_sessions(&self) -> Result<u64> {
         let mut num_sessions: u64 = 0;
         let (success, maybe_error) =
             unsafe { try_func!(larodGetNumSessions, self.conn, &mut num_sessions) };
