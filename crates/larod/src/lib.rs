@@ -65,6 +65,7 @@ use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 pub use larod_sys::larodTensorDataType as TensorDataType;
 pub use larod_sys::larodTensorLayout as TensorLayout;
+pub use larod_sys::FDAccessFlag;
 #[allow(clippy::wildcard_imports)]
 use larod_sys::*;
 use memmap2::MmapMut;
