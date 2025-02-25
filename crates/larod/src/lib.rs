@@ -53,10 +53,6 @@
 //! properly deallocate those tensors. This is because C and Rust may use
 //! different allocators and objects should be deallocated by the same allocator
 //! use for their allocation in the first place.
-//!
-//! # TODOs:
-//! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
-//!     indicates it may fail to "kill a session." What are the implications if it fails to kill a session? Can we clear the sessions?
 #![allow(clippy::missing_errors_doc, clippy::must_use_candidate)]
 #![warn(missing_docs)]
 
@@ -527,7 +523,7 @@ impl std::ops::Drop for LarodMap {
     }
 }
 
-/// A wrapper for the container type for [`larodTensor`]'s returned from some
+/// A wrapper for the container type for `larodTensor`'s returned from some
 /// functions.
 pub struct LarodTensorContainer<'a> {
     ptr: *mut *mut larodTensor,
@@ -898,7 +894,7 @@ impl<'a> Tensor<'a> {
 
     /// Set the tensor file descriptor maximum capacity in bytes.
     /// The larod library will only read this number of bytes from the file
-    /// descriptor starting at [`fd_offset`].
+    /// descriptor starting at [`Self::fd_offset`].
     pub fn set_fd_size(&mut self, size: usize) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdSize, self.ptr, size) };
         if success {
@@ -2182,6 +2178,13 @@ impl Default for SessionBuilder {
 }
 
 /// A type representing an active connection to the larod library.
+///
+/// The `std::ops::Drop` implementation calls [`Self::disconnect`] and silently
+/// ignores the result. It is apparently possible for [larodDisconnect]
+/// to fail to kill a session with no clear recovery. If you want to
+/// specifically handle the error type, call `disconnect` directly.
+///
+/// [larodDisconnect]: https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba
 pub struct Session {
     conn: *mut larodConnection,
 }
@@ -2306,10 +2309,7 @@ impl Default for Session {
 
 impl std::ops::Drop for Session {
     fn drop(&mut self) {
-        log::debug!("Dropping Session!");
-        // unsafe {
-        //     try_func!(larodDisconnect, &mut self.conn);
-        // }
+        let _result = self.disconnect();
     }
 }
 
