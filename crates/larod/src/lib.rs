@@ -53,6 +53,9 @@
 //! # TODOs:
 //! - [ ] [larodDisconnect](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/larod_8h.html#ab8f97b4b4d15798384ca25f32ca77bba)
 //!     indicates it may fail to "kill a session." What are the implications if it fails to kill a session? Can we clear the sessions?
+#![allow(clippy::missing_errors_doc, clippy::must_use_candidate)]
+#![warn(missing_docs)]
+
 use crate::inference::PrivateSupportedBackend;
 use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
@@ -61,7 +64,7 @@ pub use larod_sys::larodTensorLayout as TensorLayout;
 #[allow(clippy::wildcard_imports)]
 use larod_sys::*;
 use memmap2::MmapMut;
-use std::ops::BitOr;
+use std::os::fd::FromRawFd;
 use std::{
     ffi::{c_char, CStr, CString},
     fmt::Display,
@@ -95,26 +98,6 @@ macro_rules! try_func {
         }
 
     }}
-}
-
-#[allow(non_camel_case_types)]
-#[repr(u32)]
-#[derive(Debug)]
-pub enum FDAccessFlag {
-    PROP_READWRITE = 1,
-    PROP_MAP = 2,
-    TYPE_DISK = 3,
-    PROP_DMABUF = 4,
-    TYPE_DMA = 6,
-}
-
-impl BitOr for FDAccessFlag {
-    type Output = u32;
-
-    // rhs is the "right-hand side" of the expression `a | b`
-    fn bitor(self, rhs: Self) -> Self::Output {
-        self as u32 | rhs as u32
-    }
 }
 
 /// A wrapper for the [`larodError`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/structlarodError.html)
@@ -206,6 +189,8 @@ pub enum Error {
     UnsatisfiedDependencies,
     #[error("an input parameter was incorrect")]
     InvalidInput,
+    #[error(transparent)]
+    LarodSysError(larod_sys::Error),
 }
 
 /// A type representing a larodMap.
@@ -566,6 +551,7 @@ impl<'a> LarodTensorContainer<'a> {
         self.tensors.len()
     }
 
+    /// Returns true if the container is empty.
     pub fn is_empty(&self) -> bool {
         self.tensors.is_empty()
     }
@@ -812,6 +798,20 @@ impl<'a> Tensor<'a> {
         self.buffer.as_ref().map(|f| f.as_fd())
     }
 
+    fn fetch_fd(&mut self) -> Result<()> {
+        let (fd, maybe_error) = unsafe { try_func!(larodGetTensorFd, self.ptr) };
+        if fd == LAROD_INVALID_FD {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorFd indicated success AND returned an error!"
+            );
+            self.buffer = unsafe { Some(File::from_raw_fd(fd)) };
+            Ok(())
+        }
+    }
+
     /// Set the file descriptor for the tensor to use.
     pub fn set_fd(&mut self, fd: BorrowedFd) -> Result<()> {
         let (success, maybe_error) =
@@ -842,34 +842,58 @@ impl<'a> Tensor<'a> {
                 "larodSetTensorFd indicated success AND returned an error!"
             );
             self.buffer = Some(file);
-            unsafe {
-                match MmapMut::map_mut(self.buffer.as_ref().unwrap()) {
-                    Ok(m) => {
-                        self.mmap = Some(m);
-                    }
-                    Err(e) => {
-                        return Err(Error::IOError(e));
-                    }
-                };
-            }
+            self.memory_map_buffer()?;
             Ok(())
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
     }
 
+    /// Map the buffer pointed to be the file descriptor into memory.
+    fn memory_map_buffer(&mut self) -> Result<()> {
+        unsafe {
+            match MmapMut::map_mut(self.buffer.as_ref().unwrap()) {
+                Ok(m) => {
+                    self.mmap = Some(m);
+                }
+                Err(e) => {
+                    return Err(Error::IOError(e));
+                }
+            };
+        }
+        Ok(())
+    }
+
+    /// Returns a reference to the [`File`] used as a buffer for the tensor.
     pub fn buffer(&self) -> Option<&File> {
         self.buffer.as_ref()
     }
 
+    /// Returns a mutable reference to the [`File`] used as a buffer for the
+    /// tensor.
     pub fn buffer_mut(&mut self) -> Option<&mut File> {
         self.buffer.as_mut()
     }
 
-    pub fn fd_size() {
-        todo!()
+    /// Get the tensor file descriptor maximum capacity in bytes.
+    pub fn fd_size(&self) -> Result<usize> {
+        let mut size: usize = 0;
+        let (success, maybe_error) =
+            unsafe { try_func!(larodGetTensorFdSize, self.ptr, &mut size) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorFdSize indicated success AND returned an error!"
+            );
+            Ok(size)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 
+    /// Set the tensor file descriptor maximum capacity in bytes.
+    /// The larod library will only read this number of bytes from the file
+    /// descriptor starting at [`fd_offset`].
     pub fn set_fd_size(&mut self, size: usize) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdSize, self.ptr, size) };
         if success {
@@ -883,6 +907,8 @@ impl<'a> Tensor<'a> {
         }
     }
 
+    /// Returns the offset in bytes from the start of the tensor file descriptor
+    /// that the larod library will begin reading from.
     pub fn fd_offset(&self) -> Result<i64> {
         let (offset, maybe_error) = unsafe { try_func!(larodGetTensorFdOffset, self.ptr) };
         if offset == -1 {
@@ -890,16 +916,44 @@ impl<'a> Tensor<'a> {
         } else {
             debug_assert!(
                 maybe_error.is_none(),
-                "larodSetTensorFdProps indicated success AND returned an error!"
+                "larodGetTensorFdOffset indicated success AND returned an error!"
             );
             Ok(offset)
         }
     }
 
-    pub fn set_fd_offset() {}
+    /// Set the offset in bytes from the start of the tensor file descriptor
+    /// that the larod library should start reading from.
+    pub fn set_fd_offset(&mut self, offset: i64) -> Result<()> {
+        let (success, maybe_error) = unsafe { try_func!(larodSetTensorFdOffset, self.ptr, offset) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetTensorFdOffset indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
 
-    pub fn fd_props() {}
+    /// Get the memory access properties for the tensor file descriptor.
+    pub fn fd_props(&self) -> Result<FDAccessFlag> {
+        let mut props_raw: u32 = 0;
+        let (success, maybe_error) =
+            unsafe { try_func!(larodGetTensorFdProps, self.ptr, &mut props_raw) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetTensorFdProps indicated success AND returned an error!"
+            );
+            FDAccessFlag::try_from(props_raw).map_err(Error::LarodSysError)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
 
+    /// Set the memory access properties for the tensor file descriptor.
     pub fn set_fd_props(&mut self, flags: FDAccessFlag) -> Result<()> {
         let (success, maybe_error) =
             unsafe { try_func!(larodSetTensorFdProps, self.ptr, flags as u32) };
@@ -914,32 +968,22 @@ impl<'a> Tensor<'a> {
         }
     }
 
+    /// Extracts a slice containing the tensor data.
     pub fn as_slice(&self) -> Option<&[u8]> {
         self.mmap.as_deref()
     }
 
+    /// Extracts a mutable slice containing the tensor data.
     pub fn as_mut_slice(&mut self) -> Option<&mut [u8]> {
         self.mmap.as_deref_mut()
     }
 
-    pub fn copy_from_slice(&mut self, slice: &[u8]) {
+    /// Copies all elements from `src` into `self`.
+    pub fn copy_from_slice(&mut self, src: &[u8]) {
         if let Some(mmap) = self.mmap.as_mut() {
-            mmap.copy_from_slice(slice);
+            mmap.copy_from_slice(src);
         }
     }
-    // pub fn destroy(mut self, session: &Session) -> Result<()> {
-    //     let (success, maybe_error) =
-    //         unsafe { try_func!(larodDestroyTensors, session.conn, &mut self.ptr, 1) };
-    //     if success {
-    //         debug_assert!(
-    //             maybe_error.is_none(),
-    //             "larodDestroyTensors indicated success AND returned an error!"
-    //         );
-    //         Ok(())
-    //     } else {
-    //         Err(maybe_error.unwrap_or(Error::MissingLarodError))
-    //     }
-    // }
 }
 
 impl<'a> From<*mut larodTensor> for Tensor<'a> {
@@ -1020,13 +1064,35 @@ impl<'a> LarodDevice<'a> {
 
 pub trait LarodModel<'a> {
     fn create_model_inputs(&mut self) -> Result<()>;
+
+    /// Create and allocate input tensors according to the model definition.
+    fn allocate_model_inputs(&mut self, fd_props: FDAccessFlag) -> Result<()>;
+
+    /// Returns the number of input tensors.
     fn num_inputs(&self) -> usize;
+
+    /// Return a reference to a [`LarodTensorContainer`] of the input tensors.
     fn input_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
+
+    /// Return a mutable reference to a [`LarodTensorContainer`] of the input tensors.
     fn input_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
+
+    /// Have the larod library create output tensors according to the model definition.
     fn create_model_outputs(&mut self) -> Result<()>;
+
+    /// Create and allocate output tensors according to the model definition.
+    fn allocate_model_outputs(&mut self, fd_props: FDAccessFlag) -> Result<()>;
+
+    /// Returns the number of output tensors.
     fn num_outputs(&self) -> usize;
+
+    /// Return a reference to a [`LarodTensorContainer`] of the output tensors.
     fn output_tensors(&self) -> Option<&LarodTensorContainer<'a>>;
+
+    /// Return a mutable reference to a [`LarodTensorContainer`] of the output tensors.
     fn output_tensors_mut(&mut self) -> Option<&mut LarodTensorContainer<'a>>;
+
+    /// Create a job request for this model.
     fn create_job(&self) -> Result<JobRequest<'a>>;
 }
 
@@ -1281,6 +1347,7 @@ pub struct Preprocessor<'a> {
 }
 
 impl<'a> Preprocessor<'a> {
+    /// Constructs a new `PreprocessorBuilder` to configure the `Preprocessor`.
     pub fn builder() -> PreprocessorBuilder {
         PreprocessorBuilder::new()
     }
@@ -1312,6 +1379,44 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
         }
     }
 
+    fn allocate_model_inputs(&mut self, fd_props: FDAccessFlag) -> Result<()> {
+        let (tensors_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodAllocModelInputs,
+                self.session.conn,
+                self.ptr,
+                fd_props as u32,
+                &mut self.num_inputs,
+                ptr::null_mut::<larod_sys::larodMap>()
+            )
+        };
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodAllocModelInputs indicated success AND returned an error!"
+            );
+            let tensors_raw: &[*mut larodTensor] =
+                unsafe { slice::from_raw_parts_mut(tensors_ptr, self.num_inputs) };
+            let mut tensors: Vec<Tensor> = tensors_raw
+                .iter()
+                .map(|t_raw| Tensor::from(*t_raw))
+                .collect();
+            for tensor in &mut tensors {
+                tensor.fetch_fd()?;
+                tensor.memory_map_buffer()?;
+            }
+            self.input_tensors = Some(LarodTensorContainer {
+                ptr: tensors_ptr,
+                tensors,
+                num_tensors: self.num_inputs,
+            });
+            Ok(())
+        }
+    }
+
+    /// Have the larod library create output tensors according to the model definition.
     fn create_model_outputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelOutputs, self.ptr, &mut self.num_outputs) };
@@ -1332,6 +1437,43 @@ impl<'a> LarodModel<'a> for Preprocessor<'a> {
                 ptr: tensors_ptr,
                 tensors,
                 num_tensors: self.num_outputs,
+            });
+            Ok(())
+        }
+    }
+
+    fn allocate_model_outputs(&mut self, fd_props: FDAccessFlag) -> Result<()> {
+        let (tensors_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodAllocModelOutputs,
+                self.session.conn,
+                self.ptr,
+                fd_props as u32,
+                &mut self.num_outputs,
+                ptr::null_mut::<larod_sys::larodMap>()
+            )
+        };
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodAllocModelOutputs indicated success AND returned an error!"
+            );
+            let tensors_raw: &[*mut larodTensor] =
+                unsafe { slice::from_raw_parts_mut(tensors_ptr, self.num_inputs) };
+            let mut tensors: Vec<Tensor> = tensors_raw
+                .iter()
+                .map(|t_raw| Tensor::from(*t_raw))
+                .collect();
+            for tensor in &mut tensors {
+                tensor.fetch_fd()?;
+                tensor.memory_map_buffer()?;
+            }
+            self.output_tensors = Some(LarodTensorContainer {
+                ptr: tensors_ptr,
+                tensors,
+                num_tensors: self.num_inputs,
             });
             Ok(())
         }
@@ -1410,18 +1552,62 @@ impl<'a> Drop for Preprocessor<'a> {
     }
 }
 
+/// A handle to trigger execution of predefined jobs in larod.
 pub struct JobRequest<'a> {
     raw: *mut larodJobRequest,
     session: &'a Session,
 }
 
 impl<'a> JobRequest<'a> {
+    /// Run the job request.
     pub fn run(&self) -> Result<()> {
         let (success, maybe_error) = unsafe { try_func!(larodRunJob, self.session.conn, self.raw) };
         if success {
             debug_assert!(
                 maybe_error.is_none(),
                 "larodRunJob indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
+    /// Overwrite the input tensors for the job request.
+    pub fn set_inputs(&mut self, tensors: &LarodTensorContainer) -> Result<()> {
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larodSetJobRequestInputs,
+                self.raw,
+                tensors.ptr,
+                tensors.len()
+            )
+        };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetJobRequestInputs indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
+    }
+
+    /// Overwrite the output tensors for the job request.
+    pub fn set_outputs(&mut self, tensors: &LarodTensorContainer) -> Result<()> {
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larodSetJobRequestOutputs,
+                self.raw,
+                tensors.ptr,
+                tensors.len()
+            )
+        };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodSetJobRequestOutputs indicated success AND returned an error!"
             );
             Ok(())
         } else {
@@ -1476,97 +1662,117 @@ mod inference {
 // }
 
 // Marker types
+
+/// Marker type for `TFLite` models.
 pub struct TFLite;
+
+/// Marker type for Ambarella `CVFlowNN` models.
 pub struct CVFlowNN;
+
+/// Marker type for native models on the ARTPEC chips.
+///
+/// When `TFLite` models are first loaded in ARTPEC chips they are compiled into
+/// native format and stored in a cache location.
+/// See [Neural Network Inference](https://developer.axis.com/acap/api/src/api/larod/html/md__opt_builder-doc_larod_doc_nn-inference.html)
+/// for more information.
 pub struct Native;
 
 // Hardware types that specify which modes they support
+
+/// Marker type for model execution on the SoC CPU.
 pub struct CPU;
+
+/// Marker type for model execution on an Edge TPU.
 pub struct EdgeTPU;
+
+/// Marker type for model execution on an OpenGL capable accelerator.
 pub struct GPU;
+
+/// Marker type for model execution on the ARTPEC-7 GPU.
 pub struct Artpec7GPU;
+
+/// Marker type for model execution on the ARTPEC-8 DLPU.
 pub struct Artpec8DLPU;
+
+/// Marker type for model execution on the ARTPEC-9 DLPU.
 pub struct Artpec9DLPU;
+
+/// Marker type for model execution on the ARTPEC-9 GPU.
+pub struct Artpec9GPU;
+
+/// Marker type for model execution on Arm NN Neon.
 pub struct ArmNNCPU;
+
+/// Marker type for model execution on Ambarella Vector Processor.
+pub struct AmbarellaVP;
 
 impl inference::PrivateSupportedBackend for (TFLite, CPU) {
     fn as_str() -> &'static str {
         "cpu-tflite"
     }
 }
+
+impl inference::PrivateSupportedBackend for (TFLite, EdgeTPU) {
+    fn as_str() -> &'static str {
+        "google-edge-tpu-tflite"
+    }
+}
+
+impl inference::PrivateSupportedBackend for (TFLite, GPU) {
+    fn as_str() -> &'static str {
+        "gpu-tflite"
+    }
+}
+
 impl inference::PrivateSupportedBackend for (TFLite, Artpec7GPU) {
     fn as_str() -> &'static str {
         "axis-a7-gpu-tflite"
     }
 }
+
+impl inference::PrivateSupportedBackend for (Native, Artpec7GPU) {
+    fn as_str() -> &'static str {
+        "a7-gpu-native"
+    }
+}
+
 impl inference::PrivateSupportedBackend for (TFLite, Artpec8DLPU) {
     fn as_str() -> &'static str {
         "axis-a8-dlpu-tflite"
     }
 }
+
+impl inference::PrivateSupportedBackend for (Native, Artpec8DLPU) {
+    fn as_str() -> &'static str {
+        "axis-a8-dlpu-native"
+    }
+}
+
 impl inference::PrivateSupportedBackend for (TFLite, Artpec9DLPU) {
     fn as_str() -> &'static str {
         "a9-dlpu-tflite"
     }
 }
 
-// // A type-safe configuration
-// pub struct InferenceBackend<M, H> {
-//     mode: M,
-//     hardware: H,
-// }
+impl inference::PrivateSupportedBackend for (TFLite, Artpec9GPU) {
+    fn as_str() -> &'static str {
+        "armnn-gpu-tflite"
+    }
+}
 
-// impl SupportedBackend for (TFLite, CPU) {
-//     fn as_str() -> &'static str {
-//         "cpu-tflite"
-//     }
-// }
+impl inference::PrivateSupportedBackend for (TFLite, ArmNNCPU) {
+    fn as_str() -> &'static str {
+        "armnn-cpu-tflite"
+    }
+}
 
-// impl SupportedBackend for (TFLite, Artpec8DLPU) {
-//     fn new() -> (TFLite, Artpec8DLPU) {
-//         (TFLite, Artpec8DLPU)
-//     }
-//     fn as_str() -> &str {
-//         "cpu-tflite"
-//     }
-// }
+impl inference::PrivateSupportedBackend for (CVFlowNN, AmbarellaVP) {
+    fn as_str() -> &'static str {
+        "ambarella-cvflow"
+    }
+}
 
-// impl SupportedBackend for InferenceBackend<TFLite, Artpec7GPU> {
-//     fn new() -> InferenceBackend<TFLite, Artpec7GPU> {
-//         InferenceBackend {
-//             mode: TFLite,
-//             hardware: Artpec7GPU,
-//         }
-//     }
-//     fn as_str(&self) -> &str {
-//         "axis-a7-gpu-tflite"
-//     }
-// }
-
-// impl SupportedBackend for InferenceBackend<TFLite, Artpec8DLPU> {
-//     fn new() -> InferenceBackend<TFLite, Artpec8DLPU> {
-//         InferenceBackend {
-//             mode: TFLite,
-//             hardware: Artpec8DLPU,
-//         }
-//     }
-//     fn as_str(&self) -> &str {
-//         "axis-a8-dlpu-tflite"
-//     }
-// }
-
-// impl SupportedBackend for InferenceBackend<TFLite, Artpec9DLPU> {
-//     fn new() -> InferenceBackend<TFLite, Artpec9DLPU> {
-//         InferenceBackend {
-//             mode: TFLite,
-//             hardware: Artpec9DLPU,
-//         }
-//     }
-//     fn as_str(&self) -> &str {
-//         "a9-dlpu-tflite"
-//     }
-// }
-
+/// A type representing a model to be executed using the larod library.
 pub struct InferenceModel<'a> {
     session: &'a Session,
     ptr: *mut larodModel,
@@ -1578,6 +1784,7 @@ pub struct InferenceModel<'a> {
 }
 
 impl<'a> InferenceModel<'a> {
+    /// Constructs a new `InferenceModel`.
     pub fn new<M, H, P>(
         session: &'a Session,
         model_file: P,
@@ -1615,7 +1822,7 @@ impl<'a> InferenceModel<'a> {
                 device,
                 access,
                 name.as_ptr(),
-                params.map_or_else(|| ptr::null(), |p| p.raw)
+                params.map_or_else(ptr::null, |p| p.raw)
             )
         };
         if larod_model_ptr.is_null() {
@@ -1636,33 +1843,107 @@ impl<'a> InferenceModel<'a> {
             })
         }
     }
-    pub fn id() -> Result<()> {
-        todo!();
-    }
-    pub fn chip() -> Result<()> {
-        todo!();
-    }
-    pub fn device() -> Result<()> {
-        todo!();
-    }
-    pub fn size() -> Result<()> {
-        todo!();
-    }
-    pub fn name() -> Result<()> {
-        todo!();
-    }
-    pub fn access() -> Result<()> {
-        todo!();
-    }
-    pub fn num_inputs() -> Result<()> {
-        todo!();
-    }
-    pub fn num_outputs() -> Result<()> {
-        todo!();
+
+    /// Get model ID.
+    pub fn id(&self) -> Result<u64> {
+        let (id, maybe_error) = unsafe { try_func!(larodGetModelId, self.ptr) };
+        if id == LAROD_INVALID_MODEL_ID {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelId indicated success AND returned an error!"
+            );
+            Ok(id)
+        }
     }
 
-    pub fn create_model_outputs() -> Result<()> {
-        todo!();
+    /// Get the device the `InferenceModel` is loaded on.
+    pub fn device(&self) -> Result<LarodDevice> {
+        let (device, maybe_error) = unsafe { try_func!(larodGetModelDevice, self.ptr) };
+        if device.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelId indicated success AND returned an error!"
+            );
+            Ok(LarodDevice {
+                ptr: device,
+                phantom: PhantomData,
+            })
+        }
+    }
+
+    /// Get the size of the loaded model in bytes.
+    pub fn size(&self) -> Result<usize> {
+        let (size, maybe_error) = unsafe { try_func!(larodGetModelSize, self.ptr) };
+        if size == 0 {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelSize indicated success AND returned an error!"
+            );
+            Ok(size)
+        }
+    }
+
+    /// Returns the name of the model
+    pub fn name(&self) -> Result<&str> {
+        let (name_ptr, maybe_error) = unsafe { try_func!(larodGetModelName, self.ptr) };
+        if name_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelName indicated success AND returned an error!"
+            );
+            let c_str: &CStr = unsafe { CStr::from_ptr(name_ptr) };
+            c_str.to_str().map_err(|_e| Error::InvalidLarodMessage)
+        }
+    }
+
+    /// Returns the model access mode.
+    pub fn access(&self) -> Result<LarodAccess> {
+        let (access_mode, maybe_error) = unsafe { try_func!(larodGetModelAccess, self.ptr) };
+        if matches!(access_mode, LarodAccess::LAROD_ACCESS_INVALID) {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelAccess indicated success AND returned an error!"
+            );
+            Ok(access_mode)
+        }
+    }
+
+    /// Returns the number of input tensors for the model.
+    fn get_num_inputs(&self) -> Result<usize> {
+        let (num_inputs, maybe_error) = unsafe { try_func!(larodGetModelNumInputs, self.ptr) };
+        if num_inputs == 0 {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelNumInputs indicated success AND returned an error!"
+            );
+            Ok(num_inputs)
+        }
+    }
+
+    /// Returns the number of output tensors for the model.
+    fn get_num_outputs(&self) -> Result<usize> {
+        let (num_outputs, maybe_error) = unsafe { try_func!(larodGetModelNumOutputs, self.ptr) };
+        if num_outputs == 0 {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodGetModelNumInputs indicated success AND returned an error!"
+            );
+            Ok(num_outputs)
+        }
     }
 }
 
@@ -1692,6 +1973,43 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
         }
     }
 
+    fn allocate_model_inputs(&mut self, fd_props: FDAccessFlag) -> Result<()> {
+        let (tensors_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodAllocModelInputs,
+                self.session.conn,
+                self.ptr,
+                fd_props as u32,
+                &mut self.num_inputs,
+                ptr::null_mut::<larod_sys::larodMap>()
+            )
+        };
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodAllocModelInputs indicated success AND returned an error!"
+            );
+            let tensors_raw: &[*mut larodTensor] =
+                unsafe { slice::from_raw_parts_mut(tensors_ptr, self.num_inputs) };
+            let mut tensors: Vec<Tensor> = tensors_raw
+                .iter()
+                .map(|t_raw| Tensor::from(*t_raw))
+                .collect();
+            for tensor in tensors.iter_mut() {
+                tensor.fetch_fd()?;
+                tensor.memory_map_buffer()?;
+            }
+            self.input_tensors = Some(LarodTensorContainer {
+                ptr: tensors_ptr,
+                tensors,
+                num_tensors: self.num_inputs,
+            });
+            Ok(())
+        }
+    }
+
     fn create_model_outputs(&mut self) -> Result<()> {
         let (tensors_ptr, maybe_error) =
             unsafe { try_func!(larodCreateModelOutputs, self.ptr, &mut self.num_outputs) };
@@ -1712,6 +2030,43 @@ impl<'a> LarodModel<'a> for InferenceModel<'a> {
                 ptr: tensors_ptr,
                 tensors,
                 num_tensors: self.num_outputs,
+            });
+            Ok(())
+        }
+    }
+
+    fn allocate_model_outputs(&mut self, fd_props: FDAccessFlag) -> Result<()> {
+        let (tensors_ptr, maybe_error) = unsafe {
+            try_func!(
+                larodAllocModelOutputs,
+                self.session.conn,
+                self.ptr,
+                fd_props as u32,
+                &mut self.num_outputs,
+                ptr::null_mut::<larod_sys::larodMap>()
+            )
+        };
+        if tensors_ptr.is_null() {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        } else {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodAllocModelOutputs indicated success AND returned an error!"
+            );
+            let tensors_raw: &[*mut larodTensor] =
+                unsafe { slice::from_raw_parts_mut(tensors_ptr, self.num_inputs) };
+            let mut tensors: Vec<Tensor> = tensors_raw
+                .iter()
+                .map(|t_raw| Tensor::from(*t_raw))
+                .collect();
+            for tensor in &mut tensors {
+                tensor.fetch_fd()?;
+                tensor.memory_map_buffer()?;
+            }
+            self.output_tensors = Some(LarodTensorContainer {
+                ptr: tensors_ptr,
+                tensors,
+                num_tensors: self.num_inputs,
             });
             Ok(())
         }
@@ -1789,12 +2144,16 @@ impl<'a> Drop for InferenceModel<'a> {
     }
 }
 
+/// A `SessionBuilder` can be used to construct a new `Session`.
 pub struct SessionBuilder {}
 
 impl SessionBuilder {
+    /// Constructs a new `SessionBuilder`.
     pub fn new() -> SessionBuilder {
         SessionBuilder {}
     }
+
+    /// Returns a `Session` that uses this `SessionBuilder` configuration.
     pub fn build(&self) -> Result<Session> {
         let mut conn: *mut larodConnection = ptr::null_mut();
         let (success, maybe_error): (bool, Option<Error>) =
@@ -1817,6 +2176,7 @@ impl Default for SessionBuilder {
     }
 }
 
+/// A type representing an active connection to the larod library.
 pub struct Session {
     conn: *mut larodConnection,
 }
@@ -1915,46 +2275,19 @@ impl Session {
         Ok(devices)
     }
 
-    pub fn models() -> Result<()> {
-        todo!();
-    }
-    pub fn delete_model(&self) -> Result<()> {
-        todo!();
-    }
-    pub fn alloc_model_inputs() -> Result<()> {
-        todo!();
-    }
-    pub fn alloc_model_outputs() -> Result<()> {
-        todo!();
-    }
-    pub fn destroy_tensors() -> Result<()> {
-        todo!();
-    }
-    // pub fn track_tensor(&self, tensor: &Tensor) -> Result<()> {
-    //     let (success, maybe_error) =
-    //         unsafe { try_func!(larodTrackTensor, self.conn, tensor.as_mut_ptr()) };
-    //     if success {
-    //         debug_assert!(
-    //             maybe_error.is_none(),
-    //             "larodTrackTensor indicated success AND returned an error!"
-    //         );
-    //         Ok(())
-    //     } else {
-    //         Err(maybe_error.unwrap_or(Error::MissingLarodError))
-    //     }
-    // }
-
-    pub fn run_job() -> Result<()> {
-        todo!();
-    }
-    pub fn run_inference() -> Result<()> {
-        todo!();
-    }
-    pub fn chip_id() -> Result<()> {
-        todo!();
-    }
-    pub fn chip_type() -> Result<()> {
-        todo!();
+    /// Start tracking the indicated tensor.
+    pub fn track_tensor(&self, tensor: &Tensor) -> Result<()> {
+        let (success, maybe_error) =
+            unsafe { try_func!(larodTrackTensor, self.conn, tensor.as_mut_ptr()) };
+        if success {
+            debug_assert!(
+                maybe_error.is_none(),
+                "larodTrackTensor indicated success AND returned an error!"
+            );
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingLarodError))
+        }
     }
 }
 
