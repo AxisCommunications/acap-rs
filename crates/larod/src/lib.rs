@@ -1,7 +1,11 @@
-//! A safe-ish wrapper around the larod-sys bindings to the larod C library. The
-//! larod library is itself a library enabling interprocess communication with
-//! code that is able to directly interface with peripheral accelerators. As
-//! such, many functions indicate to the backend how data is expected to be
+//! A safe-ish wrapper around the larod-sys bindings to the larod C library.
+//!
+//! See the [liblarod](https://developer.axis.com/acap/api/src/api/larod/html/index.html)
+//! documentation for more detailed information.
+//!
+//! The  larod library is itself a library enabling interprocess communication
+//! with code that is able to directly interface with peripheral accelerators.
+//! As such, many functions indicate to the backend how data is expected to be
 //! used or accessed. The vast majority of this communication is done using raw
 //! C-style pointers. Every attempt has been made to ensure the Rust code
 //! handles the lifetimes of these pointers appropriately and takes that burden
