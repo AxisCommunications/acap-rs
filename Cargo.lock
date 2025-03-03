@@ -1328,7 +1328,7 @@ dependencies = [
 
 [[package]]
 name = "larod"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -1341,7 +1341,7 @@ dependencies = [
 
 [[package]]
 name = "larod-sys"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "bindgen",
  "pkg-config",
