@@ -1,8 +1,8 @@
 //! Provide a async wrapper
 use std::{
-    pin::{self, Pin},
+    pin::Pin,
     sync::Arc,
-    task::{self, Context, Poll},
+    task::{Context, Poll},
 };
 
 use crate::flex::{Event, Handler, KeyValueSet};
@@ -39,11 +39,9 @@ impl Subscription {
         let Ok(id) = self
             .handler
             .subscribe(subscription_specification, move |_, evt| {
-                if let Err(e) = inner.try_send(evt) {
-                    // TBD
-                    return;
+                if let Err(_e) = inner.try_send(evt) {
+                    todo!();
                 }
-                println!("Successfully queued event. In queue: {}", inner.len());
                 waker.wake();
             })
         else {
@@ -51,6 +49,20 @@ impl Subscription {
         };
         self.subscriptions.push(id);
         Ok(())
+    }
+}
+
+impl Default for Subscription {
+    fn default() -> Self {
+        let handler = Arc::new(Handler::new());
+        let (tx, rx) = async_channel::unbounded::<Event>();
+        Self {
+            handler,
+            tx,
+            rx,
+            subscriptions: vec![],
+            waker: Arc::new(AtomicWaker::new()),
+        }
     }
 }
 
@@ -68,14 +80,11 @@ impl Stream for Subscription {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let boxed = &mut self.rx.recv().boxed_local();
         self.waker.register(cx.waker());
-        println!("About to poll");
         match boxed.poll(cx) {
             Poll::Ready(r) => {
-                println!("Got one event");
                 Poll::Ready(r.ok())
             }
             Poll::Pending => {
-                println!("No events available, waiting");
                 Poll::Pending
             }
         }
