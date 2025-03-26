@@ -1,4 +1,4 @@
-//! Provide a async wrapper
+//! Async wrapper around axevent
 use std::{
     pin::Pin,
     sync::Arc,
@@ -6,81 +6,65 @@ use std::{
 };
 
 use crate::flex::{Event, Handler, KeyValueSet};
-use async_channel::{Receiver, Sender};
+use async_channel::Receiver;
 use atomic_waker::AtomicWaker;
 use futures_lite::Stream;
+use log::warn;
 use pin_project::{pin_project, pinned_drop};
 
+/// Represents an event subscription that can be iterated asynchronously
+///
+/// Users should ensure that they regularly poll this stream since it uses an internal queue
+/// to store incoming events. Currently this queue is unbounded which means that creating a
+/// subscription and then never iterating over the events will eventually fill up the memory.
+///
+/// # Examples
+///
+/// ```
+/// ```
 #[pin_project(PinnedDrop)]
-pub struct Subscription {
-    handler: Arc<Handler>,
+pub struct Subscription<'a> {
+    handler: &'a Handler,
     waker: Arc<AtomicWaker>,
-    tx: Sender<Event>,
     #[pin]
     rx: Pin<Box<Receiver<Event>>>,
-    subscriptions: Vec<crate::flex::Subscription>,
+    subscription: crate::flex::Subscription,
 }
 
 #[pinned_drop]
-impl PinnedDrop for Subscription {
+impl PinnedDrop for Subscription<'_> {
     fn drop(self: Pin<&mut Self>) {
         let this = self.project();
-        for id in this.subscriptions.drain(..) {
-            let _ = this.handler.unsubscribe(&id);
-        }
+        let _ = this.handler.unsubscribe(&this.subscription);
     }
 }
 
-impl Subscription {
-    // TODO(gustafo): replace Arc with H: AsRef<Handler>
-    pub fn new(handler: Arc<Handler>) -> Self {
-        let (tx, rx) = async_channel::unbounded::<Event>();
-        Self {
-            handler,
-            tx,
-            rx: Box::pin(rx),
-            subscriptions: vec![],
-            waker: Arc::new(AtomicWaker::new()),
-        }
-    }
-
-    pub fn try_subscribe(
-        &mut self,
+impl<'a> Subscription<'a> {
+    pub fn try_new(
+        handler: &'a Handler,
         subscription_specification: KeyValueSet,
-    ) -> Result<(), &'static str> {
-        let inner = self.tx.clone();
-        let waker = self.waker.clone();
-        let Ok(id) = self
-            .handler
-            .subscribe(subscription_specification, move |_, evt| {
-                if let Err(_e) = inner.try_send(evt) {
-                    todo!();
-                }
-                waker.wake();
-            })
-        else {
-            return Err("Unable to subscribe");
-        };
-        self.subscriptions.push(id);
-        Ok(())
-    }
-}
-
-impl Default for Subscription {
-    fn default() -> Self {
-        let handler = Arc::new(Handler::new());
+    ) -> Result<Self, crate::flex::Error> {
         let (tx, rx) = async_channel::unbounded::<Event>();
-        Self {
+        let waker = Arc::new(AtomicWaker::new());
+        let inner = tx.clone();
+        let to_cb = waker.clone();
+        let subscription = handler.subscribe(subscription_specification, move |_, evt| {
+            if let Err(e) = inner.try_send(evt) {
+                warn!("Unable to queue event due to {e}");
+                return;
+            }
+            to_cb.wake();
+        })?;
+        Ok(Self {
             handler,
-            tx,
             rx: Box::pin(rx),
-            subscriptions: vec![],
-            waker: Arc::new(AtomicWaker::new()),
-        }
+            subscription,
+            waker,
+        })
     }
 }
 
-impl Stream for Subscription {
+impl Stream for Subscription<'_> {
     type Item = Event;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
