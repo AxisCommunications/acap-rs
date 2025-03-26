@@ -100,7 +100,7 @@ pub struct UploadRequest<'a> {
     data: Vec<u8>,
 }
 
-impl<'a> UploadRequest<'a> {
+impl UploadRequest<'_> {
     pub async fn send(self) -> Result<(), HttpRpcError<UploadApplicationError>> {
         let Self { client, name, data } = self;
         let mut form = Vec::new();
