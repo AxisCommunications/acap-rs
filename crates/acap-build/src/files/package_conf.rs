@@ -35,6 +35,8 @@ impl PackageConf {
             .collect();
 
         let flat_manifest = flattened(manifest.as_object()?.clone());
+        let valid_vendor_url =
+            Regex::new("(?:(?:http|https)://)?(.+)").expect("Hard-coded regex is valid");
         for (path, value) in flat_manifest {
             match path.as_str() {
                 "acapPackageConf.setup.version" => {
@@ -47,13 +49,11 @@ impl PackageConf {
                     self.0.insert("APPMICROVERSION", v.patch.to_string());
                 }
                 "acapPackageConf.setup.vendorUrl" => {
-                    let re = Regex::new("(?:(?:http|https)://)?(.+)")
-                        .expect("Hard-coded regex is valid");
                     let v = value
                         .as_str()
                         .context("acapPackageConf.setup.vendorUrl is not a string")?;
-                    let Some(caps) = re.captures(v) else {
-                        bail!("Expected vendor url to match regex {:?}", re)
+                    let Some(caps) = valid_vendor_url.captures(v) else {
+                        bail!("Expected vendor url to match regex {:?}", valid_vendor_url)
                     };
                     let domain_name = caps
                         .get(1)
