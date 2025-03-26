@@ -30,7 +30,7 @@ pub struct Subscription<'a> {
 impl PinnedDrop for Subscription<'_> {
     fn drop(self: Pin<&mut Self>) {
         let this = self.project();
-        let _ = this.handler.unsubscribe(&this.subscription);
+        let _ = this.handler.unsubscribe(this.subscription);
     }
 }
 

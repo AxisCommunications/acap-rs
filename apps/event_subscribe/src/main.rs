@@ -37,6 +37,6 @@ fn main() {
     let ctx = MainContext::default();
 
     let main_loop = glib::MainLoop::new(Some(&ctx), false);
-    let _ = ctx.spawn_local(app_infallible());
+    ctx.spawn_local(app_infallible());
     main_loop.run();
 }
