@@ -193,10 +193,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
 
     let app_name = if let Some(entry) = entries.by_ref().find(|e| {
         e.as_ref()
-            .expect("The entry should be valid")
-            .path()
-            .unwrap_or_default()
-            == Path::new("manifest.json")
+            .is_ok_and(|entry| entry.path().unwrap_or_default() == Path::new("manifest.json"))
     }) {
         let mut manifest = String::new();
         entry?.read_to_string(&mut manifest)?;
