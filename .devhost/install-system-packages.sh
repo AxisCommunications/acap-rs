@@ -16,5 +16,4 @@ apt-get install \
   libglib2.0-dev \
   libssl-dev \
   pkg-config \
-  python3-venv \
-  sshpass
+  python3-venv
