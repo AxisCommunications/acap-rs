@@ -17,3 +17,4 @@ url = { workspace = true }
 tar = { workspace = true }
 
 cli-version = { workspace = true }
+ssh2 = { workspace = true }
