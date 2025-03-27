@@ -10,27 +10,22 @@ use async_channel::Receiver;
 use atomic_waker::AtomicWaker;
 use futures_lite::Stream;
 use log::warn;
-use pin_project::{pin_project, pinned_drop};
 
 /// Represents an event subscription that can be iterated asynchronously
 ///
 /// Users should ensure that they regularly poll this stream since it uses an internal queue
 /// to store incoming events. Currently this queue is unbounded which means that creating a
 /// subscription and then never iterating over the events will eventually fill up the memory.
-#[pin_project(PinnedDrop)]
 pub struct Subscription<'a> {
     handler: &'a Handler,
     waker: Arc<AtomicWaker>,
-    #[pin]
     rx: Pin<Box<Receiver<Event>>>,
     subscription: crate::flex::Subscription,
 }
 
-#[pinned_drop]
-impl PinnedDrop for Subscription<'_> {
-    fn drop(self: Pin<&mut Self>) {
-        let this = self.project();
-        let _ = this.handler.unsubscribe(this.subscription);
+impl Drop for Subscription<'_> {
+    fn drop(&mut self) {
+        let _ = self.handler.unsubscribe(&self.subscription);
     }
 }
 
@@ -62,9 +57,8 @@ impl<'a> Subscription<'a> {
 impl Stream for Subscription<'_> {
     type Item = Event;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
-        this.waker.register(cx.waker());
-        this.rx.poll_next(cx)
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.waker.register(cx.waker());
+        self.rx.as_mut().poll_next(cx)
     }
 }

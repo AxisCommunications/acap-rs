@@ -207,7 +207,6 @@ dependencies = [
  "glib",
  "glib-sys",
  "log",
- "pin-project",
  "thiserror",
 ]
 

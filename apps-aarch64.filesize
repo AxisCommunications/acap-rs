@@ -4,11 +4,11 @@
 2130	target-aarch64/acap/bounding_box_example_0_0_0_aarch64.eap
 2019	target-aarch64/acap/consume_analytics_metadata_0_0_0_aarch64.eap
 899	target-aarch64/acap/embedded_web_page_0_0_0_aarch64.eap
-4032	target-aarch64/acap/event_subscribe_1_0_0_aarch64.eap
+4035	target-aarch64/acap/event_subscribe_1_0_0_aarch64.eap
 1946	target-aarch64/acap/hello_world_0_0_0_aarch64.eap
 2067	target-aarch64/acap/inspect_env_0_0_0_aarch64.eap
 1969	target-aarch64/acap/licensekey_handler_0_0_0_aarch64.eap
 9737	target-aarch64/acap/reverse_proxy_0_0_0_aarch64.eap
-3942	target-aarch64/acap/send_event_1_0_0_aarch64.eap
+3939	target-aarch64/acap/send_event_1_0_0_aarch64.eap
 899	target-aarch64/acap/using_a_build_script_0_0_0_aarch64.eap
 10714	target-aarch64/acap/vapix_access_0_0_0_aarch64.eap
