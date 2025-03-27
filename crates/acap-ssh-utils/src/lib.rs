@@ -102,8 +102,7 @@ impl RemoteCommand {
 
 /// Run executable on device
 ///
-/// `user` and `pass` are the credentials to use for the ssh connection.
-/// `host` is the device to connect to.
+/// `session` is a ssh2::Session connected to the remote host.
 /// `prog` is the path to the executable to run.
 /// `env` is a map of environment variables to override on the remote host.
 ///
@@ -149,10 +148,11 @@ pub fn run_other<S: AsRef<str>>(
 //  those that don't.
 /// Run ACAP app on device in a realistic manner.
 ///
-/// `user` and `pass` are the credentials to use for the ssh connection.
-/// `host` is the device to connect to.
+/// `session` is a ssh2::Session connected to the remote host.
 /// `package` is the name of the ACAP app to emulate.
 /// `env` is a map of environment variables to override on the remote host.
+/// `as_root` is a boolean that indicates if the process should be run as root
+///     or as the package-user.
 ///
 /// The function assumes that the user has already
 /// - enabled SSH on the device,
@@ -179,7 +179,7 @@ pub fn run_package<S: AsRef<str>>(
 /// Update ACAP app on device without installing it
 ///
 /// - `package` the location of the `.eap` to upload.
-/// - `user` and `pass` are the credentials to use for the ssh connection.
+/// - `session` is a ssh2::Session connected to the remote host.
 /// - `host` is the device to connect to.
 ///
 /// The function assumes that the user has already
