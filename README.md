@@ -200,6 +200,9 @@ by this project.
 - `embedded_web_page`: Bundles an embedded web page.
   - Status: ⚠️ Alpha
   - [Source code](apps/embedded_web_page/src/main.rs)
+- `event_subscribe`: Subscribe to an event using the non-blocking axevent API. Re-implements the [C example for event subscription](https://developer.axis.com/acap/api/src/api/axevent/html/ax_event_subscription_example_8c-example.html)
+  - Status: ⚠️ Alpha
+  - [Source code](apps/event_subscribe/src/main.rs)
 - `hello_world`:Sets up and uses logging using common functions and `acap-logging`.
   - Status: ⚠️ Alpha
   - [Source code](apps/hello_world/src/main.rs)
