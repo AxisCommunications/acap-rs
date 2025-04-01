@@ -25,7 +25,7 @@ pub struct GetAllPropertiesRequest<'a> {
     client: &'a HttpClient,
 }
 
-impl<'a> GetAllPropertiesRequest<'a> {
+impl GetAllPropertiesRequest<'_> {
     pub async fn send(self) -> Result<GetAllPropertiesData, AjrHttpError> {
         ajr_http2::execute_request(
             PATH,
@@ -50,7 +50,7 @@ pub struct GetAllUnrestrictedPropertiesRequest<'a> {
     client: &'a HttpClient,
 }
 
-impl<'a> GetAllUnrestrictedPropertiesRequest<'a> {
+impl GetAllUnrestrictedPropertiesRequest<'_> {
     pub async fn send(self) -> Result<GetAllUnrestrictedPropertiesData, AjrHttpError> {
         ajr_http2::execute_request(
             PATH,
@@ -78,7 +78,7 @@ pub struct GetPropertiesRequest<'a> {
 }
 
 // TODO: Consider helping users discover properties by using an enum or methods.
-impl<'a> GetPropertiesRequest<'a> {
+impl GetPropertiesRequest<'_> {
     pub async fn send(self) -> Result<GetPropertiesData, AjrHttpError> {
         ajr_http2::execute_request(
             PATH,

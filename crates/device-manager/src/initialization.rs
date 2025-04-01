@@ -168,7 +168,7 @@ pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
         .arg("ssh-copy-id")
         .args(["-o", "PubkeyAuthentication=no"])
         .args(["-o", "StrictHostKeyChecking=no"])
-        .arg(&format!("root@{}", host));
+        .arg(format!("root@{}", host));
     if let Err(e) = log_stdout(sshpass) {
         warn!("Failed to copy SSH ID because {e} (this is expected on some firmware)")
     }
