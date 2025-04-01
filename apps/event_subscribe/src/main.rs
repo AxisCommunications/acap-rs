@@ -1,9 +1,10 @@
 #![forbid(unsafe_code)]
 //! An example of how to subscribe to manual trigger events using `axevent::nonblock`
+
 use axevent::flex::{Handler, KeyValueSet};
 use axevent::nonblock::Subscription;
 use glib::MainContext;
-use log::{info, warn};
+use log::{error, info};
 
 use futures_lite::StreamExt;
 
@@ -28,7 +29,7 @@ async fn app() -> anyhow::Result<()> {
 }
 async fn app_infallible() {
     if let Err(e) = app().await {
-        warn!("Unexpected error when running app: {e}");
+        error!("Unexpected error when running app: {e}");
     }
 }
 

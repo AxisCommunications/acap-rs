@@ -2,13 +2,11 @@
 use std::{
     pin::Pin,
     process,
-    sync::Arc,
     task::{Context, Poll},
 };
 
 use crate::flex::{Event, Handler, KeyValueSet};
 use async_channel::Receiver;
-use atomic_waker::AtomicWaker;
 use futures_lite::Stream;
 use log::{error, warn};
 
@@ -21,7 +19,6 @@ use log::{error, warn};
 /// the queue.
 pub struct Subscription<'a> {
     handler: &'a Handler,
-    waker: Arc<AtomicWaker>,
     rx: Pin<Box<Receiver<Event>>>,
     subscription: crate::flex::Subscription,
 }
@@ -38,11 +35,8 @@ impl<'a> Subscription<'a> {
         subscription_specification: KeyValueSet,
     ) -> Result<Self, crate::flex::Error> {
         let (tx, rx) = async_channel::bounded::<Event>(16);
-        let waker = Arc::new(AtomicWaker::new());
-        let axevent_tx = tx.clone();
-        let axevent_waker = waker.clone();
         let subscription = handler.subscribe(subscription_specification, move |_, evt| {
-            if let Err(e) = axevent_tx.try_send(evt) {
+            if let Err(e) = tx.try_send(evt) {
                 match e {
                     async_channel::TrySendError::Full(_) => {
                         error!("Event queue is full. This is most likely due to this stream not being polled.
@@ -54,15 +48,12 @@ impl<'a> Subscription<'a> {
                         warn!("Event queue was closed unexpectedly, no more events will be delivered.");
                     },
                 };
-                return;
             }
-            axevent_waker.wake();
         })?;
         Ok(Self {
             handler,
             rx: Box::pin(rx),
             subscription,
-            waker,
         })
     }
 }
@@ -71,7 +62,6 @@ impl Stream for Subscription<'_> {
     type Item = Event;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.waker.register(cx.waker());
         self.rx.as_mut().poll_next(cx)
     }
 }

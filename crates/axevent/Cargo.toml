@@ -11,6 +11,5 @@ log = { workspace = true }
 thiserror = { workspace = true }
 
 axevent-sys = { workspace = true }
-futures-lite = "2.6.0"
-async-channel = "2.3.1"
-atomic-waker = "1.1.2"
+futures-lite = { workspace = true }
+async-channel = { workspace = true }
