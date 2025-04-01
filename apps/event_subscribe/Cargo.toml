@@ -10,5 +10,5 @@ glib = { workspace = true }
 log = { workspace = true }
 
 acap-logging = { workspace = true }
-axevent = { workspace = true }
+axevent = { workspace = true, features=["async"] }
 futures-lite = "2.6.0"
