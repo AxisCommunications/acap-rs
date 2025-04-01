@@ -11,8 +11,8 @@ log = { workspace = true }
 thiserror = { workspace = true }
 
 axevent-sys = { workspace = true }
-futures-lite = { workspace = true, feature = "async" }
-async-channel = { workspace = true, feature = "async" }
+futures-lite = { workspace = true, optional = true }
+async-channel = { workspace = true, optional = true }
 
 [features]
-async = []
+async = ["dep:futures-lite", "dep:async-channel"]
