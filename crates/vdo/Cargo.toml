@@ -1,0 +1,22 @@
+[package]
+name = "vdo"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+vdo-sys = { workspace = true }
+log.workspace = true
+anyhow.workspace = true
+glib.workspace = true
+glib-sys.workspace = true
+gobject-sys = "0.19.5"
+thiserror.workspace = true
+
+[features]
+device-tests = []
+
+[[example]]
+name = "basic"
+
+[dev-dependencies]
+env_logger.workspace = true
