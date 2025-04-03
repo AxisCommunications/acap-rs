@@ -3,14 +3,12 @@
 
 use std::{
     cell::{Cell, RefCell},
-    ffi::CString,
     fs::OpenOptions,
     io::Write,
-    path::PathBuf,
     process::ExitCode,
 };
 
-use axstorage::flex::{StatusEventId, Storage, Type};
+use axstorage::flex::{CStringPtr, StatusEventId, Storage, Type};
 use glib::{ControlFlow, Error, GString, GStringPtr};
 use libc::{SIGINT, SIGTERM};
 use log::{error, info, warn};
@@ -24,7 +22,7 @@ struct DiskItem {
     storage: Option<Storage>,
     storage_type: Option<Type>,
     storage_id: GStringPtr,
-    storage_path: Option<CString>,
+    storage_path: Option<CStringPtr>,
     subscription_id: u32,
     setup: bool,
     writable: bool,
@@ -38,8 +36,7 @@ fn write_data(data: &str) -> ControlFlow {
     DISKS_LIST.with_borrow(|disks_list| {
         for item in disks_list.iter() {
             if item.available && item.writable && !item.full && item.setup {
-                let filename =
-                    PathBuf::from(item.storage_path.as_ref().unwrap().to_str().unwrap()).join(data);
+                let filename = item.storage_path.as_ref().unwrap().to_path().join(data);
                 let file = match OpenOptions::new().append(true).create(true).open(&filename) {
                     Ok(f) => f,
                     Err(e) => {
