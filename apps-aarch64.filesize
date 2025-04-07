@@ -6,7 +6,7 @@
 899	target-aarch64/acap/embedded_web_page_0_0_0_aarch64.eap
 4074	target-aarch64/acap/event_subscribe_1_0_0_aarch64.eap
 1947	target-aarch64/acap/hello_world_0_0_0_aarch64.eap
-2068	target-aarch64/acap/inspect_env_0_0_0_aarch64.eap
+1982	target-aarch64/acap/inspect_env_0_0_0_aarch64.eap
 1969	target-aarch64/acap/licensekey_handler_0_0_0_aarch64.eap
 10873	target-aarch64/acap/reverse_proxy_0_0_0_aarch64.eap
 3982	target-aarch64/acap/send_event_1_0_0_aarch64.eap
