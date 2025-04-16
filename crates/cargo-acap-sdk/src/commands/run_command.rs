@@ -30,12 +30,12 @@ impl RunCommand {
 
         let host = format!("{}:22", address);
 
-        let tcp = TcpStream::connect(host).unwrap();
-        let mut session = Session::new().unwrap();
+        let tcp = TcpStream::connect(host)?;
+        let mut session = Session::new()?;
         session.set_tcp_stream(tcp);
         session.handshake().unwrap();
 
-        session.userauth_password(&username, &password).unwrap();
+        session.userauth_password(&username, &password)?;
 
         let artifacts = AppBuilder::from_targets([Architecture::from(target)])
             .args(args)
