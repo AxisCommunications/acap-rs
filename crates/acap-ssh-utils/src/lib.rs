@@ -133,18 +133,18 @@ pub fn run_other<S: AsRef<str>>(
 
         let sftp = session.sftp().context("Creating sftp session")?;
         sftp.create(path)
-            .context(format!("Creating {:?}", path))?
+            .with_context(|| format!("Creating {:?}", path))?
             .write_all(&std::fs::read(prog)?)
-            .context(format!("Writing {:?}", prog))?;
+            .with_context(|| format!("Writing {:?}", prog))?;
         let mut stat = sftp
             .stat(path)
-            .context(format!("Running `stat` on {:?}", path))?;
+            .with_context(|| format!("Running `stat` on {:?}", path))?;
         // `sftp.create` creates a new file with write-only permissions,
         // but since we expect to run this program we need to mark it executable
         // for the user
         stat.perm = Some(0o100744);
         sftp.setstat(path, stat)
-            .context(format!("Updating stat on {:?}", path))?;
+            .with_context(|| format!("Updating stat on {:?}", path))?;
     }
 
     RemoteCommand::new(None::<&str>, Some(env), path, None, Some(args)).exec(session)
@@ -223,7 +223,8 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
         let mut entry = entry?;
         let mut buf = Vec::new();
         let header = entry.header();
-        if entry.path()? != Path::new("manifest.json") && entry.path()? != Path::new("package.conf")
+        let path = entry.path()?.to_path_buf();
+        if path != Path::new("manifest.json") && path != Path::new("package.conf")
         {
             let stat = FileStat {
                 gid: Some(header.gid()?.try_into()?),
@@ -235,7 +236,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
             };
 
             if let Ok(Some(link)) = entry.link_name() {
-                let target = package_dir.join(&entry.path()?);
+                let target = package_dir.join(&path);
 
                 // `file_name` fails if the path ends in '..' or is '/', neither of which should
                 // be the case for a symlink
@@ -249,7 +250,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
 
                 debug!("Adding symlink {target:?} -> {link:?}");
                 sftp.symlink(&package_dir.join(&link), &target)
-                    .context(format!("Adding symlink {target:?} -> {link:?}"))?;
+                    .with_context(|| format!("Adding symlink {target:?} -> {link:?}"))?;
 
                 continue;
             }
@@ -257,9 +258,9 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
             if header.entry_type().is_dir() {
                 // If the directory can't be opened, then it doesn't exist so we need to create it.
                 // TODO: What if permissions has changed?
-                if sftp.opendir(entry.path()?).is_err() {
+                if sftp.opendir(&path).is_err() {
                     sftp.mkdir(&header.path()?, header.mode()? as i32)
-                        .context(format!("Creating directory {:?}", entry.path()?))?;
+                        .with_context(|| format!("Creating directory {:?}", path))?;
                 }
 
                 continue;
@@ -267,12 +268,12 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
 
             entry.read_to_end(&mut buf)?;
             let mut file = sftp
-                .create(&package_dir.join(&entry.path()?))
-                .context(format!("Creating {:?}", entry.path()?))?;
+                .create(&package_dir.join(&path))
+                .with_context(|| format!("Creating {:?}", path))?;
             file.write_all(&buf)
-                .context(format!("Writing to {:?}", entry.path()?))?;
+                .with_context(|| format!("Writing to {:?}", path))?;
             file.setstat(stat)
-                .context(format!("Updating stat on {:?}", entry.path()?))?;
+                .with_context(|| format!("Updating stat on {:?}", path))?;
         }
     }
 
