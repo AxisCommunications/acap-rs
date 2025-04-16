@@ -9,6 +9,7 @@ use std::{
 
 use anyhow::{bail, Context};
 use flate2::read::GzDecoder;
+use log::debug;
 use tar::Archive;
 
 use ssh2::{FileStat, Session};
@@ -226,6 +227,26 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
                 mtime: Some(header.mtime()?),
                 size: None,
             };
+
+            if let Ok(Some(link)) = entry.link_name() {
+                let target = package_dir.join(&entry.path()?);
+
+                // `file_name` fails if the path ends in '..' or is '/', neither of which should
+                // be the case for a symlink
+                if sftp
+                    .readlink(&target)
+                    .is_ok_and(|l| l.file_name().unwrap() == link)
+                {
+                    debug!("Symlink {target:?} -> {link:?} exists, skipping");
+                    continue;
+                }
+
+                debug!("Adding symlink {target:?} -> {link:?}");
+                sftp.symlink(&package_dir.join(&link), &target)
+                    .context(format!("Adding symlink {target:?} -> {link:?}"))?;
+
+                continue;
+            }
 
             if header.entry_type().is_dir() {
                 // If the directory can't be opened, then it doesn't exist so we need to create it.
