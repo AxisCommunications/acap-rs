@@ -1,5 +1,7 @@
 use cargo_acap_build::{AppBuilder, Architecture, Artifact};
 use log::debug;
+use ssh2::Session;
+use std::net::TcpStream;
 
 use crate::{BuildOptions, DeployOptions, ResolvedBuildOptions};
 
@@ -26,27 +28,34 @@ impl RunCommand {
             pass: password,
         } = deploy_options;
 
+        let host = format!("{}:22", address);
+
+        let tcp = TcpStream::connect(host)?;
+        let mut session = Session::new()?;
+        session.set_tcp_stream(tcp);
+        session.handshake().unwrap();
+
+        session.userauth_password(&username, &password)?;
+
         let artifacts = AppBuilder::from_targets([Architecture::from(target)])
             .args(args)
             .execute()?;
         for artifact in artifacts {
-            let envs = vec![("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")]
-                .into_iter()
-                .collect();
+            let envs = [("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")];
             match artifact {
                 Artifact::Eap { path, name } => {
                     // TODO: Install instead of patch when needed
                     debug!("Patching app {name}");
-                    acap_ssh_utils::patch_package(&path, &username, &password, &address)?;
+                    acap_ssh_utils::patch_package(&path, &session)?;
                     debug!("Running app {name}");
-                    acap_ssh_utils::run_package(&username, &password, &address, &name, envs, &[])?
+                    acap_ssh_utils::run_package(&session, &name, &envs, &[], username != "root")?
                 }
                 Artifact::Exe { path } => {
                     debug!(
                         "Running exe {}",
                         path.file_name().unwrap().to_string_lossy()
                     );
-                    acap_ssh_utils::run_other(&path, &username, &password, &address, envs, &[])?;
+                    acap_ssh_utils::run_other(&path, &session, &envs, &[])?;
                 }
             }
         }
