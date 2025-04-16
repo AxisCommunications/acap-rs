@@ -124,8 +124,14 @@ pub fn run_other<S: AsRef<str>>(
     env: &[(S, S)],
     args: &[&str],
 ) -> anyhow::Result<()> {
-    let tmp = RemoteCommand::new(None::<&str>, None::<&[(&str, &str)]>, "mktemp -u", None, None)
-        .exec_capture_stdout(session)?;
+    let tmp = RemoteCommand::new(
+        None::<&str>,
+        None::<&[(&str, &str)]>,
+        "mktemp -u",
+        None,
+        None,
+    )
+    .exec_capture_stdout(session)?;
 
     // The output from `mktemp -u` contains a trailing '\n'
     let path = std::str::from_utf8(&tmp)?.strip_suffix('\n').unwrap();
@@ -226,8 +232,7 @@ pub fn patch_package(package: &Path, session: &Session) -> anyhow::Result<()> {
         let mut buf = Vec::new();
         let header = entry.header();
         let path = entry.path()?.to_path_buf();
-        if path != Path::new("manifest.json") && path != Path::new("package.conf")
-        {
+        if path != Path::new("manifest.json") && path != Path::new("package.conf") {
             let stat = FileStat {
                 gid: Some(header.gid()?.try_into()?),
                 uid: Some(header.uid()?.try_into()?),
