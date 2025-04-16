@@ -47,10 +47,12 @@ impl RemoteCommand {
             cmd.current_dir(cwd);
         }
 
-        cmd.arg(executable);
         if let Some(args) = args {
-            cmd.arg("--"); // They should be passed to the process, not to 'su'
-            cmd.args(args);
+            let mut exec = std::process::Command::new(executable);
+            exec.args(args);
+            cmd.arg(format!("{exec:?}"));
+        } else {
+            cmd.arg(executable);
         }
 
         Self {

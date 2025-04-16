@@ -33,6 +33,17 @@ mod tests {
     }
 
     #[test]
+    fn args_passed_as_expected() {
+        assert_eq!(
+            env::args().collect::<Vec<_>>(),
+            vec![
+                "/usr/local/packages/inspect_env/inspect_env",
+                "--test-threads=1"
+            ]
+        )
+    }
+
+    #[test]
     fn selected_vars_are_set_as_expected() {
         assert_eq!(env::var("G_SLICE").unwrap(), "always-malloc");
     }
