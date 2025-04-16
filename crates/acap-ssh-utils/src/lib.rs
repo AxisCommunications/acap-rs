@@ -25,6 +25,7 @@ impl RemoteCommand {
         user: Option<impl AsRef<str>>,
         env: Option<&[(impl AsRef<str>, impl AsRef<str>)]>,
         executable: &str,
+        cwd: Option<&str>,
         args: Option<&[&str]>,
     ) -> Self {
         let mut cmd = if let Some(user) = user {
@@ -41,6 +42,10 @@ impl RemoteCommand {
             cmd.envs(env.iter().map(|(k, v)| (k.as_ref(), v.as_ref())));
         }
         cmd.env("G_SLICE", "always-malloc");
+
+        if let Some(cwd) = cwd {
+            cmd.current_dir(cwd);
+        }
 
         cmd.arg(executable);
         if let Some(args) = args {
@@ -117,7 +122,7 @@ pub fn run_other<S: AsRef<str>>(
     env: &[(S, S)],
     args: &[&str],
 ) -> anyhow::Result<()> {
-    let tmp = RemoteCommand::new(None::<&str>, None::<&[(&str, &str)]>, "mktemp -u", None)
+    let tmp = RemoteCommand::new(None::<&str>, None::<&[(&str, &str)]>, "mktemp -u", None, None)
         .exec_capture_stdout(session)?;
 
     // The output from `mktemp -u` contains a trailing '\n'
@@ -142,7 +147,7 @@ pub fn run_other<S: AsRef<str>>(
             .context(format!("Updating stat on {:?}", path))?;
     }
 
-    RemoteCommand::new(None::<&str>, Some(env), path, Some(args)).exec(session)
+    RemoteCommand::new(None::<&str>, Some(env), path, None, Some(args)).exec(session)
 }
 
 // TODO: Consider abstracting away the difference between devices that support developer mode, and
@@ -171,6 +176,7 @@ pub fn run_package<S: AsRef<str>>(
         as_package_user.then(|| format!("acap-{package}")),
         Some(env),
         &format!("/usr/local/packages/{package}/{package}"),
+        Some(&format!("/usr/local/packages/{package}")),
         Some(args),
     );
 
