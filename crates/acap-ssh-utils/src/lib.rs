@@ -164,10 +164,10 @@ pub fn run_package<S: AsRef<str>>(
     package: &str,
     env: &[(S, S)],
     args: &[&str],
-    as_root: bool,
+    as_package_user: bool,
 ) -> anyhow::Result<()> {
     let cmd = RemoteCommand::new(
-        as_root.then(|| format!("acap-{package}")),
+        as_package_user.then(|| format!("acap-{package}")),
         Some(env),
         &format!("/usr/local/packages/{package}/{package}"),
         Some(args),

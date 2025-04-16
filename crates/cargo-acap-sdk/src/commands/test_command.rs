@@ -59,7 +59,7 @@ impl TestCommand {
                         &name,
                         &envs,
                         &test_args,
-                        username == "root",
+                        username != "root",
                     )?
                 }
                 Artifact::Exe { path } => {
