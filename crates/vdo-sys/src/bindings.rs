@@ -73,132 +73,540 @@ impl<T> ::std::cmp::PartialEq for __BindgenUnionField<T> {
     }
 }
 impl<T> ::std::cmp::Eq for __BindgenUnionField<T> {}
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoWdrMode {
-    VDO_WDR_MODE_NONE = -1,
-    VDO_WDR_MODE_LINEAR = 0,
-    VDO_WDR_MODE_2X = 1,
-    VDO_WDR_MODE_3X = 2,
-    VDO_WDR_MODE_4X = 3,
-    VDO_WDR_MODE_SENSOR = 4,
-    VDO_WDR_MODE_OFF = 5,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_NONE: VdoWdrMode = VdoWdrMode(-1);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoFormat {
-    VDO_FORMAT_NONE = -1,
-    VDO_FORMAT_H264 = 0,
-    VDO_FORMAT_H265 = 1,
-    VDO_FORMAT_JPEG = 2,
-    VDO_FORMAT_YUV = 3,
-    VDO_FORMAT_BAYER = 4,
-    VDO_FORMAT_IVS = 5,
-    VDO_FORMAT_RAW = 6,
-    VDO_FORMAT_RGBA = 7,
-    VDO_FORMAT_RGB = 8,
-    VDO_FORMAT_PLANAR_RGB = 9,
-    VDO_FORMAT_AV1 = 10,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_LINEAR: VdoWdrMode = VdoWdrMode(0);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoH264Profile {
-    VDO_H264_PROFILE_NONE = -1,
-    VDO_H264_PROFILE_BASELINE = 0,
-    VDO_H264_PROFILE_MAIN = 1,
-    VDO_H264_PROFILE_HIGH = 2,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_2X: VdoWdrMode = VdoWdrMode(1);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoH265Profile {
-    VDO_H265_PROFILE_NONE = -1,
-    VDO_H265_PROFILE_MAIN = 0,
-    VDO_H265_PROFILE_MAIN_10 = 1,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_3X: VdoWdrMode = VdoWdrMode(2);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoAV1Profile {
-    VDO_AV1_PROFILE_NONE = -1,
-    VDO_AV1_PROFILE_MAIN = 0,
-    VDO_AV1_PROFILE_MAIN_10 = 1,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_4X: VdoWdrMode = VdoWdrMode(3);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoRateControlMode {
-    VDO_RATE_CONTROL_MODE_NONE = -1,
-    VDO_RATE_CONTROL_MODE_CBR = 0,
-    VDO_RATE_CONTROL_MODE_VBR = 1,
-    VDO_RATE_CONTROL_MODE_MBR = 2,
-    VDO_RATE_CONTROL_MODE_ABR = 3,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_SENSOR: VdoWdrMode = VdoWdrMode(4);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoRateControlPriority {
-    VDO_RATE_CONTROL_PRIORITY_NONE = -1,
-    VDO_RATE_CONTROL_PRIORITY_FRAMERATE = 0,
-    VDO_RATE_CONTROL_PRIORITY_QUALITY = 1,
-    VDO_RATE_CONTROL_PRIORITY_FULL_FRAMERATE = 2,
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_OFF: VdoWdrMode = VdoWdrMode(5);
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoFrameType {
-    VDO_FRAME_TYPE_NONE = 0,
-    VDO_FRAME_TYPE_H264_SPS = 1,
-    VDO_FRAME_TYPE_H264_PPS = 2,
-    VDO_FRAME_TYPE_H264_SEI = 3,
-    VDO_FRAME_TYPE_H264_IDR = 4,
-    VDO_FRAME_TYPE_H264_I = 5,
-    VDO_FRAME_TYPE_H264_P = 6,
-    VDO_FRAME_TYPE_H264_B = 7,
-    VDO_FRAME_TYPE_H265_SPS = 8,
-    VDO_FRAME_TYPE_H265_PPS = 9,
-    VDO_FRAME_TYPE_H265_VPS = 10,
-    VDO_FRAME_TYPE_H265_SEI = 11,
-    VDO_FRAME_TYPE_H265_IDR = 12,
-    VDO_FRAME_TYPE_H265_I = 13,
-    VDO_FRAME_TYPE_H265_P = 14,
-    VDO_FRAME_TYPE_H265_B = 15,
-    VDO_FRAME_TYPE_JPEG = 16,
-    VDO_FRAME_TYPE_YUV = 17,
-    VDO_FRAME_TYPE_RAW = 18,
-    VDO_FRAME_TYPE_RGBA = 19,
-    VDO_FRAME_TYPE_RGB = 20,
-    VDO_FRAME_TYPE_PLANAR_RGB = 21,
-    VDO_FRAME_TYPE_AV1_KEY = 22,
-    VDO_FRAME_TYPE_AV1_INTER = 23,
-    VDO_FRAME_TYPE_AV1_BIDI = 24,
+impl ::std::ops::BitOr<VdoWdrMode> for VdoWdrMode {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoWdrMode(self.0 | other.0)
+    }
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoZipStreamProfile {
-    VDO_ZIPSTREAM_PROFILE_NONE = -1,
-    VDO_ZIPSTREAM_PROFILE_CLASSIC = 0,
-    VDO_ZIPSTREAM_PROFILE_STORAGE = 1,
-    VDO_ZIPSTREAM_PROFILE_LIVE = 2,
+impl ::std::ops::BitOrAssign for VdoWdrMode {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoWdrMode) {
+        self.0 |= rhs.0;
+    }
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoChunkType {
-    VDO_CHUNK_NONE = 0,
-    VDO_CHUNK_ERROR = 2147483648,
+impl ::std::ops::BitAnd<VdoWdrMode> for VdoWdrMode {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoWdrMode(self.0 & other.0)
+    }
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoChunkOption {
-    VDO_CHUNK_OPTION_NONE = 0,
-    VDO_CHUNK_OPTION_MMAP = 2147483648,
+impl ::std::ops::BitAndAssign for VdoWdrMode {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoWdrMode) {
+        self.0 &= rhs.0;
+    }
 }
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoWdrMode(pub ::std::os::raw::c_int);
+impl VdoFormat {
+    pub const VDO_FORMAT_NONE: VdoFormat = VdoFormat(-1);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_H264: VdoFormat = VdoFormat(0);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_H265: VdoFormat = VdoFormat(1);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_JPEG: VdoFormat = VdoFormat(2);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_YUV: VdoFormat = VdoFormat(3);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_BAYER: VdoFormat = VdoFormat(4);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_IVS: VdoFormat = VdoFormat(5);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_RAW: VdoFormat = VdoFormat(6);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_RGBA: VdoFormat = VdoFormat(7);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_RGB: VdoFormat = VdoFormat(8);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_PLANAR_RGB: VdoFormat = VdoFormat(9);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_AV1: VdoFormat = VdoFormat(10);
+}
+impl ::std::ops::BitOr<VdoFormat> for VdoFormat {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoFormat(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoFormat {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoFormat) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoFormat> for VdoFormat {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoFormat(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoFormat {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoFormat) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoFormat(pub ::std::os::raw::c_int);
+impl VdoH264Profile {
+    pub const VDO_H264_PROFILE_NONE: VdoH264Profile = VdoH264Profile(-1);
+}
+impl VdoH264Profile {
+    pub const VDO_H264_PROFILE_BASELINE: VdoH264Profile = VdoH264Profile(0);
+}
+impl VdoH264Profile {
+    pub const VDO_H264_PROFILE_MAIN: VdoH264Profile = VdoH264Profile(1);
+}
+impl VdoH264Profile {
+    pub const VDO_H264_PROFILE_HIGH: VdoH264Profile = VdoH264Profile(2);
+}
+impl ::std::ops::BitOr<VdoH264Profile> for VdoH264Profile {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoH264Profile(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoH264Profile {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoH264Profile) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoH264Profile> for VdoH264Profile {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoH264Profile(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoH264Profile {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoH264Profile) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoH264Profile(pub ::std::os::raw::c_int);
+impl VdoH265Profile {
+    pub const VDO_H265_PROFILE_NONE: VdoH265Profile = VdoH265Profile(-1);
+}
+impl VdoH265Profile {
+    pub const VDO_H265_PROFILE_MAIN: VdoH265Profile = VdoH265Profile(0);
+}
+impl VdoH265Profile {
+    pub const VDO_H265_PROFILE_MAIN_10: VdoH265Profile = VdoH265Profile(1);
+}
+impl ::std::ops::BitOr<VdoH265Profile> for VdoH265Profile {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoH265Profile(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoH265Profile {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoH265Profile) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoH265Profile> for VdoH265Profile {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoH265Profile(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoH265Profile {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoH265Profile) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoH265Profile(pub ::std::os::raw::c_int);
+impl VdoAV1Profile {
+    pub const VDO_AV1_PROFILE_NONE: VdoAV1Profile = VdoAV1Profile(-1);
+}
+impl VdoAV1Profile {
+    pub const VDO_AV1_PROFILE_MAIN: VdoAV1Profile = VdoAV1Profile(0);
+}
+impl VdoAV1Profile {
+    pub const VDO_AV1_PROFILE_MAIN_10: VdoAV1Profile = VdoAV1Profile(1);
+}
+impl ::std::ops::BitOr<VdoAV1Profile> for VdoAV1Profile {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoAV1Profile(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoAV1Profile {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoAV1Profile) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoAV1Profile> for VdoAV1Profile {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoAV1Profile(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoAV1Profile {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoAV1Profile) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoAV1Profile(pub ::std::os::raw::c_int);
+impl VdoRateControlMode {
+    pub const VDO_RATE_CONTROL_MODE_NONE: VdoRateControlMode = VdoRateControlMode(-1);
+}
+impl VdoRateControlMode {
+    pub const VDO_RATE_CONTROL_MODE_CBR: VdoRateControlMode = VdoRateControlMode(0);
+}
+impl VdoRateControlMode {
+    pub const VDO_RATE_CONTROL_MODE_VBR: VdoRateControlMode = VdoRateControlMode(1);
+}
+impl VdoRateControlMode {
+    pub const VDO_RATE_CONTROL_MODE_MBR: VdoRateControlMode = VdoRateControlMode(2);
+}
+impl VdoRateControlMode {
+    pub const VDO_RATE_CONTROL_MODE_ABR: VdoRateControlMode = VdoRateControlMode(3);
+}
+impl ::std::ops::BitOr<VdoRateControlMode> for VdoRateControlMode {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoRateControlMode(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoRateControlMode {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoRateControlMode) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoRateControlMode> for VdoRateControlMode {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoRateControlMode(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoRateControlMode {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoRateControlMode) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoRateControlMode(pub ::std::os::raw::c_int);
+impl VdoRateControlPriority {
+    pub const VDO_RATE_CONTROL_PRIORITY_NONE: VdoRateControlPriority = VdoRateControlPriority(-1);
+}
+impl VdoRateControlPriority {
+    pub const VDO_RATE_CONTROL_PRIORITY_FRAMERATE: VdoRateControlPriority =
+        VdoRateControlPriority(0);
+}
+impl VdoRateControlPriority {
+    pub const VDO_RATE_CONTROL_PRIORITY_QUALITY: VdoRateControlPriority = VdoRateControlPriority(1);
+}
+impl VdoRateControlPriority {
+    pub const VDO_RATE_CONTROL_PRIORITY_FULL_FRAMERATE: VdoRateControlPriority =
+        VdoRateControlPriority(2);
+}
+impl ::std::ops::BitOr<VdoRateControlPriority> for VdoRateControlPriority {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoRateControlPriority(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoRateControlPriority {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoRateControlPriority) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoRateControlPriority> for VdoRateControlPriority {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoRateControlPriority(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoRateControlPriority {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoRateControlPriority) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoRateControlPriority(pub ::std::os::raw::c_int);
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_NONE: VdoFrameType = VdoFrameType(0);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_SPS: VdoFrameType = VdoFrameType(1);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_PPS: VdoFrameType = VdoFrameType(2);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_SEI: VdoFrameType = VdoFrameType(3);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_IDR: VdoFrameType = VdoFrameType(4);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_I: VdoFrameType = VdoFrameType(5);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_P: VdoFrameType = VdoFrameType(6);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H264_B: VdoFrameType = VdoFrameType(7);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_SPS: VdoFrameType = VdoFrameType(8);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_PPS: VdoFrameType = VdoFrameType(9);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_VPS: VdoFrameType = VdoFrameType(10);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_SEI: VdoFrameType = VdoFrameType(11);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_IDR: VdoFrameType = VdoFrameType(12);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_I: VdoFrameType = VdoFrameType(13);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_P: VdoFrameType = VdoFrameType(14);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_H265_B: VdoFrameType = VdoFrameType(15);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_JPEG: VdoFrameType = VdoFrameType(16);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_YUV: VdoFrameType = VdoFrameType(17);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_RAW: VdoFrameType = VdoFrameType(18);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_RGBA: VdoFrameType = VdoFrameType(19);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_RGB: VdoFrameType = VdoFrameType(20);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_PLANAR_RGB: VdoFrameType = VdoFrameType(21);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_AV1_KEY: VdoFrameType = VdoFrameType(22);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_AV1_INTER: VdoFrameType = VdoFrameType(23);
+}
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_AV1_BIDI: VdoFrameType = VdoFrameType(24);
+}
+impl ::std::ops::BitOr<VdoFrameType> for VdoFrameType {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoFrameType(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoFrameType {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoFrameType) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoFrameType> for VdoFrameType {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoFrameType(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoFrameType {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoFrameType) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoFrameType(pub ::std::os::raw::c_uint);
+impl VdoZipStreamProfile {
+    pub const VDO_ZIPSTREAM_PROFILE_NONE: VdoZipStreamProfile = VdoZipStreamProfile(-1);
+}
+impl VdoZipStreamProfile {
+    pub const VDO_ZIPSTREAM_PROFILE_CLASSIC: VdoZipStreamProfile = VdoZipStreamProfile(0);
+}
+impl VdoZipStreamProfile {
+    pub const VDO_ZIPSTREAM_PROFILE_STORAGE: VdoZipStreamProfile = VdoZipStreamProfile(1);
+}
+impl VdoZipStreamProfile {
+    pub const VDO_ZIPSTREAM_PROFILE_LIVE: VdoZipStreamProfile = VdoZipStreamProfile(2);
+}
+impl ::std::ops::BitOr<VdoZipStreamProfile> for VdoZipStreamProfile {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoZipStreamProfile(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoZipStreamProfile {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoZipStreamProfile) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoZipStreamProfile> for VdoZipStreamProfile {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoZipStreamProfile(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoZipStreamProfile {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoZipStreamProfile) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoZipStreamProfile(pub ::std::os::raw::c_int);
+impl VdoChunkType {
+    pub const VDO_CHUNK_NONE: VdoChunkType = VdoChunkType(0);
+}
+impl VdoChunkType {
+    pub const VDO_CHUNK_ERROR: VdoChunkType = VdoChunkType(2147483648);
+}
+impl ::std::ops::BitOr<VdoChunkType> for VdoChunkType {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoChunkType(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoChunkType {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoChunkType) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoChunkType> for VdoChunkType {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoChunkType(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoChunkType {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoChunkType) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoChunkType(pub ::std::os::raw::c_uint);
+impl VdoChunkOption {
+    pub const VDO_CHUNK_OPTION_NONE: VdoChunkOption = VdoChunkOption(0);
+}
+impl VdoChunkOption {
+    pub const VDO_CHUNK_OPTION_MMAP: VdoChunkOption = VdoChunkOption(2147483648);
+}
+impl ::std::ops::BitOr<VdoChunkOption> for VdoChunkOption {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoChunkOption(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoChunkOption {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoChunkOption) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoChunkOption> for VdoChunkOption {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoChunkOption(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoChunkOption {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoChunkOption) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoChunkOption(pub ::std::os::raw::c_uint);
 #[repr(C)]
 pub struct VdoChunk {
     pub data: gpointer,
@@ -206,101 +614,403 @@ pub struct VdoChunk {
     pub type_: VdoChunkType,
     pub offset: gint64,
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoOverlayAlign {
-    VDO_OVERLAY_ALIGN_NONE = -1,
-    VDO_OVERLAY_ALIGN_TOP = 0,
-    VDO_OVERLAY_ALIGN_BOTTOM = 1,
+impl VdoOverlayAlign {
+    pub const VDO_OVERLAY_ALIGN_NONE: VdoOverlayAlign = VdoOverlayAlign(-1);
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoOverlayColor {
-    VDO_OVERLAY_COLOR_TRANSPARENT = 0,
-    VDO_OVERLAY_COLOR_BLACK = 61440,
-    VDO_OVERLAY_COLOR_WHITE = 65535,
+impl VdoOverlayAlign {
+    pub const VDO_OVERLAY_ALIGN_TOP: VdoOverlayAlign = VdoOverlayAlign(0);
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoOverlayTextSize {
-    VDO_OVERLAY_TEXT_SIZE_SMALL = 16,
-    VDO_OVERLAY_TEXT_SIZE_MEDIUM = 32,
-    VDO_OVERLAY_TEXT_SIZE_LARGE = 48,
+impl VdoOverlayAlign {
+    pub const VDO_OVERLAY_ALIGN_BOTTOM: VdoOverlayAlign = VdoOverlayAlign(1);
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoStreamTimestamp {
-    VDO_TIMESTAMP_NONE = 0,
-    VDO_TIMESTAMP_UTC = 1,
-    VDO_TIMESTAMP_ZIPSTREAM = 2,
-    VDO_TIMESTAMP_DIFF = 4,
-    VDO_TIMESTAMP_MONO_CAPTURE = 8,
-    VDO_TIMESTAMP_MONO_SERVER = 16,
-    VDO_TIMESTAMP_MONO_CLIENT = 32,
-    VDO_TIMESTAMP_MONO_CLIENT_SERVER_DIFF = 52,
-    VDO_TIMESTAMP_MONO_CLIENT_CAPTURE_DIFF = 44,
+impl ::std::ops::BitOr<VdoOverlayAlign> for VdoOverlayAlign {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoOverlayAlign(self.0 | other.0)
+    }
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoIntent {
-    VDO_INTENT_NONE = 0,
-    VDO_INTENT_CONTROL = 1,
-    VDO_INTENT_MONITOR = 2,
-    VDO_INTENT_CONSUME = 4,
-    VDO_INTENT_PRODUCE = 8,
-    VDO_INTENT_DEFAULT = 5,
-    VDO_INTENT_EVENTFD = 16,
-    VDO_INTENT_UNIVERSE = 4294967295,
+impl ::std::ops::BitOrAssign for VdoOverlayAlign {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoOverlayAlign) {
+        self.0 |= rhs.0;
+    }
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoStreamEvent {
-    VDO_STREAM_EVENT_NONE = 0,
-    VDO_STREAM_EVENT_STARTED = 1,
-    VDO_STREAM_EVENT_STOPPED = 2,
-    VDO_STREAM_EVENT_RESOURCE = 16,
-    VDO_STREAM_EVENT_QUOTA_SOFT = 17,
-    VDO_STREAM_EVENT_QUOTA_HARD = 18,
-    VDO_STREAM_EVENT_ZIPSTREAM = 32,
-    VDO_STREAM_EVENT_BUFFERING = 64,
-    VDO_STREAM_EVENT_BUFFERING_WARN = 65,
-    VDO_STREAM_EVENT_BUFFERING_FAIL = 66,
-    VDO_STREAM_EVENT_CREATED = 80,
-    VDO_STREAM_EVENT_CLOSED = 81,
-    VDO_STREAM_EVENT_EXISTING = 82,
-    VDO_STREAM_EVENT_INVALID = 4294967295,
+impl ::std::ops::BitAnd<VdoOverlayAlign> for VdoOverlayAlign {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoOverlayAlign(self.0 & other.0)
+    }
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoBufferAccess {
-    VDO_BUFFER_ACCESS_NONE = 0,
-    VDO_BUFFER_ACCESS_CPU_RD = 1,
-    VDO_BUFFER_ACCESS_DEV_RD = 2,
-    VDO_BUFFER_ACCESS_ANY_RD = 3,
-    VDO_BUFFER_ACCESS_CPU_WR = 256,
-    VDO_BUFFER_ACCESS_DEV_WR = 512,
-    VDO_BUFFER_ACCESS_ANY_WR = 768,
-    VDO_BUFFER_ACCESS_CPU_RW = 257,
-    VDO_BUFFER_ACCESS_DEV_RW = 514,
-    VDO_BUFFER_ACCESS_ANY_RW = 771,
+impl ::std::ops::BitAndAssign for VdoOverlayAlign {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoOverlayAlign) {
+        self.0 &= rhs.0;
+    }
 }
-#[repr(u32)]
-#[non_exhaustive]
+#[repr(transparent)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum VdoBufferStrategy {
-    VDO_BUFFER_STRATEGY_NONE = 0,
-    VDO_BUFFER_STRATEGY_INPUT = 1,
-    VDO_BUFFER_STRATEGY_EXTERNAL = 2,
-    VDO_BUFFER_STRATEGY_EXPLICIT = 3,
-    VDO_BUFFER_STRATEGY_INFINITE = 4,
+pub struct VdoOverlayAlign(pub ::std::os::raw::c_int);
+impl VdoOverlayColor {
+    pub const VDO_OVERLAY_COLOR_TRANSPARENT: VdoOverlayColor = VdoOverlayColor(0);
 }
+impl VdoOverlayColor {
+    pub const VDO_OVERLAY_COLOR_BLACK: VdoOverlayColor = VdoOverlayColor(61440);
+}
+impl VdoOverlayColor {
+    pub const VDO_OVERLAY_COLOR_WHITE: VdoOverlayColor = VdoOverlayColor(65535);
+}
+impl ::std::ops::BitOr<VdoOverlayColor> for VdoOverlayColor {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoOverlayColor(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoOverlayColor {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoOverlayColor) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoOverlayColor> for VdoOverlayColor {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoOverlayColor(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoOverlayColor {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoOverlayColor) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoOverlayColor(pub ::std::os::raw::c_uint);
+impl VdoOverlayTextSize {
+    pub const VDO_OVERLAY_TEXT_SIZE_SMALL: VdoOverlayTextSize = VdoOverlayTextSize(16);
+}
+impl VdoOverlayTextSize {
+    pub const VDO_OVERLAY_TEXT_SIZE_MEDIUM: VdoOverlayTextSize = VdoOverlayTextSize(32);
+}
+impl VdoOverlayTextSize {
+    pub const VDO_OVERLAY_TEXT_SIZE_LARGE: VdoOverlayTextSize = VdoOverlayTextSize(48);
+}
+impl ::std::ops::BitOr<VdoOverlayTextSize> for VdoOverlayTextSize {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoOverlayTextSize(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoOverlayTextSize {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoOverlayTextSize) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoOverlayTextSize> for VdoOverlayTextSize {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoOverlayTextSize(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoOverlayTextSize {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoOverlayTextSize) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoOverlayTextSize(pub ::std::os::raw::c_uint);
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_NONE: VdoStreamTimestamp = VdoStreamTimestamp(0);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_UTC: VdoStreamTimestamp = VdoStreamTimestamp(1);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_ZIPSTREAM: VdoStreamTimestamp = VdoStreamTimestamp(2);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_DIFF: VdoStreamTimestamp = VdoStreamTimestamp(4);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_MONO_CAPTURE: VdoStreamTimestamp = VdoStreamTimestamp(8);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_MONO_SERVER: VdoStreamTimestamp = VdoStreamTimestamp(16);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_MONO_CLIENT: VdoStreamTimestamp = VdoStreamTimestamp(32);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_MONO_CLIENT_SERVER_DIFF: VdoStreamTimestamp = VdoStreamTimestamp(52);
+}
+impl VdoStreamTimestamp {
+    pub const VDO_TIMESTAMP_MONO_CLIENT_CAPTURE_DIFF: VdoStreamTimestamp = VdoStreamTimestamp(44);
+}
+impl ::std::ops::BitOr<VdoStreamTimestamp> for VdoStreamTimestamp {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoStreamTimestamp(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoStreamTimestamp {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoStreamTimestamp) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoStreamTimestamp> for VdoStreamTimestamp {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoStreamTimestamp(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoStreamTimestamp {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoStreamTimestamp) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoStreamTimestamp(pub ::std::os::raw::c_uint);
+impl VdoIntent {
+    pub const VDO_INTENT_NONE: VdoIntent = VdoIntent(0);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_CONTROL: VdoIntent = VdoIntent(1);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_MONITOR: VdoIntent = VdoIntent(2);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_CONSUME: VdoIntent = VdoIntent(4);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_PRODUCE: VdoIntent = VdoIntent(8);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_DEFAULT: VdoIntent = VdoIntent(5);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_EVENTFD: VdoIntent = VdoIntent(16);
+}
+impl VdoIntent {
+    pub const VDO_INTENT_UNIVERSE: VdoIntent = VdoIntent(4294967295);
+}
+impl ::std::ops::BitOr<VdoIntent> for VdoIntent {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoIntent(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoIntent {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoIntent) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoIntent> for VdoIntent {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoIntent(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoIntent {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoIntent) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoIntent(pub ::std::os::raw::c_uint);
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_NONE: VdoStreamEvent = VdoStreamEvent(0);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_STARTED: VdoStreamEvent = VdoStreamEvent(1);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_STOPPED: VdoStreamEvent = VdoStreamEvent(2);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_RESOURCE: VdoStreamEvent = VdoStreamEvent(16);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_QUOTA_SOFT: VdoStreamEvent = VdoStreamEvent(17);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_QUOTA_HARD: VdoStreamEvent = VdoStreamEvent(18);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_ZIPSTREAM: VdoStreamEvent = VdoStreamEvent(32);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_BUFFERING: VdoStreamEvent = VdoStreamEvent(64);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_BUFFERING_WARN: VdoStreamEvent = VdoStreamEvent(65);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_BUFFERING_FAIL: VdoStreamEvent = VdoStreamEvent(66);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_CREATED: VdoStreamEvent = VdoStreamEvent(80);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_CLOSED: VdoStreamEvent = VdoStreamEvent(81);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_EXISTING: VdoStreamEvent = VdoStreamEvent(82);
+}
+impl VdoStreamEvent {
+    pub const VDO_STREAM_EVENT_INVALID: VdoStreamEvent = VdoStreamEvent(4294967295);
+}
+impl ::std::ops::BitOr<VdoStreamEvent> for VdoStreamEvent {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoStreamEvent(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoStreamEvent {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoStreamEvent) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoStreamEvent> for VdoStreamEvent {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoStreamEvent(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoStreamEvent {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoStreamEvent) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoStreamEvent(pub ::std::os::raw::c_uint);
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_NONE: VdoBufferAccess = VdoBufferAccess(0);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_CPU_RD: VdoBufferAccess = VdoBufferAccess(1);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_DEV_RD: VdoBufferAccess = VdoBufferAccess(2);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_ANY_RD: VdoBufferAccess = VdoBufferAccess(3);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_CPU_WR: VdoBufferAccess = VdoBufferAccess(256);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_DEV_WR: VdoBufferAccess = VdoBufferAccess(512);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_ANY_WR: VdoBufferAccess = VdoBufferAccess(768);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_CPU_RW: VdoBufferAccess = VdoBufferAccess(257);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_DEV_RW: VdoBufferAccess = VdoBufferAccess(514);
+}
+impl VdoBufferAccess {
+    pub const VDO_BUFFER_ACCESS_ANY_RW: VdoBufferAccess = VdoBufferAccess(771);
+}
+impl ::std::ops::BitOr<VdoBufferAccess> for VdoBufferAccess {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoBufferAccess(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoBufferAccess {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoBufferAccess) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoBufferAccess> for VdoBufferAccess {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoBufferAccess(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoBufferAccess {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoBufferAccess) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoBufferAccess(pub ::std::os::raw::c_uint);
+impl VdoBufferStrategy {
+    pub const VDO_BUFFER_STRATEGY_NONE: VdoBufferStrategy = VdoBufferStrategy(0);
+}
+impl VdoBufferStrategy {
+    pub const VDO_BUFFER_STRATEGY_INPUT: VdoBufferStrategy = VdoBufferStrategy(1);
+}
+impl VdoBufferStrategy {
+    pub const VDO_BUFFER_STRATEGY_EXTERNAL: VdoBufferStrategy = VdoBufferStrategy(2);
+}
+impl VdoBufferStrategy {
+    pub const VDO_BUFFER_STRATEGY_EXPLICIT: VdoBufferStrategy = VdoBufferStrategy(3);
+}
+impl VdoBufferStrategy {
+    pub const VDO_BUFFER_STRATEGY_INFINITE: VdoBufferStrategy = VdoBufferStrategy(4);
+}
+impl ::std::ops::BitOr<VdoBufferStrategy> for VdoBufferStrategy {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoBufferStrategy(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoBufferStrategy {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoBufferStrategy) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoBufferStrategy> for VdoBufferStrategy {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoBufferStrategy(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoBufferStrategy {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoBufferStrategy) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoBufferStrategy(pub ::std::os::raw::c_uint);
 #[repr(C)]
 pub struct VdoMemChunk {
     pub data: gpointer,
@@ -1025,53 +1735,56 @@ extern "C" {
 extern "C" {
     pub fn vdo_stream_get_event(self_: *mut VdoStream, error: *mut *mut GError) -> *mut VdoMap;
 }
-pub const VDO_ERROR_NOT_FOUND: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NOT_FOUND;
-pub const VDO_ERROR_EXISTS: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_EXISTS;
-pub const VDO_ERROR_INVALID_ARGUMENT: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_INVALID_ARGUMENT;
-pub const VDO_ERROR_PERMISSION_DENIED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_PERMISSION_DENIED;
-pub const VDO_ERROR_NOT_SUPPORTED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NOT_SUPPORTED;
-pub const VDO_ERROR_CLOSED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_CLOSED;
-pub const VDO_ERROR_BUSY: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_BUSY;
-pub const VDO_ERROR_IO: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_IO;
-pub const VDO_ERROR_HAL: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_HAL;
-pub const VDO_ERROR_DBUS: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_DBUS;
-pub const VDO_ERROR_OOM: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_OOM;
-pub const VDO_ERROR_IDLE: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_IDLE;
-pub const VDO_ERROR_NO_DATA: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_DATA;
-pub const VDO_ERROR_NO_BUFFER_SPACE: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_BUFFER_SPACE;
-pub const VDO_ERROR_BUFFER_FAILURE: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_BUFFER_FAILURE;
-pub const VDO_ERROR_INTERFACE_DOWN: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_INTERFACE_DOWN;
-pub const VDO_ERROR_FAILED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_FAILED;
-pub const VDO_ERROR_FATAL: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_FATAL;
-pub const VDO_ERROR_NOT_CONTROLLED: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NOT_CONTROLLED;
-pub const VDO_ERROR_NO_EVENT: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_EVENT;
-pub const VDO_ERROR_NO_VIDEO: _bindgen_ty_24 = _bindgen_ty_24::VDO_ERROR_NO_VIDEO;
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum _bindgen_ty_24 {
-    VDO_ERROR_NOT_FOUND = 1,
-    VDO_ERROR_EXISTS = 2,
-    VDO_ERROR_INVALID_ARGUMENT = 3,
-    VDO_ERROR_PERMISSION_DENIED = 4,
-    VDO_ERROR_NOT_SUPPORTED = 5,
-    VDO_ERROR_CLOSED = 6,
-    VDO_ERROR_BUSY = 7,
-    VDO_ERROR_IO = 8,
-    VDO_ERROR_HAL = 9,
-    VDO_ERROR_DBUS = 10,
-    VDO_ERROR_OOM = 11,
-    VDO_ERROR_IDLE = 12,
-    VDO_ERROR_NO_DATA = 13,
-    VDO_ERROR_NO_BUFFER_SPACE = 14,
-    VDO_ERROR_BUFFER_FAILURE = 15,
-    VDO_ERROR_INTERFACE_DOWN = 16,
-    VDO_ERROR_FAILED = 17,
-    VDO_ERROR_FATAL = 18,
-    VDO_ERROR_NOT_CONTROLLED = 19,
-    VDO_ERROR_NO_EVENT = 20,
-    VDO_ERROR_NO_VIDEO = 21,
+pub const VDO_ERROR_NOT_FOUND: _bindgen_ty_24 = _bindgen_ty_24(1);
+pub const VDO_ERROR_EXISTS: _bindgen_ty_24 = _bindgen_ty_24(2);
+pub const VDO_ERROR_INVALID_ARGUMENT: _bindgen_ty_24 = _bindgen_ty_24(3);
+pub const VDO_ERROR_PERMISSION_DENIED: _bindgen_ty_24 = _bindgen_ty_24(4);
+pub const VDO_ERROR_NOT_SUPPORTED: _bindgen_ty_24 = _bindgen_ty_24(5);
+pub const VDO_ERROR_CLOSED: _bindgen_ty_24 = _bindgen_ty_24(6);
+pub const VDO_ERROR_BUSY: _bindgen_ty_24 = _bindgen_ty_24(7);
+pub const VDO_ERROR_IO: _bindgen_ty_24 = _bindgen_ty_24(8);
+pub const VDO_ERROR_HAL: _bindgen_ty_24 = _bindgen_ty_24(9);
+pub const VDO_ERROR_DBUS: _bindgen_ty_24 = _bindgen_ty_24(10);
+pub const VDO_ERROR_OOM: _bindgen_ty_24 = _bindgen_ty_24(11);
+pub const VDO_ERROR_IDLE: _bindgen_ty_24 = _bindgen_ty_24(12);
+pub const VDO_ERROR_NO_DATA: _bindgen_ty_24 = _bindgen_ty_24(13);
+pub const VDO_ERROR_NO_BUFFER_SPACE: _bindgen_ty_24 = _bindgen_ty_24(14);
+pub const VDO_ERROR_BUFFER_FAILURE: _bindgen_ty_24 = _bindgen_ty_24(15);
+pub const VDO_ERROR_INTERFACE_DOWN: _bindgen_ty_24 = _bindgen_ty_24(16);
+pub const VDO_ERROR_FAILED: _bindgen_ty_24 = _bindgen_ty_24(17);
+pub const VDO_ERROR_FATAL: _bindgen_ty_24 = _bindgen_ty_24(18);
+pub const VDO_ERROR_NOT_CONTROLLED: _bindgen_ty_24 = _bindgen_ty_24(19);
+pub const VDO_ERROR_NO_EVENT: _bindgen_ty_24 = _bindgen_ty_24(20);
+pub const VDO_ERROR_NO_VIDEO: _bindgen_ty_24 = _bindgen_ty_24(21);
+impl ::std::ops::BitOr<_bindgen_ty_24> for _bindgen_ty_24 {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        _bindgen_ty_24(self.0 | other.0)
+    }
 }
+impl ::std::ops::BitOrAssign for _bindgen_ty_24 {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: _bindgen_ty_24) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<_bindgen_ty_24> for _bindgen_ty_24 {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        _bindgen_ty_24(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for _bindgen_ty_24 {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: _bindgen_ty_24) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct _bindgen_ty_24(pub ::std::os::raw::c_uint);
 extern "C" {
     pub fn vdo_error_quark() -> GQuark;
 }
