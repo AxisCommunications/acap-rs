@@ -61,7 +61,6 @@ use core::slice;
 pub use larod_sys::larodAccess as LarodAccess;
 pub use larod_sys::larodTensorDataType as TensorDataType;
 pub use larod_sys::larodTensorLayout as TensorLayout;
-pub use larod_sys::FDAccessFlag;
 #[allow(clippy::wildcard_imports)]
 use larod_sys::*;
 use memmap2::MmapMut;
@@ -71,7 +70,7 @@ use std::{
     fmt::Display,
     fs::File,
     marker::PhantomData,
-    ops,
+    ops::{self, BitOr},
     os::fd::{AsFd, AsRawFd, BorrowedFd},
     path::Path,
     ptr::{self},
@@ -100,6 +99,43 @@ macro_rules! try_func {
 
     }}
 }
+
+#[allow(non_camel_case_types)]
+#[repr(u32)]
+#[derive(Debug)]
+pub enum FDAccessFlag {
+    PROP_READWRITE = 1,
+    PROP_MAP = 2,
+    TYPE_DISK = 3,
+    PROP_DMABUF = 4,
+    TYPE_DMA = 6,
+}
+
+impl TryFrom<u32> for FDAccessFlag {
+    type Error = Error;
+    fn try_from(value: u32) -> Result<Self> {
+        match value {
+            1 => Ok(FDAccessFlag::PROP_READWRITE),
+            2 => Ok(FDAccessFlag::PROP_MAP),
+            3 => Ok(FDAccessFlag::TYPE_DISK),
+            4 => Ok(FDAccessFlag::PROP_DMABUF),
+            6 => Ok(FDAccessFlag::TYPE_DMA),
+            _ => Err(Error::InvalidAccessFlag),
+        }
+    }
+}
+
+impl BitOr for FDAccessFlag {
+    type Output = u32;
+
+    // rhs is the "right-hand side" of the expression `a | b`
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self as u32 | rhs as u32
+    }
+}
+
+pub const LAROD_INVALID_MODEL_ID: u64 = u64::MAX;
+pub const LAROD_INVALID_FD: i32 = i32::MIN;
 
 /// A wrapper for the [`larodError`](https://axiscommunications.github.io/acap-documentation/docs/api/src/api/larod/html/structlarodError.html)
 /// type and provides convenient Rust native types list String and Rust enums for
@@ -190,8 +226,8 @@ pub enum Error {
     UnsatisfiedDependencies,
     #[error("an input parameter was incorrect")]
     InvalidInput,
-    #[error(transparent)]
-    LarodSysError(larod_sys::Error),
+    #[error("attempted conversion from an invalid access flag")]
+    InvalidAccessFlag,
 }
 
 /// A type representing a larodMap.
@@ -948,7 +984,7 @@ impl<'a> Tensor<'a> {
                 maybe_error.is_none(),
                 "larodGetTensorFdProps indicated success AND returned an error!"
             );
-            FDAccessFlag::try_from(props_raw).map_err(Error::LarodSysError)
+            FDAccessFlag::try_from(props_raw).map_err(|_| Error::InvalidAccessFlag)
         } else {
             Err(maybe_error.unwrap_or(Error::MissingLarodError))
         }
