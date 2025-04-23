@@ -9,10 +9,10 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_type("^(_?Vdo.*)$")
         .allowlist_var("^(VDO_ERROR.*)$")
         .blocklist_function("vdo_stream_enqueue_buffer")
-        .default_enum_style(bindgen::EnumVariation::Rust {
-            non_exhaustive: true,
+        .default_enum_style(bindgen::EnumVariation::NewType {
+            is_global: false,
+            is_bitfield: true,
         })
-        // .constified_enum("^(VDO_ERROR.*)$")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .layout_tests(false);
     for path in library.include_paths {
