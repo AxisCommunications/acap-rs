@@ -23,7 +23,7 @@ cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-build
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-sdk
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/device-manager
-cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --git https://github.com/apljungquist/rs4a.git --branch plain-mdns
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --git https://github.com/apljungquist/rs4a.git --rev ae4e133555b5918da7f0984f30f1461726c142c2
 
 rm -r /tmp/target
 
