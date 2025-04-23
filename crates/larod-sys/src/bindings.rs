@@ -5,67 +5,245 @@
 pub struct larodDevice {
     _unused: [u8; 0],
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum larodAccess {
-    LAROD_ACCESS_INVALID = 0,
-    LAROD_ACCESS_PRIVATE = 1,
-    LAROD_ACCESS_PUBLIC = 2,
+impl larodAccess {
+    pub const LAROD_ACCESS_INVALID: larodAccess = larodAccess(0);
 }
-#[repr(i32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum larodErrorCode {
-    LAROD_ERROR_NONE = 0,
-    LAROD_ERROR_JOB = -1,
-    LAROD_ERROR_LOAD_MODEL = -2,
-    LAROD_ERROR_FD = -3,
-    LAROD_ERROR_MODEL_NOT_FOUND = -4,
-    LAROD_ERROR_PERMISSION = -5,
-    LAROD_ERROR_CONNECTION = -6,
-    LAROD_ERROR_CREATE_SESSION = -7,
-    LAROD_ERROR_KILL_SESSION = -8,
-    LAROD_ERROR_INVALID_CHIP_ID = -9,
-    LAROD_ERROR_INVALID_ACCESS = -10,
-    LAROD_ERROR_DELETE_MODEL = -11,
-    LAROD_ERROR_TENSOR_MISMATCH = -12,
-    LAROD_ERROR_VERSION_MISMATCH = -13,
-    LAROD_ERROR_ALLOC = -14,
-    LAROD_ERROR_POWER_NOT_AVAILABLE = -15,
-    LAROD_ERROR_MAX_ERRNO = 1024,
+impl larodAccess {
+    pub const LAROD_ACCESS_PRIVATE: larodAccess = larodAccess(1);
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum larodTensorDataType {
-    LAROD_TENSOR_DATA_TYPE_INVALID = 0,
-    LAROD_TENSOR_DATA_TYPE_UNSPECIFIED = 1,
-    LAROD_TENSOR_DATA_TYPE_BOOL = 2,
-    LAROD_TENSOR_DATA_TYPE_UINT8 = 3,
-    LAROD_TENSOR_DATA_TYPE_INT8 = 4,
-    LAROD_TENSOR_DATA_TYPE_UINT16 = 5,
-    LAROD_TENSOR_DATA_TYPE_INT16 = 6,
-    LAROD_TENSOR_DATA_TYPE_UINT32 = 7,
-    LAROD_TENSOR_DATA_TYPE_INT32 = 8,
-    LAROD_TENSOR_DATA_TYPE_UINT64 = 9,
-    LAROD_TENSOR_DATA_TYPE_INT64 = 10,
-    LAROD_TENSOR_DATA_TYPE_FLOAT16 = 11,
-    LAROD_TENSOR_DATA_TYPE_FLOAT32 = 12,
-    LAROD_TENSOR_DATA_TYPE_FLOAT64 = 13,
-    LAROD_TENSOR_DATA_TYPE_MAX = 14,
+impl larodAccess {
+    pub const LAROD_ACCESS_PUBLIC: larodAccess = larodAccess(2);
 }
-#[repr(u32)]
-#[non_exhaustive]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum larodTensorLayout {
-    LAROD_TENSOR_LAYOUT_INVALID = 0,
-    LAROD_TENSOR_LAYOUT_UNSPECIFIED = 1,
-    LAROD_TENSOR_LAYOUT_NHWC = 2,
-    LAROD_TENSOR_LAYOUT_NCHW = 3,
-    LAROD_TENSOR_LAYOUT_420SP = 4,
-    LAROD_TENSOR_LAYOUT_MAX = 5,
+impl ::std::ops::BitOr<larodAccess> for larodAccess {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        larodAccess(self.0 | other.0)
+    }
 }
+impl ::std::ops::BitOrAssign for larodAccess {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: larodAccess) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<larodAccess> for larodAccess {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        larodAccess(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for larodAccess {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: larodAccess) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct larodAccess(pub ::std::os::raw::c_uint);
+impl larodErrorCode {
+    pub const LAROD_ERROR_NONE: larodErrorCode = larodErrorCode(0);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_JOB: larodErrorCode = larodErrorCode(-1);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_LOAD_MODEL: larodErrorCode = larodErrorCode(-2);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_FD: larodErrorCode = larodErrorCode(-3);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_MODEL_NOT_FOUND: larodErrorCode = larodErrorCode(-4);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_PERMISSION: larodErrorCode = larodErrorCode(-5);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_CONNECTION: larodErrorCode = larodErrorCode(-6);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_CREATE_SESSION: larodErrorCode = larodErrorCode(-7);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_KILL_SESSION: larodErrorCode = larodErrorCode(-8);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_INVALID_CHIP_ID: larodErrorCode = larodErrorCode(-9);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_INVALID_ACCESS: larodErrorCode = larodErrorCode(-10);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_DELETE_MODEL: larodErrorCode = larodErrorCode(-11);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_TENSOR_MISMATCH: larodErrorCode = larodErrorCode(-12);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_VERSION_MISMATCH: larodErrorCode = larodErrorCode(-13);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_ALLOC: larodErrorCode = larodErrorCode(-14);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_POWER_NOT_AVAILABLE: larodErrorCode = larodErrorCode(-15);
+}
+impl larodErrorCode {
+    pub const LAROD_ERROR_MAX_ERRNO: larodErrorCode = larodErrorCode(1024);
+}
+impl ::std::ops::BitOr<larodErrorCode> for larodErrorCode {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        larodErrorCode(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for larodErrorCode {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: larodErrorCode) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<larodErrorCode> for larodErrorCode {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        larodErrorCode(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for larodErrorCode {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: larodErrorCode) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct larodErrorCode(pub ::std::os::raw::c_int);
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_INVALID: larodTensorDataType = larodTensorDataType(0);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_UNSPECIFIED: larodTensorDataType = larodTensorDataType(1);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_BOOL: larodTensorDataType = larodTensorDataType(2);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_UINT8: larodTensorDataType = larodTensorDataType(3);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_INT8: larodTensorDataType = larodTensorDataType(4);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_UINT16: larodTensorDataType = larodTensorDataType(5);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_INT16: larodTensorDataType = larodTensorDataType(6);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_UINT32: larodTensorDataType = larodTensorDataType(7);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_INT32: larodTensorDataType = larodTensorDataType(8);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_UINT64: larodTensorDataType = larodTensorDataType(9);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_INT64: larodTensorDataType = larodTensorDataType(10);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_FLOAT16: larodTensorDataType = larodTensorDataType(11);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_FLOAT32: larodTensorDataType = larodTensorDataType(12);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_FLOAT64: larodTensorDataType = larodTensorDataType(13);
+}
+impl larodTensorDataType {
+    pub const LAROD_TENSOR_DATA_TYPE_MAX: larodTensorDataType = larodTensorDataType(14);
+}
+impl ::std::ops::BitOr<larodTensorDataType> for larodTensorDataType {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        larodTensorDataType(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for larodTensorDataType {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: larodTensorDataType) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<larodTensorDataType> for larodTensorDataType {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        larodTensorDataType(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for larodTensorDataType {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: larodTensorDataType) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct larodTensorDataType(pub ::std::os::raw::c_uint);
+impl larodTensorLayout {
+    pub const LAROD_TENSOR_LAYOUT_INVALID: larodTensorLayout = larodTensorLayout(0);
+}
+impl larodTensorLayout {
+    pub const LAROD_TENSOR_LAYOUT_UNSPECIFIED: larodTensorLayout = larodTensorLayout(1);
+}
+impl larodTensorLayout {
+    pub const LAROD_TENSOR_LAYOUT_NHWC: larodTensorLayout = larodTensorLayout(2);
+}
+impl larodTensorLayout {
+    pub const LAROD_TENSOR_LAYOUT_NCHW: larodTensorLayout = larodTensorLayout(3);
+}
+impl larodTensorLayout {
+    pub const LAROD_TENSOR_LAYOUT_420SP: larodTensorLayout = larodTensorLayout(4);
+}
+impl larodTensorLayout {
+    pub const LAROD_TENSOR_LAYOUT_MAX: larodTensorLayout = larodTensorLayout(5);
+}
+impl ::std::ops::BitOr<larodTensorLayout> for larodTensorLayout {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        larodTensorLayout(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for larodTensorLayout {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: larodTensorLayout) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<larodTensorLayout> for larodTensorLayout {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        larodTensorLayout(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for larodTensorLayout {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: larodTensorLayout) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct larodTensorLayout(pub ::std::os::raw::c_uint);
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct larodError {
