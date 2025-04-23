@@ -7,8 +7,9 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_recursively(false)
         .allowlist_function("^(larod.*)$")
         .allowlist_type("^(_?larod.*)$")
-        .default_enum_style(bindgen::EnumVariation::Rust {
-            non_exhaustive: true,
+        .default_enum_style(bindgen::EnumVariation::NewType {
+            is_global: false,
+            is_bitfield: true,
         })
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .layout_tests(false);
