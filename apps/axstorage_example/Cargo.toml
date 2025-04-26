@@ -9,6 +9,6 @@ anyhow = { workspace = true }
 glib = { workspace = true }
 log = { workspace = true }
 
-acap-logging = { workspace = true }
+acap-logging = { workspace = true, default-features = true }
 axstorage = { workspace = true }
 libc = "0.2.158"

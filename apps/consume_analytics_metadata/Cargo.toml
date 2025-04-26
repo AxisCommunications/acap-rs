@@ -8,5 +8,5 @@ publish = false
 libc = { workspace = true }
 log = { workspace = true }
 
-acap-logging = { workspace = true }
+acap-logging = { workspace = true, default-features = true }
 mdb = { workspace = true }

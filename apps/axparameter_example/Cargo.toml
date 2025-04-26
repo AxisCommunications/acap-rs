@@ -8,5 +8,5 @@ publish = false
 glib = { workspace = true }
 log = { workspace = true }
 
-acap-logging = { workspace = true }
+acap-logging = { workspace = true, default-features = true }
 axparameter = { workspace = true }

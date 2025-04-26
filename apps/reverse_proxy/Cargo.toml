@@ -7,11 +7,9 @@ publish = false
 [dependencies]
 axum = { workspace = true, features = ["tokio", "ws"] }
 log = { workspace = true }
-env_logger = { workspace = true }
 futures = { workspace = true }
-syslog = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower-http = { workspace = true, features = ["fs", "trace"] }
 serde = { workspace = true, features = ["derive"] }
 
-acap-logging = { workspace = true }
+acap-logging = { workspace = true, default-features = true }

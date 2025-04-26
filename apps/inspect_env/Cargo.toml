@@ -7,4 +7,4 @@ publish = false
 [dependencies]
 log = { workspace = true }
 
-acap-logging = { workspace = true }
+acap-logging = { workspace = true, default-features = true }
