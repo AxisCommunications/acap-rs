@@ -4,7 +4,7 @@
 #[cfg(feature = "tty")]
 use std::{env, io::IsTerminal};
 
-use log::{debug};
+use log::debug;
 
 fn init_syslog() {
     libsyslog::Syslog::builder()
@@ -37,7 +37,7 @@ pub fn init_logger() {
         debug!("Logging initialized");
         return;
     }
-    
+
     init_syslog();
     debug!("Logging initialized");
 }
