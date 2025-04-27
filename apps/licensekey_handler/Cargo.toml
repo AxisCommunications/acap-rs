@@ -7,5 +7,8 @@ publish = false
 [dependencies]
 log = { workspace = true }
 
-acap-logging = { workspace = true, default-features = true }
+acap-logging = { workspace = true }
 licensekey = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]

@@ -12,4 +12,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower-http = { workspace = true, features = ["fs", "trace"] }
 serde = { workspace = true, features = ["derive"] }
 
-acap-logging = { workspace = true, default-features = true }
+acap-logging = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]

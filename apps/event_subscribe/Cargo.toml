@@ -9,6 +9,9 @@ anyhow = { workspace = true }
 glib = { workspace = true }
 log = { workspace = true }
 
-acap-logging = { workspace = true, default-features = true }
+acap-logging = { workspace = true }
 axevent = { workspace = true, features=["async"] }
 futures-lite = "2.6.0"
+
+[features]
+default = ["acap-logging/default"]
