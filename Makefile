@@ -63,6 +63,12 @@ build:
 		--package $(AXIS_PACKAGE) \
 		--profile app
 
+## Discover Axis devices on the local network
+##
+## Note that this does not work inside a container unless it's running on a Linux host.
+discover-devices:
+	rs4a discover-devices
+
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
 	cargo-acap-sdk install \
