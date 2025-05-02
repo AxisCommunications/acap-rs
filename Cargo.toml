@@ -24,6 +24,7 @@ glib = "0.20.9"
 glib-sys = "0.20.9"
 glob = "0.3.1"
 libc = "0.2.153"
+libsyslog = "0.1.1"
 log = "0.4.22"
 pkg-config = "0.3.30"
 regex = "1.7.2"
@@ -32,7 +33,6 @@ reqwest-websocket = "0.4.1"
 semver = "1.0.23"
 serde = "1.0.204"
 serde_json = "1.0.120"
-syslog = "6.1.1"
 tar = "0.4.40"
 tempdir = "0.3.7"
 tempfile = "3.10.1"
@@ -44,7 +44,7 @@ tracing-subscriber = "0.3.18"
 url = "2.5.2"
 
 acap-build = { path = "crates/acap-build" }
-acap-logging = { path = "crates/acap-logging" }
+acap-logging = { path = "crates/acap-logging", default-features = false }
 acap-ssh-utils = { path = "crates/acap-ssh-utils" }
 acap-vapix = { path = "crates/acap-vapix" }
 axevent = { path = "crates/axevent" }

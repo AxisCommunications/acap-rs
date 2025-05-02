@@ -8,3 +8,6 @@ publish = false
 log = { workspace = true }
 
 acap-logging = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]
