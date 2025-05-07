@@ -8,6 +8,3 @@ license = "MIT"
 [build-dependencies]
 bindgen = { workspace = true }
 pkg-config = { workspace = true }
-
-[dependencies]
-thiserror = { workspace = true }
