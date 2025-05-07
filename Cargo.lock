@@ -1822,6 +1822,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "object_detection"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "larod-sys",
+ "log",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
