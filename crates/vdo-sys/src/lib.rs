@@ -1,6 +1,7 @@
 //! Fairly nasty binding for VdoResolutionSet due to "Flexible Array Member"
 //! https://rust-lang.github.io/rust-bindgen/using-fam.html
 //! https://github.com/rust-lang/rust-bindgen/issues/1680#issuecomment-554296347
+#![allow(clippy::missing_safety_doc)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]

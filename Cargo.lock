@@ -3174,6 +3174,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vdoencodeclient"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "log",
+ "vdo-sys",
+]
+
+[[package]]
 name = "version-compare"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
