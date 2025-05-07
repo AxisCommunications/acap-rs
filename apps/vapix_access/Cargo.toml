@@ -13,3 +13,6 @@ url = { workspace = true }
 
 acap-logging = { workspace = true }
 acap-vapix = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]
