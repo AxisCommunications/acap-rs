@@ -13,3 +13,4 @@ a2c7af4df8f256ce89a5cd9ab6c42c5d9b60f0e4  target-aarch64/acap/object_detection_1
 c94b3ba49a3897617dc13599ffbc0642681133e5  target-aarch64/acap/send_event_1_0_0_aarch64.eap
 9df8dead66b245aa19d3aafa758871118b8cc25f  target-aarch64/acap/using_a_build_script_0_0_0_aarch64.eap
 e1edf29b82e9c04c044309f63571e8898fcfe1f6  target-aarch64/acap/vapix_access_0_0_0_aarch64.eap
+95e5fcee5918db34ae15427bd1ea05dc4ff2d74f  target-aarch64/acap/vdoencodeclient_1_0_0_aarch64.eap

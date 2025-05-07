@@ -3083,11 +3083,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "vdoencodeclient"
+name = "vdo_encode_client"
 version = "0.0.0"
 dependencies = [
  "acap-logging",
- "anyhow",
  "log",
  "vdo-sys",
 ]
