@@ -18,14 +18,14 @@ fn main() {
     acap_logging::init_logger();
     let mut conn: *mut larod_sys::larodConnection = std::ptr::null_mut();
     let mut error: *mut larod_sys::larodError = std::ptr::null_mut();
-    if unsafe{!larod_sys::larodConnect(&mut conn, &mut error)} {
+    if unsafe { !larod_sys::larodConnect(&mut conn, &mut error) } {
         error!("Could not connect to larod");
         return;
     }
     assert!(error.is_null());
 
-    let mut num_sessions = u64::MAX; 
-    if unsafe{!larod_sys::larodGetNumSessions(conn, &mut num_sessions, &mut error)} {
+    let mut num_sessions = u64::MAX;
+    if unsafe { !larod_sys::larodGetNumSessions(conn, &mut num_sessions, &mut error) } {
         error!("Could not get the number of sessions");
         return;
     }
