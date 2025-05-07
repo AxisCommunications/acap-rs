@@ -8,9 +8,3 @@ license = "MIT"
 glib = { workspace = true }
 glib-sys = { workspace = true }
 axparameter-sys = { workspace = true }
-
-[dev-dependencies]
-log = { workspace = true }
-syslog = { workspace = true }
-
-

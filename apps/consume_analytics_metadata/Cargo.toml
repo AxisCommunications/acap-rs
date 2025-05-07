@@ -10,3 +10,6 @@ log = { workspace = true }
 
 acap-logging = { workspace = true }
 mdb = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]
