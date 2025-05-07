@@ -1,0 +1,12 @@
+error[E0505]: cannot move out of `preprocessor` because it is borrowed
+  --> compiler_tests/lifetimes/tensor_lifetimes.rs:26:10
+   |
+5  |     let mut preprocessor = match Preprocessor::builder()
+   |         ---------------- binding `preprocessor` declared here
+...
+25 |     let tensors = preprocessor.input_tensors();
+   |                   ------------ borrow of `preprocessor` occurs here
+26 |     drop(preprocessor);
+   |          ^^^^^^^^^^^^ move out of `preprocessor` occurs here
+27 |     if let Some(tensors) = tensors {
+   |                            ------- borrow later used here

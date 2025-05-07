@@ -1,0 +1,28 @@
+[package]
+name = "larod"
+version = "0.0.0"
+edition.workspace = true
+license = "MIT"
+
+[dependencies]
+larod-sys = { workspace = true }
+log.workspace = true
+thiserror.workspace = true
+memmap2 = "0.9.5"
+
+[dev-dependencies]
+env_logger.workspace = true
+anyhow.workspace = true
+trybuild = "1.0.101"
+
+[lints.clippy]
+pedantic = "warn"
+
+[features]
+device-tests = []
+
+[[example]]
+name = "basic"
+
+[[example]]
+name = "simple-file"
