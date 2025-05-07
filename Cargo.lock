@@ -1571,7 +1571,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -3071,6 +3071,26 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vdo-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen 0.69.5",
+ "glib-sys",
+ "gobject-sys",
+ "pkg-config",
+]
+
+[[package]]
+name = "vdoencodeclient"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "log",
+ "vdo-sys",
+]
 
 [[package]]
 name = "version-compare"
