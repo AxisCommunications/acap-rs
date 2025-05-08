@@ -5,24 +5,35 @@
 pub struct _AXStorage {
     _unused: [u8; 0],
 }
+#[doc = " \\brief Opaque structure for the AXStorage."]
 pub type AXStorage = _AXStorage;
+#[doc = " Event for when storage becomes available and unavailable."]
 pub const AXStorageStatusEventId_AX_STORAGE_AVAILABLE_EVENT: AXStorageStatusEventId = 0;
+#[doc = " Event for when storage is about to exit,\n  that's when client _must_ stop using storage."]
 pub const AXStorageStatusEventId_AX_STORAGE_EXITING_EVENT: AXStorageStatusEventId = 1;
+#[doc = " Event for when storage becomes writable or readonly."]
 pub const AXStorageStatusEventId_AX_STORAGE_WRITABLE_EVENT: AXStorageStatusEventId = 2;
+#[doc = " Event for when storage becomes full and when there is free space again.\n  When storage becomes full client _must not_ write more data to it,\n  it's only ok to remove data."]
 pub const AXStorageStatusEventId_AX_STORAGE_FULL_EVENT: AXStorageStatusEventId = 3;
+#[doc = " Placeholder, do not use"]
 pub const AXStorageStatusEventId_AX_STORAGE_STATUS_EVENT_ID_END: AXStorageStatusEventId = 4;
+#[doc = " \\enum AXStorageStatusEventId\n The list of events for AXStorage"]
 pub type AXStorageStatusEventId = ::std::os::raw::c_uint;
 pub const AXStorageType_LOCAL_TYPE: AXStorageType = 0;
 pub const AXStorageType_EXTERNAL_TYPE: AXStorageType = 1;
 pub const AXStorageType_UNKNOWN_TYPE: AXStorageType = 2;
+#[doc = " \\enum AXStorageType\n The type of storage"]
 pub type AXStorageType = ::std::os::raw::c_uint;
 extern "C" {
+    #[doc = " \\brief Lists all connected storage devices.\n The returned list and its members must be freed by the caller.\n Use g_free for the members and g_list_free for the list.\n\n @param error Return location for error, or NULL.\n\n @return A GList of allocated storage_id strings representing\n the connected edge storage devices or NULL in case there were\n no storage connected or something went wrong."]
     pub fn ax_storage_list(error: *mut *mut GError) -> *mut GList;
 }
+#[doc = " The callback for events from a subscribed storage.\n It will be called when events change status.\n\n To get status of the different events, use the\n ax_storage_get_status method!\n\n Note that it is not an error if this method gets called\n when it appears none of the (known) events have changed\n state!\n\n @param storage_id The storage that triggered this callback.\n @param user_data User data from ax_storage_subscribe.\n @param error Return location for error, or NULL."]
 pub type AXStorageSubscriptionCallback = ::std::option::Option<
     unsafe extern "C" fn(storage_id: *mut gchar, user_data: gpointer, error: *mut GError),
 >;
 extern "C" {
+    #[doc = " Subscribe to storage events for the provided storage.\n\n @param storage_id The specific storage to subscribe events for.\n @param callback The callback to call when event occur.\n @param user_data Custom data that will be passed to the\n  AXStorageSubscriptionCallback. The caller is responsible for freeing this memory.\n @param error Return location for error, or NULL.\n\n @return 0 if there was an error, then error parameter is set, else\n         subscription was successful and the returned id can be used in\n         calls to ax_storage_unsubscribe to end the subscription."]
     pub fn ax_storage_subscribe(
         storage_id: *mut gchar,
         callback: AXStorageSubscriptionCallback,
@@ -31,12 +42,15 @@ extern "C" {
     ) -> guint;
 }
 extern "C" {
+    #[doc = "@brief Stop subscribing to storage events.\n\n @param id The identifier from a call to ax_storage_subscribe.\n @param error Return location for error, or NULL.\n @return TRUE if unsubscription was successful. FALSE if there was an\n         error, then error parameter is set."]
     pub fn ax_storage_unsubscribe(id: guint, error: *mut *mut GError) -> gboolean;
 }
+#[doc = " Callback for setup. When the storage is setup for use,\n an application specific directory has been created on\n the storage. The path can be retrieved by the\n ax_storage_get_path method, using the AXStorage\n that is received in this callback as input parameter.\n\n The AXStorage that is received in this callback\n is the one to use in every method which takes an\n AXStorage pointer as input parameter.\n\n @param storage The storage to use.\n @param user_data User data from ax_storage_setup_async.\n @param error Return location for error, or NULL."]
 pub type AXStorageSetupCallback = ::std::option::Option<
     unsafe extern "C" fn(storage: *mut AXStorage, user_data: gpointer, error: *mut GError),
 >;
 extern "C" {
+    #[doc = " Setup storage for use asynchronously. This method must be called\n before the storage is to be used in any way (for instance read or write).\n When done using the storage, ax_storage_release_async must be called.\n\n In other words:\n     1) Call ax_storage_setup_async, a pointer to the populated\n        AXStorage is received in the setup callback.\n     2) Use the AXStorage pointer to get the path of where to read and write.\n     3) User regular c-file operations to read and write to the storage.\n     4) Call ax_storage_release_async.\n\n @param storage_id The storage to use.\n @param callback The callback which will be called when the setup is done\n @param user_data Custom data that will be passed to the\n    AXStorageSetupCallback. The caller is responsible for freeing this memory.\n @param error Return location for error, or NULL.\n\n @return TRUE if setup was sucessful. FALSE if there was an error, then\n         error parameter is set."]
     pub fn ax_storage_setup_async(
         storage_id: *mut gchar,
         callback: AXStorageSetupCallback,
@@ -44,9 +58,11 @@ extern "C" {
         error: *mut *mut GError,
     ) -> gboolean;
 }
+#[doc = " The callback for asynchronous release. The release\n is successful if error parameter is NULL.\n\n @param user_data User data from ax_storage_release_async.\n @param error Return location for error, or NULL."]
 pub type AXStorageReleaseCallback =
     ::std::option::Option<unsafe extern "C" fn(user_data: gpointer, error: *mut GError)>;
 extern "C" {
+    #[doc = " Release the use of storage asynchronously.\n This method should be called when done using the storage,\n after a successful setup (ax_storage_setup_async).\n\n @param storage The storage to release\n @param callback The callback which will be called when the release is done.\n @param user_data The user_data pointer provided to the\n  AXStorageReleaseCallback. The caller is responsible for freeing this memory.\n @param error Return location for error, or NULL.\n\n @return TRUE if call was successful. FALSE if there was an\n         error, then error parameter is set. The actual result\n         of the release will be available in the callback."]
     pub fn ax_storage_release_async(
         storage: *mut AXStorage,
         callback: AXStorageReleaseCallback,
@@ -55,9 +71,11 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
+    #[doc = " Returns the location on the storage where the client should\n save its files. Should only be used after a successful storage setup.\n Note that the returned string must be freed by the caller!\n\n @param storage An AXStorage\n @param error Return location for error, or NULL.\n\n @return A path to a directory on the storage where the app\n should save its files. This path must be freed by the caller,\n or NULL if failure, then error will be set."]
     pub fn ax_storage_get_path(storage: *mut AXStorage, error: *mut *mut GError) -> *mut gchar;
 }
 extern "C" {
+    #[doc = " Returns the status of the provided event.\n\n @param storage_id The storage to get status for.\n @param event The event to get status for.\n @param error Return location for error, or NULL.\n\n @return TRUE if the status of the provided event is TRUE.\n FALSE if it is false. If successful, error is NULL,\n otherwise a return location for a GError is provided."]
     pub fn ax_storage_get_status(
         storage_id: *mut gchar,
         event: AXStorageStatusEventId,
@@ -65,21 +83,31 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
+    #[doc = " After a successful storage setup, get the storage_id\n from the provided AXStorage.\n Note that this string must be freed by the caller.\n\n @param storage The storage to get ID for.\n @param error Return location for error, or NULL.\n\n @return Allocated storage_id string or NULL if failure. Then a\n location for a GError is also provided."]
     pub fn ax_storage_get_storage_id(
         storage: *mut AXStorage,
         error: *mut *mut GError,
     ) -> *mut gchar;
 }
 extern "C" {
+    #[doc = " After a successful storage setup, get the storage type\n from the provided AXStorage.\n @param storage The storage to get type for.\n @param error Return location for error, or NULL.\n\n @return storage type or UNKNOWN_TYPE if failure.\n Then a location for a GError is also provided."]
     pub fn ax_storage_get_type(storage: *mut AXStorage, error: *mut *mut GError) -> AXStorageType;
 }
+#[doc = " The error does not fit into any category"]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_GENERIC: AXStorageErrorCode = 0;
+#[doc = " An invalid argument was supplied"]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_INVALID_ARGUMENT: AXStorageErrorCode = 1;
+#[doc = " The type of the supplied value does not match the type expected."]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_INCOMPATIBLE_VALUE: AXStorageErrorCode = 2;
+#[doc = " Something went wrong while subscribing for events"]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_SUBSCRIPTION: AXStorageErrorCode = 3;
+#[doc = " Something went wrong while unsubscribing"]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_UNSUBSCRIBE: AXStorageErrorCode = 4;
+#[doc = " Something went wrong while storage is setup for use"]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_SETUP: AXStorageErrorCode = 5;
+#[doc = " Placeholder, do not use"]
 pub const AXStorageErrorCode_AX_STORAGE_ERROR_END: AXStorageErrorCode = 6;
+#[doc = " \\enum AXStorageErrorCode\n enumerates the different errors that are reported by the axstorage library."]
 pub type AXStorageErrorCode = ::std::os::raw::c_uint;
 extern "C" {
     pub fn ax_storage_error_quark() -> GQuark;

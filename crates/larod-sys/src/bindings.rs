@@ -6,12 +6,15 @@ pub struct larodDevice {
     _unused: [u8; 0],
 }
 impl larodAccess {
+    #[doc = "< Invalid access."]
     pub const LAROD_ACCESS_INVALID: larodAccess = larodAccess(0);
 }
 impl larodAccess {
+    #[doc = "< Private access."]
     pub const LAROD_ACCESS_PRIVATE: larodAccess = larodAccess(1);
 }
 impl larodAccess {
+    #[doc = " @deprecated Public access, will be removed in a future release."]
     pub const LAROD_ACCESS_PUBLIC: larodAccess = larodAccess(2);
 }
 impl ::std::ops::BitOr<larodAccess> for larodAccess {
@@ -41,57 +44,75 @@ impl ::std::ops::BitAndAssign for larodAccess {
     }
 }
 #[repr(transparent)]
+#[doc = " @brief Enum type for specifying access.\n\n Models can either be public or private; only the creator can modify and use\n private models, while anyone can modify and use public models. Private models\n can still be listed by anyone."]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct larodAccess(pub ::std::os::raw::c_uint);
 impl larodErrorCode {
+    #[doc = " No errors."]
     pub const LAROD_ERROR_NONE: larodErrorCode = larodErrorCode(0);
 }
 impl larodErrorCode {
+    #[doc = " General error for job."]
     pub const LAROD_ERROR_JOB: larodErrorCode = larodErrorCode(-1);
 }
 impl larodErrorCode {
+    #[doc = " General error for loading model."]
     pub const LAROD_ERROR_LOAD_MODEL: larodErrorCode = larodErrorCode(-2);
 }
 impl larodErrorCode {
+    #[doc = " Error regarding file descriptors."]
     pub const LAROD_ERROR_FD: larodErrorCode = larodErrorCode(-3);
 }
 impl larodErrorCode {
+    #[doc = " Model was not found."]
     pub const LAROD_ERROR_MODEL_NOT_FOUND: larodErrorCode = larodErrorCode(-4);
 }
 impl larodErrorCode {
+    #[doc = " Insufficient permissions."]
     pub const LAROD_ERROR_PERMISSION: larodErrorCode = larodErrorCode(-5);
 }
 impl larodErrorCode {
+    #[doc = " Invalid connection."]
     pub const LAROD_ERROR_CONNECTION: larodErrorCode = larodErrorCode(-6);
 }
 impl larodErrorCode {
+    #[doc = " Could not create session."]
     pub const LAROD_ERROR_CREATE_SESSION: larodErrorCode = larodErrorCode(-7);
 }
 impl larodErrorCode {
+    #[doc = " Failed killing session."]
     pub const LAROD_ERROR_KILL_SESSION: larodErrorCode = larodErrorCode(-8);
 }
 impl larodErrorCode {
+    #[doc = " Invalid chip ID."]
     pub const LAROD_ERROR_INVALID_CHIP_ID: larodErrorCode = larodErrorCode(-9);
 }
 impl larodErrorCode {
+    #[doc = " Invalid access specifier."]
     pub const LAROD_ERROR_INVALID_ACCESS: larodErrorCode = larodErrorCode(-10);
 }
 impl larodErrorCode {
+    #[doc = " Error while deleting model."]
     pub const LAROD_ERROR_DELETE_MODEL: larodErrorCode = larodErrorCode(-11);
 }
 impl larodErrorCode {
+    #[doc = " Tensor mismatch."]
     pub const LAROD_ERROR_TENSOR_MISMATCH: larodErrorCode = larodErrorCode(-12);
 }
 impl larodErrorCode {
+    #[doc = " Version mismatch."]
     pub const LAROD_ERROR_VERSION_MISMATCH: larodErrorCode = larodErrorCode(-13);
 }
 impl larodErrorCode {
+    #[doc = " Error while allocating."]
     pub const LAROD_ERROR_ALLOC: larodErrorCode = larodErrorCode(-14);
 }
 impl larodErrorCode {
+    #[doc = " Power not available."]
     pub const LAROD_ERROR_POWER_NOT_AVAILABLE: larodErrorCode = larodErrorCode(-15);
 }
 impl larodErrorCode {
+    #[doc = " Max errno value (dummy value)."]
     pub const LAROD_ERROR_MAX_ERRNO: larodErrorCode = larodErrorCode(1024);
 }
 impl ::std::ops::BitOr<larodErrorCode> for larodErrorCode {
@@ -121,51 +142,67 @@ impl ::std::ops::BitAndAssign for larodErrorCode {
     }
 }
 #[repr(transparent)]
+#[doc = " @brief Enum type for error codes.\n\n These are set in @c larodError on errors. Note that only the negative\n values are defined in this enum explicitly. @c larodErrorCode can also be a\n positive value, this corresponds then to Linux style errno values.\n\n For example, if the value is 12 (positive), that is then value of the Linux\n errno ENOMEM, which means \"could not allocate memory\". While a value of -4\n (negative) is LAROD_ERROR_MODEL_NOT_FOUND defined in this enum."]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct larodErrorCode(pub ::std::os::raw::c_int);
 impl larodTensorDataType {
+    #[doc = "< Invalid data type."]
     pub const LAROD_TENSOR_DATA_TYPE_INVALID: larodTensorDataType = larodTensorDataType(0);
 }
 impl larodTensorDataType {
+    #[doc = "< No data type is specified."]
     pub const LAROD_TENSOR_DATA_TYPE_UNSPECIFIED: larodTensorDataType = larodTensorDataType(1);
 }
 impl larodTensorDataType {
+    #[doc = "< 1-bit boolean."]
     pub const LAROD_TENSOR_DATA_TYPE_BOOL: larodTensorDataType = larodTensorDataType(2);
 }
 impl larodTensorDataType {
+    #[doc = "< 8-bit unsigned integer."]
     pub const LAROD_TENSOR_DATA_TYPE_UINT8: larodTensorDataType = larodTensorDataType(3);
 }
 impl larodTensorDataType {
+    #[doc = "< 8-bit signed integer."]
     pub const LAROD_TENSOR_DATA_TYPE_INT8: larodTensorDataType = larodTensorDataType(4);
 }
 impl larodTensorDataType {
+    #[doc = "< 16-bit unsigned integer."]
     pub const LAROD_TENSOR_DATA_TYPE_UINT16: larodTensorDataType = larodTensorDataType(5);
 }
 impl larodTensorDataType {
+    #[doc = "< 16-bit signed integer."]
     pub const LAROD_TENSOR_DATA_TYPE_INT16: larodTensorDataType = larodTensorDataType(6);
 }
 impl larodTensorDataType {
+    #[doc = "< 32-bit unsigned integer."]
     pub const LAROD_TENSOR_DATA_TYPE_UINT32: larodTensorDataType = larodTensorDataType(7);
 }
 impl larodTensorDataType {
+    #[doc = "< 32-bit signed integer."]
     pub const LAROD_TENSOR_DATA_TYPE_INT32: larodTensorDataType = larodTensorDataType(8);
 }
 impl larodTensorDataType {
+    #[doc = "< 64-bit unsigned integer."]
     pub const LAROD_TENSOR_DATA_TYPE_UINT64: larodTensorDataType = larodTensorDataType(9);
 }
 impl larodTensorDataType {
+    #[doc = "< 64-bit signed integer."]
     pub const LAROD_TENSOR_DATA_TYPE_INT64: larodTensorDataType = larodTensorDataType(10);
 }
 impl larodTensorDataType {
+    #[doc = "< 16-bit floating point."]
     pub const LAROD_TENSOR_DATA_TYPE_FLOAT16: larodTensorDataType = larodTensorDataType(11);
 }
 impl larodTensorDataType {
+    #[doc = "< 32-bit floating point."]
     pub const LAROD_TENSOR_DATA_TYPE_FLOAT32: larodTensorDataType = larodTensorDataType(12);
 }
 impl larodTensorDataType {
+    #[doc = "< 64-bit floating point."]
     pub const LAROD_TENSOR_DATA_TYPE_FLOAT64: larodTensorDataType = larodTensorDataType(13);
 }
 impl larodTensorDataType {
+    #[doc = "< Max enum (dummy value)."]
     pub const LAROD_TENSOR_DATA_TYPE_MAX: larodTensorDataType = larodTensorDataType(14);
 }
 impl ::std::ops::BitOr<larodTensorDataType> for larodTensorDataType {
@@ -195,24 +232,31 @@ impl ::std::ops::BitAndAssign for larodTensorDataType {
     }
 }
 #[repr(transparent)]
+#[doc = " @brief Enum type for specifying tensor data type.\n\n As part of @c larodTensor these are used to describe the data type of a\n tensor.\n\n If no data type is specified (@c LAROD_TENSOR_DATA_TYPE_UNSPECIFIED) for an\n input or output tensor when running a job, there will be no sanity check that\n it matches what the model expects."]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct larodTensorDataType(pub ::std::os::raw::c_uint);
 impl larodTensorLayout {
+    #[doc = "< Invalid layout."]
     pub const LAROD_TENSOR_LAYOUT_INVALID: larodTensorLayout = larodTensorLayout(0);
 }
 impl larodTensorLayout {
+    #[doc = "< No layout is specified."]
     pub const LAROD_TENSOR_LAYOUT_UNSPECIFIED: larodTensorLayout = larodTensorLayout(1);
 }
 impl larodTensorLayout {
+    #[doc = "< Tensor is laid out with dimensions\n< NxHxWxC, this is also referred to as\n< \"color interleaved\" image data. The @c\n< len member of the @c larodTensorDims\n< must be 4 or 0 (\"unspecified\") for\n< this kind of layout."]
     pub const LAROD_TENSOR_LAYOUT_NHWC: larodTensorLayout = larodTensorLayout(2);
 }
 impl larodTensorLayout {
+    #[doc = "< Tensor is laid out with dimensions\n< NxCxHxW, this is also referred to as\n< \"plane separated color\" image data.\n< The @c len member of the @c\n< larodTensorDims must be 4 or 0\n< (\"unspecified\") for this kind of\n< layout."]
     pub const LAROD_TENSOR_LAYOUT_NCHW: larodTensorLayout = larodTensorLayout(3);
 }
 impl larodTensorLayout {
+    #[doc = "< Image format, subsampling 4:2:0,\n< semiplanar data layout."]
     pub const LAROD_TENSOR_LAYOUT_420SP: larodTensorLayout = larodTensorLayout(4);
 }
 impl larodTensorLayout {
+    #[doc = "< Max enum (dummy value)."]
     pub const LAROD_TENSOR_LAYOUT_MAX: larodTensorLayout = larodTensorLayout(5);
 }
 impl ::std::ops::BitOr<larodTensorLayout> for larodTensorLayout {
@@ -242,24 +286,32 @@ impl ::std::ops::BitAndAssign for larodTensorLayout {
     }
 }
 #[repr(transparent)]
+#[doc = " @brief Enum type for specifying tensor layout.\n\n As part of @c larodTensor these are used to describe how to interpret the\n dimensions of a tensor.\n\n N, H, W, C stands for batch size, height, width and channels respectively.\n However, the semantic interpretation of the dimensions can of course differ\n when working on image data that is not laid out in memory this way. The\n important thing is that input tensors sent for jobs have the same layout as\n what the model they are sent to expects, and similarly that outputs are\n interpreted according to the model's output layout.\n\n @c LAROD_TENSOR_LAYOUT_420SP represents a semiplanar data layout with\n subsampling 4:2:0, such as for example the NV12 color format. With this\n layout the interpretations of what @c larodTensorDims and @c\n larodTensorPitches represent differ from the other layouts. The @c\n larodTensorPitches is expected to have 3 elements. The \"rightmost\" element,\n pitches[2], represents the total byte size of a single row in the image for\n both the plane separated data part and the plane interleaved part. The middle\n element, pitches[1], correspond to the total byte size of the plane separated\n data, including padding on the end, i.e. it is the offset in bytes to the\n plane interleaved part of the data. The first element, pitches[0], describe\n the total byte size of the data, all padding included. This also accounts for\n extra padding on the end of the buffer. For an explicit example, see @c\n larodTensorPitches. The @c larodTensorDims is also expected to have 3\n elements. The first element dims[0] represents the number of channels and\n should always be equal to 3. The second element dims[1] corresponds to the\n height in pixels of the image, and dims[2] the width in pixels of the image.\n\n If no layout is specified (@c LAROD_TENSOR_LAYOUT_UNSPECIFIED) for an input\n or output tensor when running a job, there will be no sanity check that\n it matches what the model expects."]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct larodTensorLayout(pub ::std::os::raw::c_uint);
+#[doc = " @brief Type containing error information.\n\n This is passed as an pointer argument to most library functions. An\n initialized pointer of this type needs to be deallocated with\n larodClearError(). The field @c msg will always be non-NULL on errors."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct larodError {
+    #[doc = "< Error code."]
     pub code: larodErrorCode,
+    #[doc = "< Error message."]
     pub msg: *const ::std::os::raw::c_char,
 }
+#[doc = " @brief A type containing information about a tensor's dimensions.\n\n As part of @c larodTensor this is used to define dimensions of a tensor. For\n most values of @c larodTensorLayout the tensor can be viewed as a\n multidimensional array, where the size of each dimension is described by the\n corresponding number in the @c larodTensorDims struct. An exception to this\n is @c LAROD_TENSOR_LAYOUT_420SP. For more info, see @c larodTensorLayout.\n\n If @c len is set to 0 for an input or output tensor when running a job,\n there will be no sanity check that it matches what the model expects.\n\n If @c len is specified, it must be equal to the @c len of the tensor's\n pitches if that is also specified; otherwise one gets an error when creating\n job requests. See @c larodTensorPitches for more details of how they are\n related."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct larodTensorDims {
     pub dims: [usize; 12usize],
+    #[doc = "< Length of dims array."]
     pub len: usize,
 }
+#[doc = " @brief A type containing information about a tensor's pitches.\n\n As part of @c larodTensor this is used to define pitches of a tensor. For\n most layouts pitches should be interpreted as the byte size of the elements\n plus any padding added because of some alignment requirement in each\n dimension; i.e. as many bytes as one has to traverse to reach the next\n element of the neighboring left dimension. This is calculated going from\n right to left. Note that the first element, pitches[0], corresponds to the\n total byte size of the tensor's data. This interpretation is modified when @c\n LAROD_TENSOR_LAYOUT_420SP is used. For more info, see @c larodTensorLayout,\n and example 3 below.\n\n This general definition permits alignment requirements in all dimensions.\n Often, one only deals with alignment in the width dimension and refers to\n \"row pitch\" as the pitch in that specific dimension.\n\n Example 1: Consider a tensor with layout @c LAROD_TENSOR_LAYOUT_NCHW, data\n type float32, dims (1, 3, 250, 250) and an alignment requirement of 32 bytes\n in the 4th dimension. Starting from the right-most dimension, the 4th pitch\n is then equal to the byte size of one row: ceil(250 * sizeof(float32) / 32) *\n 32 = 32 * 32 = 1024. The 4th pitch would then correspond to the \"row pitch\"\n for this given @c larodTensorLayout. The rest of the pitches are calculated\n as (1 * 3 * 250 * 1024, 3 * 250 * 1024, 250 * 1024, 1024).\n\n Example 2: A tensor with layout @c LAROD_TENSOR_LAYOUT_NHWC, dims (1, 224,\n 300, 3), uint8 as data type, and alignment requirements of 32 and 4 bytes in\n the 3rd and 4th dimensions respectively, gives the pitches (1 * 224 * 1216,\n 224 * 1216, 1216, 4), since ceil(3 * sizeof(uint8) / 4) * 4 = 4 and ceil(300\n * 4 / 32) * 32 = 1216. In this example, the \"row pitch\" would be the 3rd\n pitch for this layout.\n\n Example 3: As an example of @c LAROD_TENSOR_LAYOUT_420SP consider an image\n with data type uint8, pixel height of 224, pixel width of 300, an alignment\n requirement on the width of 32 bytes, and an alignment requirement on the\n plane separated data part of 32 bytes. The last element, pitches[2],\n describing the total size of a row, would be 320, since ceil(300 *\n sizeof(uint8) / 32) * 32 = 320. The second element, pitches[1], describing\n the total size of the separated data plane would be given by ceil(224 * 320 /\n 32) * 32 = 224 * 320 = 71680. Finally the first element of pitches would be\n given by the sum of the two parts of the data, the separated part, and the\n interleaved part, possibly with additional padding on the end.  In this case\n it would simply be 224 * 320 + 224 * 320 / 2 = 107520.\n\n If @c len is set to 0 for an input or output tensor when running a job, there\n will be no sanity check that it matches what the model expects. If @c len is\n specified, it must be equal to the @c len of its dimensions if that is also\n specified; otherwise one gets an error when creating requests."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct larodTensorPitches {
     pub pitches: [usize; 12usize],
+    #[doc = "< Length of pitches array."]
     pub len: usize,
 }
 #[repr(C)]
@@ -267,6 +319,7 @@ pub struct larodTensorPitches {
 pub struct larodModel {
     _unused: [u8; 0],
 }
+#[doc = " @brief Callback used in larodLoadModelAsync().\n\n Callback function should not carry out relatively extensive blocking tasks\n (it will block the main poll thread for the message bus); furthermore, the\n following API functions are not allowed to be called from the callback\n function:\n - larodRunJob()\n - larodLoadModel()\n - larodDeleteModel()\n - larodDestroyTensors()\n - larodAllocModelInputs()\n - larodAllocModelOutputs()\n\n @param model Handle to the loaded model. Caller must release this handle\n using larodDestroyModel() when it's not needed any more.\n @param userData User data.\n @param error An initialized error handle when errors occurred (@p model is is\n NULL). @p error will be NULL on success. In this callback function, one must\n not free this handle with larodClearError(), since the library will do it\n when returning from this callback."]
 pub type larodLoadModelCallback = ::std::option::Option<
     unsafe extern "C" fn(
         model: *mut larodModel,
@@ -274,6 +327,7 @@ pub type larodLoadModelCallback = ::std::option::Option<
         error: *mut larodError,
     ),
 >;
+#[doc = " @brief Callback used in larodRunJobAsync().\n\n Callback function should not carry out relatively extensive blocking tasks\n (it will block the main poll thread for the message bus); furthermore, the\n following API functions are not allowed to be called from the callback\n function:\n - larodRunJob()\n - larodLoadModel()\n - larodDeleteModel()\n - larodDestroyTensors()\n - larodAllocModelInputs()\n - larodAllocModelOutputs()\n\n @param userData User data.\n @param error An initialized error handle if any errors occured while running\n the job. Otherwise, it will be NULL. In this callback function, one must not\n free this handle with larodClearError(), since the library will do it when\n returning from this callback."]
 pub type larodRunJobCallback = ::std::option::Option<
     unsafe extern "C" fn(userData: *mut ::std::os::raw::c_void, error: *mut larodError),
 >;
@@ -298,15 +352,19 @@ pub struct larodMap {
     _unused: [u8; 0],
 }
 extern "C" {
+    #[doc = " @brief Deallocate an error handle.\n\n Functions that has an argument of type @c larodError** allocates @c\n larodError when errors occur. This function should then later be used to\n deallocate it.\n\n @param error An initialized error handle or NULL. If @p error is NULL this\n function will do nothing. @p *error will be set to NULL after this call."]
     pub fn larodClearError(error: *mut *mut larodError);
 }
 extern "C" {
+    #[doc = " @brief Connect to larod.\n\n Connects to larod and creates a new session. Upon success, this allocates the\n connection handle @p conn and must thus be freed afterwards with with\n larodDisconnect().\n\n @param conn An uninitialized connection handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodConnect(conn: *mut *mut larodConnection, error: *mut *mut larodError) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Disconnect from larod.\n\n Disconnects from larod and kills the corresponding session. This will always\n deallocate the connection handle @p conn and set it to NULL (as well as other\n allocated stuff). The return value indicates if the corresponding session in\n larod was successfully killed.\n\n @param conn An initialized connection handle. The dereferenced @p conn will\n be set to NULL after the connection is released. If @p conn is NULL this\n function will do nothing.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodDisconnect(conn: *mut *mut larodConnection, error: *mut *mut larodError) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get number of currently active sessions in larod.\n\n @param conn An initialized connection handle.\n @param numSessions Pointer to the variable where the result will be stored.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodGetNumSessions(
         conn: *mut larodConnection,
         numSessions: *mut u64,
@@ -314,6 +372,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get an available device.\n\n This function returns a device handle. Use this for referencing the device in\n other functions such as larodLoadModel().\n\n The caller does not get ownership of the returned pointer and must not\n attempt to free it. The lifetime of the memory pointed to expires when @p\n conn closes.\n\n @param conn An initialized connection handle.\n @param name The name of the device to get.\n @param instance The instance number of the device to get (c.f.\n larodGetDeviceInstance()).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if any error occurred, otherwise pointer to the found device.\n The pointer must not be freed by the caller."]
     pub fn larodGetDevice(
         conn: *const larodConnection,
         name: *const ::std::os::raw::c_char,
@@ -322,12 +381,14 @@ extern "C" {
     ) -> *const larodDevice;
 }
 extern "C" {
+    #[doc = " @brief Get the name of a device.\n\n @param dev A pointer to a device.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return Device name as NULL-terminated string, or NULL if error occurred. The\n pointer must not be freed by the caller."]
     pub fn larodGetDeviceName(
         dev: *const larodDevice,
         error: *mut *mut larodError,
     ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
+    #[doc = " @brief Get the instance number of a device.\n\n In case there are multiple identical devices that are available in the\n service, they are distinguished by an instance number, with the first\n instance starting from zero. Devices are identical in this context if they\n have equal names (c.f. larodGetDeviceName()).\n\n Do note that not all device types have multiple-instance support; for such\n cases, there will only be a single instance, which is zero.\n\n @param dev A pointer to a device.\n @param instance Pointer to the variable where the result will be stored.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodGetDeviceInstance(
         dev: *const larodDevice,
         instance: *mut u32,
@@ -335,6 +396,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief List available devices.\n\n The caller does not get ownership of the returned double pointer and must not\n attempt to free it. The lifetimes of the devices pointed to expire when @p\n conn closes.\n\n @param conn An initialized connection handle.\n @param numDevices Output pointer that is filled with the number of devices.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if any error occur, otherwise a list of pointers to all\n available devices. The list must not be freed by the caller."]
     pub fn larodListDevices(
         conn: *mut larodConnection,
         numDevices: *mut usize,
@@ -342,6 +404,7 @@ extern "C" {
     ) -> *mut *const larodDevice;
 }
 extern "C" {
+    #[doc = " @brief Load a new model.\n\n This function returns a model handle. Use this for referencing the loaded\n model in other functions such as @ref larodDeleteModel(), @ref\n larodCreateJobRequest() etcetera. Note that the file descriptor @p fd\n for the binary model file must have valid reading permissions.\n\n @deprecated Public access type for @p access is now deprecated and will be\n removed in a future release.\n\n @param conn An initialized connection handle.\n @param fd File descriptor to the model data. This can be set to a negative\n value (i.e. invalid) if @p params is also specified (not NULL).\n @param dev Device to load model onto.\n @param access Access specifier for the model.\n @param name Name for the model.\n @param params Additional optional parameters (can be NULL). Please refer to\n the documentation for the @p chip you are using to see what key-value pairs\n are applicable.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL) it must later be deallocated with larodClearError().\n @return NULL if any errors occur, otherwise a valid pointer to @c larodModel.\n The returned pointer should be released with larodDestroyModel() when it is\n no longer needed."]
     pub fn larodLoadModel(
         conn: *mut larodConnection,
         fd: ::std::os::raw::c_int,
@@ -353,6 +416,7 @@ extern "C" {
     ) -> *mut larodModel;
 }
 extern "C" {
+    #[doc = " @brief Load a new model asynchronously.\n\n This is the asynchronous version of larodLoadModel().\n\n The user-specified callback function @p callback will be called as soon as\n the model has been loaded. @p userData will be given as input argument to the\n callback function which enables the user to associate executing callbacks\n with their corresponding requests. Refer to the documentation of @c\n larodLoadModelCallback for additional rules that apply to the callback\n function.\n\n @deprecated Public access type for @p access is now deprecated and will be\n removed in a future release.\n\n @param conn An initialized connection handle.\n @param inFd File descriptor to the model data. This can be set to a negative\n value (i.e. invalid) if @p params is also specified (not NULL).\n @param dev Device to load model onto.\n @param access Access specifier for the model.\n @param name Name for the model.\n @param params Additional optional parameters (can be NULL). Please refer to\n the documentation for the @p chip you are using to see what key-value pairs\n are applicable.\n @param callback Callback function.\n @param userData User data that will be passed to the callback function.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodLoadModelAsync(
         conn: *mut larodConnection,
         inFd: ::std::os::raw::c_int,
@@ -366,6 +430,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get handle to a model by model ID.\n\n The model ID could for example be retrieved with larodGetModelId().\n\n @param conn An initialized connection handle.\n @param modelId Model ID to get the corresponding model handle for.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if any errors occur, otherwise a valid pointer to @c larodModel.\n The returned pointer should be released with larodDestroyModel() when it is\n no longer needed."]
     pub fn larodGetModel(
         conn: *mut larodConnection,
         modelId: u64,
@@ -373,6 +438,7 @@ extern "C" {
     ) -> *mut larodModel;
 }
 extern "C" {
+    #[doc = " @brief Get all loaded models.\n\n Retrieve a list of all loaded models. Caller needs to free this list\n afterwards with the function larodDestroyModels().\n\n If any of the returned models' sizes exceeds the address space size of this\n system, then SIZE_MAX will be the listed as the model size (see @c\n larodGetModelSize()).\n\n @param conn An initialized connection handle.\n @param numModels Output pointer that will be filled with number of entries\n in the returned array. If the number of loaded models is 0 in the server,\n this pointer will be set accordingly. If an error occurred the target of this\n pointer remains untouched.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if any errors occurred, an array with a single element NULL if\n the number of loaded models is 0 in the service, and otherwise an array of\n pointers to @c larodModel."]
     pub fn larodGetModels(
         conn: *mut larodConnection,
         numModels: *mut usize,
@@ -380,12 +446,15 @@ extern "C" {
     ) -> *mut *mut larodModel;
 }
 extern "C" {
+    #[doc = " @brief Free an allocated @c larodModel handle.\n\n Release the memory for a model handle. @p model must not be used after this\n call. The model will not be deleted in the server by this call. Use\n larodDeleteModel() to accomplish this.\n\n @param model Pointer to model (allocated from e.g a larodLoadModel() call) or\n NULL. The model handle will be released and then the dereferenced @p model\n will be set to NULL. If @p model is NULL this function will do nothing."]
     pub fn larodDestroyModel(model: *mut *mut larodModel);
 }
 extern "C" {
+    #[doc = " @brief Destroy a list of model objects.\n\n Release all data associated with @p models (which was returned by\n larodGetModels()). The pointer @p models must not be used after this call.\n\n @param models Pointer to allocated (with larodGetModels()) list of models or\n NULL. The dereferenced @p models will be set to NULL after release of the\n list. If @p models is NULL this function will do nothing.\n @param numModels Number of models in the @p models array."]
     pub fn larodDestroyModels(models: *mut *mut *mut larodModel, numModels: usize);
 }
 extern "C" {
+    #[doc = " @brief Delete a loaded model.\n\n A public model can be deleted by anyone. However, for private models, only\n the creator has permission to delete it (if the creator disconnects, the\n private models will automatically get deleted).\n\n The model handle @p model will not be released after a successful call.\n Consequently larodDestroyModel() should be called for @p model when no longer\n needed.\n\n @param conn An initialized connection handle.\n @param model Model to delete.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodDeleteModel(
         conn: *mut larodConnection,
         model: *mut larodModel,
@@ -393,36 +462,44 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get model ID.\n\n All models have a unique ID.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is LAROD_INVALID_MODEL_ID), it must later be deallocated with\n larodClearError().\n @return LAROD_INVALID_MODEL_ID if error has occurred, otherwise a valid model\n ID."]
     pub fn larodGetModelId(model: *const larodModel, error: *mut *mut larodError) -> u64;
 }
 extern "C" {
+    #[doc = " @brief Get device for a model.\n\n The caller does not get ownership of the returned pointer and must not\n attempt to free it. The lifetime of the device pointed to expires when the\n larodConnection the model was loaded from closes.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with\n larodClearError().\n @return NULL if error has occurred, otherwise a pointer to the device that\n is model associated with the model. The pointer must not be freed by the\n caller."]
     pub fn larodGetModelDevice(
         model: *const larodModel,
         error: *mut *mut larodError,
     ) -> *const larodDevice;
 }
 extern "C" {
+    #[doc = " @brief Get model size.\n\n Get size (in bytes) of a loaded model.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is 0), it must later be deallocated with larodClearError().\n @return Model size in bytes or 0 if error occurred."]
     pub fn larodGetModelSize(model: *const larodModel, error: *mut *mut larodError) -> usize;
 }
 extern "C" {
+    #[doc = " @brief Get model name.\n\n The returned pointer is valid as long as @p model handle is valid, the caller\n does not need to deallocate it.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return Model name as NULL-terminated string, or NULL if error occurred. The\n pointer must not be freed by the caller."]
     pub fn larodGetModelName(
         model: *const larodModel,
         error: *mut *mut larodError,
     ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
+    #[doc = " @brief Get model access mode.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is LAROD_ACCESS_INVALID), it must later be deallocated with\n larodClearError().\n @return LAROD_ACCESS_INVALID if error has occurred, otherwise a valid model\n access."]
     pub fn larodGetModelAccess(
         model: *const larodModel,
         error: *mut *mut larodError,
     ) -> larodAccess;
 }
 extern "C" {
+    #[doc = " @brief Get number of input tensors for a model.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is 0), it must later be deallocated with larodClearError().\n @return Number of input tensors or 0 if error occurred."]
     pub fn larodGetModelNumInputs(model: *const larodModel, error: *mut *mut larodError) -> usize;
 }
 extern "C" {
+    #[doc = " @brief Get number of output tensors for a model.\n\n @param model Pointer to an initialized model handle.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is 0), it must later be deallocated with larodClearError().\n @return Number of output tensors or 0 if error occurred."]
     pub fn larodGetModelNumOutputs(model: *const larodModel, error: *mut *mut larodError) -> usize;
 }
 extern "C" {
+    #[doc = " @brief Get input tensor byte sizes for a model.\n\n @deprecated Replaced with @c larodGetTensorByteSize() in larod 3.1. Will be\n removed in a future release.\n\n Allocate input tensors byte sizes based on a @c larodModel. The array of byte\n sizes needs to be released when it is no longer needed by calling @c free().\n\n @param model Pointer to an initialized model handle.\n @param numInputs Output pointer that will be filled with number of input\n tensors. This can be set to NULL if client does not need to retrieve this\n information (e.g. if the number is already known).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of input tensor\n byte sizes."]
     pub fn larodGetModelInputByteSizes(
         model: *const larodModel,
         numInputs: *mut usize,
@@ -430,6 +507,7 @@ extern "C" {
     ) -> *mut usize;
 }
 extern "C" {
+    #[doc = " @brief Get output tensor byte sizes for a model.\n\n @deprecated Replaced with @c larodGetTensorByteSize() in larod 3.1. Will be\n removed in a future release.\n\n Allocate output tensors byte sizes based on a @c larodModel. The array of\n byte sizes needs to be released when it is no longer needed by calling @c\n free().\n\n @param model Pointer to an initialized model handle.\n @param numOutputs Output pointer that will be filled with number of output\n tensors. This can be set to NULL if client does not need to retrieve this\n information (e.g. if the number is already known).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of output\n tensor byte sizes."]
     pub fn larodGetModelOutputByteSizes(
         model: *const larodModel,
         numOutputs: *mut usize,
@@ -437,6 +515,7 @@ extern "C" {
     ) -> *mut usize;
 }
 extern "C" {
+    #[doc = " @brief Create input tensors from a model.\n\n Create input tensors according to what @p model requires. The tensors will be\n initialized with metadata such as data type, dims, layout etcetera based on\n information from the model.\n\n The created tensors will not have buffers allocated for their contents. For\n this reason the tensors will have file descriptors set to -1 (invalid) but fd\n properties will however be set to @c LAROD_FD_PROP_READWRITE (for backward\n compatibility). The user will have to allocate buffers for the tensors by\n themselves and then set the aforementioned tensor fields accordingly using\n the relevant set functions.\n\n The array of tensors needs to be released when it is no longer needed using\n larodDestroyTensors(). To make the service track a returned tensor for\n subsequent jobs, larodTrackTensor() must be called on that tensor, prior to\n running the first job.\n\n @param model Pointer to an initialized model handle.\n @param numTensors Output pointer that will be filled with number of entries\n in the returned array. This can be set to NULL if client does not need to\n retrieve this information (e.g. if the number is already known).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of @c\n larodTensor pointers."]
     pub fn larodCreateModelInputs(
         model: *const larodModel,
         numTensors: *mut usize,
@@ -444,6 +523,7 @@ extern "C" {
     ) -> *mut *mut larodTensor;
 }
 extern "C" {
+    #[doc = " @brief Create output tensors from a model.\n\n Create output tensors according to what @p model requires. The tensors will\n be initialized with metadata such as data type, dims, layout etcetera based\n on information from the model.\n\n The created tensors will not have buffers allocated for their contents. For\n this reason the tensors will have file descriptors set to -1 (invalid) but fd\n properties will however be set to @c LAROD_FD_PROP_READWRITE (for backward\n compatibility). The user will have to allocate buffers for the tensors by\n themselves and then set the aforementioned tensor fields accordingly using\n the relevant set functions.\n\n The array of tensors needs to be released when it is no longer needed using\n larodDestroyTensors(). To make the service track a returned tensor for\n subsequent jobs, larodTrackTensor() must be called on that tensor, prior to\n running the first job.\n\n @param model Pointer to an initialized model handle.\n @param numTensors Output pointer that will be filled with number of entries\n in the returned array. This can be set to NULL if client does not need to\n retrieve this information (e.g. if the number is already known).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of @c\n larodTensor pointers."]
     pub fn larodCreateModelOutputs(
         model: *const larodModel,
         numTensors: *mut usize,
@@ -451,6 +531,7 @@ extern "C" {
     ) -> *mut *mut larodTensor;
 }
 extern "C" {
+    #[doc = " @brief Create and allocate input tensors from a model.\n\n Create input tensors according to what @p model requires. The tensors will be\n initialized with metadata such as data type, dims, layout etcetera based on\n information from the model.\n\n The service will also allocate a buffer for each created tensor. These\n buffers are represented by the file descriptors set on the tensors and as\n such will be used to store the tensors' contents.\n\n Furthermore, the buffers are guaranteed to meet the requirements specified in\n @p fdPropFlags (if non-zero) and the fd properties of each tensor will be set\n accordingly. If @p fdPropFlags is not set (i.e. zero), the service will\n decide for itself (based on @p model) which operations should be supported on\n the newly allocated tensors and thus set the fd properties accordingly (c.f.\n larodSetTensorFdProps()). In addition the service will automatically track\n each tensor, i.e. as if larodTrackTensor() would have been called on the\n newly created and allocated tensors (this increments the total number of\n tracked tensors for @p conn, see larodTrackTensor() for more details).\n\n The buffers will be deallocated when @p conn closes, typically via a call to\n @c larodDisconnect(). The array of tensors needs to be released when it is no\n longer needed using @c larodDestroyTensors().\n\n @param conn An initialized connection handle.\n @param model Pointer to an initialized model handle.\n @param fdPropFlags An indicator to the service of what kind of memory\n operations should be possible to perform on the file descriptors of the\n tensors. The relevant @c LAROD_FD_PROP_* flags should be or:ed together\n (bitmask) in this parameter. Can be set to 0 to let the service decide for\n itself which operations should be supported.\n @param numTensors Output pointer that will be filled with number of entries\n in the returned array. This can be set to NULL if client does not need to\n retrieve this information (e.g. if the number is already known).\n @param params Additional @c larodDevice specific optional parameters (can be\n NULL). Please refer to the documentation for the @c larodDevice you are using\n to see what key-value pairs are applicable.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with @c larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of @c\n larodTensor pointers."]
     pub fn larodAllocModelInputs(
         conn: *mut larodConnection,
         model: *const larodModel,
@@ -461,6 +542,7 @@ extern "C" {
     ) -> *mut *mut larodTensor;
 }
 extern "C" {
+    #[doc = " @brief Create and allocate output tensors from a model.\n\n Create output tensors according to what @p model requires. The tensors will\n be initialized with metadata such as data type, dims, layout etcetera based\n on information from the model.\n\n The service will also allocate a buffer for each created tensor. These\n buffers are represented by the file descriptors set on the tensors and as\n such will be used to store the tensors' contents.\n\n Furthermore, the buffers are guaranteed to meet the requirements specified in\n @p fdPropFlags (if non-zero) and the fd properties of each tensor will be set\n accordingly. If @p fdPropFlags is not set (i.e. zero), the service will\n decide for itself (based on @p model) which operations should be supported on\n the newly allocated tensors and thus set the fd properties accordingly (c.f.\n larodSetTensorFdProps()). In addition the service will automatically track\n each tensor, i.e. as if larodTrackTensor() would have been called on the\n newly created and allocated tensors (this increments the total number of\n tracked tensors for @p conn, see larodTrackTensor() for more details).\n\n The buffers will be deallocated when @p conn closes, typically via a call to\n @c larodDisconnect(). The array of tensors needs to be released when it is no\n longer needed using @c larodDestroyTensors().\n\n @param conn An initialized connection handle.\n @param model Pointer to an initialized model handle.\n @param fdPropFlags An indicator to the service of what kind of memory\n operations should be possible to perform on the file descriptors of the\n tensors. The relevant @c LAROD_FD_PROP_* flags should be or:ed together\n (bitmask) in this parameter. Can be set to 0 to let the service decide for\n itself which operations should be supported.\n @param numTensors Output pointer that will be filled with number of entries\n in the returned array. This can be set to NULL if client does not need to\n retrieve this information (e.g. if the number is already known).\n @param params Additional @c larodDevice specific optional parameters (can be\n NULL). Please refer to the documentation for the @c larodDevice you are using\n to see what key-value pairs are applicable.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with @c larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of @c\n larodTensor pointers."]
     pub fn larodAllocModelOutputs(
         conn: *mut larodConnection,
         model: *const larodModel,
@@ -471,12 +553,14 @@ extern "C" {
     ) -> *mut *mut larodTensor;
 }
 extern "C" {
+    #[doc = " @brief Create a list of empty @c larodTensor handles.\n\n Creates a list of @c larodTensor. After a successful call, various attributes\n can be set on these tensors. The returned allocated array needs to be\n released with larodDestroyTensors() when no longer needed.\n\n New tensors created with this function will have the following default values\n set on the attributes:\n\n - Fd set to -1 (c.f. larodSetTensorFd()).\n - Fd size set to 0 (i.e. unspecified, c.f. larodSetTensorFdProps()).\n - Fd offset set to 0 (c.f. larodSetTensorFdOffset()).\n - @c LAROD_FD_PROP_READWRITE as fd properties (for backward compatibility,\n   c.f. larodSetTensorFdProps()).\n - @c LAROD_TENSOR_DATA_TYPE_UNSPECIFIED as data type (c.f.\n   larodSetTensorDataType()).\n - @c LAROD_TENSOR_LAYOUT_UNSPECIFIED as layout (c.f. larodSetTensorLayout()).\n - An empty string as name (c.f. larodGetTensorName()).\n\n @param numTensors Number of tensors to create.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of @c\n larodTensor pointers."]
     pub fn larodCreateTensors(
         numTensors: usize,
         error: *mut *mut larodError,
     ) -> *mut *mut larodTensor;
 }
 extern "C" {
+    #[doc = " @brief Destroy a list of @c larodTensor.\n\n Releases the memory associated with a list of @c larodTensor handles. Neither\n the pointers in the @p tensors array nor the array itself can be used after\n this call.\n\n If @p tensors have been allocated by the service (i.e. with\n larodAllocModelInputs() or larodAllocModelOutputs()), this call will also\n deallocate these buffers. Moreover, if any tensor in @p tensors has been\n requested to be tracked (i.e. with larodTrackTensor()), it will not be\n tracked anymore by the service as well.\n\n @param conn An initialized connection handle.\n @param tensors Pointer to array of @c larodTensor pointers or NULL. The\n dereferenced @p tensors will be set to NULL after the list is released. If @p\n tensors is NULL, this function will do nothing.\n @param numTensors Number of tensors in the @p tensors array.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true. Errors can only occur if\n @p tensors have been previously allocated by the service or been requested to\n be tracked. Therefore, it is safe to ignore the return value (and @p error)\n if one knows that no allocation or tracking requests have been done on @p\n tensors."]
     pub fn larodDestroyTensors(
         conn: *mut larodConnection,
         tensors: *mut *mut *mut larodTensor,
@@ -485,6 +569,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set the dimensions of a tensor.\n\n If the @p dims member @c len is set to 0 no sanity checks for the tensor\n dimensions (i.e. comparisons with what the model expects of the tensor\n dimensions) will be performed when running a job.\n\n If @c len is specified, it must be equal to the @c len of the tensor's\n pitches if that is also specified; otherwise one gets an error when creating\n job requests. See @c larodTensorPitches for more details of how they are\n related.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param dims Pointer to @p larodTensorDims. The contents of the struct will be\n copied into @p tensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodSetTensorDims(
         tensor: *mut larodTensor,
         dims: *const larodTensorDims,
@@ -492,12 +577,14 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get dimensions of a tensor.\n\n See @c larodTensorDims for definition of dimensions and @c larodTensorPitches\n for how they are related to tensors' pitches.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise a pointer to @c larodTensorDims\n instance. This pointer is valid as long as @p tensor is valid and should not\n be freed manually by the caller."]
     pub fn larodGetTensorDims(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
     ) -> *const larodTensorDims;
 }
 extern "C" {
+    #[doc = " @brief Set pitches of a tensor.\n\n If the @p pitches member @c len is set to 0 no sanity checks for the tensor\n pitches (i.e. comparisons with what the model expects of the tensor pitches)\n will be performed when running a job. See @c larodTensorPitches for\n the definition of pitches.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param pitches Pointer to @p larodTensorPitches. The contents of the struct\n will be copied into @p tensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodSetTensorPitches(
         tensor: *mut larodTensor,
         pitches: *const larodTensorPitches,
@@ -505,12 +592,14 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get pitches of a tensor.\n\n See @c larodTensorPitches for the definition of pitches.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise a pointer to @c larodTensorDims\n instance. This pointer is valid as long as @p tensor is valid and should not\n be freed manually by the caller."]
     pub fn larodGetTensorPitches(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
     ) -> *const larodTensorPitches;
 }
 extern "C" {
+    #[doc = " @brief Set data type of a tensor.\n\n If the data type is set to @c LAROD_TENSOR_DATA_TYPE_UNSPECIFIED no sanity\n checks for the tensor data type (i.e. comparisons with what the model expects\n of the tensor data type) will be performed when running a job.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param dataType Data type for the tensor (see @c larodTensorDataType).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodSetTensorDataType(
         tensor: *mut larodTensor,
         dataType: larodTensorDataType,
@@ -518,12 +607,14 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get data type of a tensor.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is @c LAROD_TENSOR_DATA_TYPE_INVALID), it must later be deallocated\n with larodClearError().\n @return @c LAROD_TENSOR_DATA_TYPE_INVALID if error has occurred, otherwise a\n valid tensor data type."]
     pub fn larodGetTensorDataType(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
     ) -> larodTensorDataType;
 }
 extern "C" {
+    #[doc = " @brief Set layout of a tensor.\n\n If the layout is set to @c LAROD_TENSOR_LAYOUT_UNSPECIFIED no sanity checks\n for the tensor layout (i.e. comparisons with what the model expects of the\n tensor layout) will be performed when running a job.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param layout Layout as specified by @c larodTensorLayout.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodSetTensorLayout(
         tensor: *mut larodTensor,
         layout: larodTensorLayout,
@@ -531,12 +622,14 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get layout of a tensor.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is LAROD_TENSOR_LAYOUT_INVALID), it must later be deallocated with\n larodClearError().\n @return LAROD_TENSOR_LAYOUT_INVALID if error occurred, otherwise a valid @c\n larodTensorLayout."]
     pub fn larodGetTensorLayout(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
     ) -> larodTensorLayout;
 }
 extern "C" {
+    #[doc = " @brief Set file descriptor of a tensor.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param fd File descriptor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodSetTensorFd(
         tensor: *mut larodTensor,
         fd: ::std::os::raw::c_int,
@@ -544,12 +637,14 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get file descriptor of a tensor.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is LAROD_INVALID_FD), it must later be deallocated with\n larodClearError().\n @return LAROD_INVALID_FD if error occurred, otherwise a valid file\n descriptor."]
     pub fn larodGetTensorFd(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[doc = " @brief Set file descriptor maximum capacity (bytes) for a tensor.\n\n Sets the maximum number of bytes that is allowed to be read or written to the\n file descriptor associated with @p tensor. If @p size is set to 0 for a\n tensor (default), there will be no size checks when the service is reading or\n writing to the fd; the service will try to read or write the required amount.\n\n For example, when reading from an input tensor, the service will try to read\n the required byte size from the file descriptor. Similarly for an output\n tensor, the service will try to write the required byte size to the file\n descriptor. Note that it is valid to set an fd offset using\n larodSetTensorFdOffset() even when @p size is 0.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param size Maximum file descriptor capacity (bytes) to be set for @p tensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetTensorFdSize(
         tensor: *mut larodTensor,
         size: usize,
@@ -557,6 +652,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get file descriptor maximum capacity (bytes) for a tensor.\n\n Retrieves the user-supplied file descriptor maximum capacity (bytes) of a\n tensor, i.e. the value set by larodSetTensorFdSize() or default value 0.\n Please refer to larodSetTensorFdSize() for details about the size value.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param size Output pointer, the dereferenced pointer will be updated with\n currently set size.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodGetTensorFdSize(
         tensor: *const larodTensor,
         size: *mut usize,
@@ -564,6 +660,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set file offset for a tensor.\n\n Set the file offset (bytes) that will be applied when larod is accessing the\n tensor's file descriptor during a job call (by either reading or writing,\n c.f. larodSetTensorFdSize()). The offset is specified from the beginning of\n the file. Negative @p offset values are not allowed. The default value is 0.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param offset Offset from the start for @p tensor's file descriptor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetTensorFdOffset(
         tensor: *mut larodTensor,
         offset: i64,
@@ -571,9 +668,11 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get file offset for a tensor.\n\n Retrieves the user-supplied file offset (bytes) of the file descriptor\n associated with @p tensor, i.e. the value set by larodSetTensorFdOffset() or\n default value 0.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is -1), it must later be deallocated with larodClearError().\n @return -1 if error occurred, otherwise the configured offset value."]
     pub fn larodGetTensorFdOffset(tensor: *const larodTensor, error: *mut *mut larodError) -> i64;
 }
 extern "C" {
+    #[doc = " @brief Start tracking a tensor in the service.\n\n Can be called in order to let the service keep track of @p tensor. The\n service will do its best to cache resources (e.g. memory mapping of the\n tensor's fd) so that setup-related operations only have to be done once for\n each tracked tensor recurring in the service. This is desirable from a\n performance perspective.\n\n Once this function is called on @p tensor, its file descriptor can not be\n replaced (c.f. larodSetTensorFd()). This also applies to the fd size, fd\n offset and fd props of @p tensor (c.f. larodSetTensorFdSize(),\n larodSetTensorFdOffset() and larodSetTensorFdProps(), respectively).\n Furthermore, this function should only be called once per @c larodTensor even\n if the tensor is used for more than one @c larodModel.\n\n @note A total maximum of 32 tensors can be tracked for a given @p conn.\n\n @param conn An initialized connection handle.\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodTrackTensor(
         conn: *mut larodConnection,
         tensor: *mut larodTensor,
@@ -581,6 +680,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set the properties for a file descriptor of a tensor.\n\n Should be called with relevant @c LAROD_FD_PROP_* flags or:ed together (or @c\n LAROD_FD_TYPE_* for already set flags for common fd types) as @p fdPropFlags\n in order to notify the service of what kind of memory operations can be used\n on the fd of @p tensor. The service will then access the fd as efficiently as\n possible using this information.\n\n Note that valid fd properties must be set for every @c larodTensor sent to\n the service via a @c larodJobRequest. In particular 0 is not valid for\n @p fdPropFlags as this would indicate that there are no possible ways for\n the service to access the memory of the tensor's fd.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param fdPropFlags An indicator to the service of what kind of memory\n operations are possible to perform on the fd of @p tensor. The relevant @c\n LAROD_FD_PROP_* flags should be or:ed together (bitmask) in this parameter.\n For common fd types, one would probably want to use @c LAROD_FD_TYPE_* here.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetTensorFdProps(
         tensor: *mut larodTensor,
         fdPropFlags: u32,
@@ -588,6 +688,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get the properties of a file descriptor of a tensor.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param fdPropFlags Pointer to a variable that will indicate what kind of\n memory operations are possible to perform on the fd of @p tensor. These\n properties will be represented as an or:ing together (bitmask) of relevant @c\n LAROD_FD_PROP_* flags.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodGetTensorFdProps(
         tensor: *const larodTensor,
         fdPropFlags: *mut u32,
@@ -595,12 +696,14 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get name of tensor.\n\n Returns a reference to a string representing the name of the supplied tensor.\n The returned string pointer is valid as long as @p tensor is valid.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise a pointer to an initialized string\n representing the name of @p tensor."]
     pub fn larodGetTensorName(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
     ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
+    #[doc = " @brief Get byte size of tensor.\n\n Returns the size of the supplied tensor in bytes. A value of zero means that\n the size is undefined.\n\n @param tensor Pointer to an already allocated @c larodTensor.\n @param byteSize Output pointer that will be filled with the byte size of the\n tensor.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if an error occured, otherwise true."]
     pub fn larodGetTensorByteSize(
         tensor: *const larodTensor,
         byteSize: *mut usize,
@@ -608,12 +711,15 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Create new @c larodMap.\n\n Creates and initializes a handle to a mapping of key-value pairs. This struct\n is used to send additional information to the service, see for instance @c\n larodLoadModel. In particular, this struct may contain information that is\n relevant to only one, or a few backends.\n\n It can hold various different data types as values and each value is\n identified via a key string. Adding key-value pairs to the mapping should be\n done using the set functions larodMapSetStr(), larodMapSetInt(), etcetera,\n and accessing the elements should be done via the get functions\n larodMapGetStr(), larodMapGetInt(), and so on. Strings added to this map has\n a maximum allowed length of 128 bytes (including terminating NULL-byte).\n\n Once the mapping is no longer needed it should be destroyed using\n larodDestroyMap(). When key-value pairs are added to the map copies of the\n data are created, and the allocated memory is managed internally.\n\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise a pointer to an initialized @c\n larodMap struct. Should be destroyed using @c larodDestroyMap when no longer\n needed."]
     pub fn larodCreateMap(error: *mut *mut larodError) -> *mut larodMap;
 }
 extern "C" {
+    #[doc = " @brief Destroy a @c larodMap.\n\n Releases all memory associated with a @c larodMap, including allocated\n key-value pairs. @p map should not be used after this call.\n\n @param map Pointer to an initialized handle of a @c larodMap or NULL."]
     pub fn larodDestroyMap(map: *mut *mut larodMap);
 }
 extern "C" {
+    #[doc = " @brief Add a string to a @c larodMap object.\n\n Adds a copy of the string pointed to by @p value to a @c larodMap object\n and associates the value with a string given by @p key. If a string type\n value already exists for the given key it will be replaced by the new value.\n If a value already exists for the given key, but the value is of another\n type an error will be reported. Both key and value strings should be at\n maximum 128 bytes long (including terminating NULL-byte).\n\n @param map Handle to a @c larodMap object.\n @param key String key to identify @p value with.\n @param value String value to associate with @p key.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodMapSetStr(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -622,6 +728,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Add an integer to a @c larodMap object.\n\n Adds a 64-bit integer to a @c larodMap object and associates the value\n with a string given by @p key. If an integer type value already exists for\n the given key it will be replaced by the new value. If a value already\n exists for the given key, but the value is of another type an error will be\n reported. The key string should be at maximum 128 bytes long (including\n terminating NULL-byte).\n\n @param map Handle to a @c larodMap object.\n @param key String key to identify @p value with.\n @param value Value to associate with @p key.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodMapSetInt(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -630,6 +737,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Add an integer array of two elements to a @c larodMap object.\n\n Adds a 64-bit integer array of two elements to a @c larodMap object and\n associates it with a string given by @p key. If a two element integer array\n value already exists for the given key it will be replaced by the new value.\n If a value already exists for the given key, but the value is of another\n type an error will be reported. The key string should be at maximum 128 bytes\n long (including terminating NULL-byte).\n\n @param map Handle to a @c larodMap object.\n @param key String key to identify @p value with.\n @param value0 First array value to associate with @p key.\n @param value1 Second array value to associate with @p key.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodMapSetIntArr2(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -639,6 +747,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Add an integer array of four elements to a @c larodMap object.\n\n Adds a 64-bit integer array of four elements to a @c larodMap object and\n associates it with a string given by @p key. If a four element integer array\n value already exists for the given key it will be replaced by the new value.\n If a value already exists for the given key, but the value is of another\n type an error will be reported. The key string should be at maximum 128 bytes\n long (including terminating NULL-byte).\n\n @param map Handle to a @c larodMap object.\n @param key String key to identify @p value with.\n @param value0 First array value to associate with @p key.\n @param value1 Second array value to associate with @p key.\n @param value2 Third array value to associate with @p key.\n @param value3 Fourth array value to associate with @p key.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodMapSetIntArr4(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -650,6 +759,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get string type value tied to given key.\n\n Get a string value corresponding to the given key. If the key is not found\n in @p map, or if the key exists, but the value is not a string type an error\n is reported. The key string should be at maximum 128 bytes long (including\n terminating NULL-byte).\n\n @param map Object to search for the key.\n @param key Key string to search for.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise a string corresponding to the given\n key. Should not be freed by the user."]
     pub fn larodMapGetStr(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -657,6 +767,7 @@ extern "C" {
     ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
+    #[doc = " @brief Get an integer type value tied to given key.\n\n Get a 64-bit integer corresponding to the given key. If the key is not found\n in @p map, or if the key exists, but the value is not an integer type an\n error is reported. The key string should be at maximum 128 bytes long\n (including terminating NULL-byte).\n\n @param map Object to search for the key.\n @param key Key string to search for.\n @param value Output pointer for value to be extracted. The referenced memory\n will be set to the value of the requested key if call is successful,\n otherwise it will not be changed.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodMapGetInt(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -665,6 +776,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Get an integer array of two elements tied to given key.\n\n Get a 64-bit integer array of two elements, corresponding to the given key.\n If the key is not found in @p map, or if the key exists, but the value is not\n an integer array of two elements an error is reported. The key string should\n be at maximum 128 bytes long (including terminating NULL-byte).\n\n @param map Object to search for the key.\n @param key Key string to search for.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of two elements\n corresponding to the given key. Should not be freed by the user."]
     pub fn larodMapGetIntArr2(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -672,6 +784,7 @@ extern "C" {
     ) -> *const i64;
 }
 extern "C" {
+    #[doc = " @brief Get an integer array of four elements tied to given key.\n\n Get a 64-bit integer array of four elements, corresponding to the given key.\n If the key is not found in @p map, or if the key exists, but the value is not\n an integer array of four elements an error is reported. The key string should\n be at maximum 128 bytes long (including terminating NULL-byte).\n\n @param map Object to search for the key.\n @param key Key string to search for.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise pointer to an array of four\n elements corresponding to the given key. Should not be freed by the user."]
     pub fn larodMapGetIntArr4(
         map: *mut larodMap,
         key: *const ::std::os::raw::c_char,
@@ -679,6 +792,7 @@ extern "C" {
     ) -> *const i64;
 }
 extern "C" {
+    #[doc = " @brief Create and initialize a job request handle.\n\n Creates and initializes a job request handle with a minimum set of arguments\n needed to run a job. The job request needs to be deallocated with\n larodDestroyJobRequest() when no longer needed.\n\n The tensor data and model information is copied into the @c larodJobRequest\n when it is created. The input and output file descriptors specified in the\n tensors @c inputTensors and @c outputTensors must have reading and writing\n permissions respectively when running the job. Moreover, @p inputTensors file\n descriptors' file offsets will be set to the beginning before reading, while\n @p outputTensors file descriptors' file offsets will be untouched before\n writing (and left at the resulting position after the write).\n\n @param model Loaded model to run the job on.\n @param inputTensors Array of input tensors.\n @param numInputs Number of input tensors.\n @param outputTensors Array of output tensors.\n @param numOutputs Number of output tensors.\n @param params Additional optional parameters (can be NULL). Please refer to\n the documentation for the @p chip you are using to see what key-value pairs\n are applicable.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is NULL), it must later be deallocated with larodClearError().\n @return NULL if error occurred, otherwise a pointer to an initialized\n request."]
     pub fn larodCreateJobRequest(
         model: *const larodModel,
         inputTensors: *mut *mut larodTensor,
@@ -690,9 +804,11 @@ extern "C" {
     ) -> *mut larodJobRequest;
 }
 extern "C" {
+    #[doc = " @brief Destroy a request handle.\n\n @p jobReq should not be used after this call.\n\n @param jobReq Pointer to an initialized handle or NULL. The dereferenced @p\n jobReq will be set to NULL after the job request is released. If @p jobReq is\n NULL this function will nothing."]
     pub fn larodDestroyJobRequest(jobReq: *mut *mut larodJobRequest);
 }
 extern "C" {
+    #[doc = " @brief Set model in a request.\n\n Specifies which model to run the job request on. Copies the @p model\n information into the job request. The existing model information in @p req\n will be overwritten.\n\n @param jobReq Pointer to an already allocated job request.\n @param model Model to copy into the request.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetJobRequestModel(
         jobReq: *mut larodJobRequest,
         model: *const larodModel,
@@ -700,6 +816,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set input tensor array in a request.\n\n Copies the @p tensors array into the request. The existing tensor array in @p\n jobReq will be overwritten.\n\n @param jobReq Pointer to an already allocated job request.\n @param tensors Tensor array to copy into the request.\n @param numTensors Numbers of tensor entries in the tensor array.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetJobRequestInputs(
         jobReq: *mut larodJobRequest,
         tensors: *mut *mut larodTensor,
@@ -708,6 +825,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set output tensor array in a job request.\n\n Copies the @p tensors array into the job request. The existing tensor\n array in @p jobReq will be overwritten.\n\n @param jobReq Job request handle.\n @param tensors Tensor array to copy into the job request.\n @param numTensors Numbers of tensor entries in the tensor array.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetJobRequestOutputs(
         jobReq: *mut larodJobRequest,
         tensors: *mut *mut larodTensor,
@@ -716,6 +834,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set an priority of a job request.\n\n Only applicable when used with asynchronous jobs. 0 means lowest priority\n while 100 means highest priority.\n\n When the service processes requests for a given session, it will attempt to\n run higher priority job requests before lower priority requests.\n Specifically, the service will dispatch jobs to the underlying chip framework\n in order of priority. As a result of the dependency on the underlying chip\n framework, the service cannot guarantee that jobs will be finished in\n priority order.\n\n As an illustrative example, consider a case where multiple low priority\n requests are enqueued, followed by a high priority request, followed by\n another set of low priority requests. In this case, after the high priority\n request is enqueued, it is guaranteed to be the next request to be dispatched\n to the chip framework. Thus, the high priority request may be processed\n before some of the earlier low priority ones. Also, the high priority request\n is guaranteed be processed before any low priority requests that were\n enqueued later.\n\n Note also that priorities are only valid within the set of requests for a\n given session. The priority does not influence the ordering in different\n connections! Default priority is 50 when a request is created (@see\n larodCreateJobRequest()).\n\n @param jobReq Pointer to an initialized handle.\n @param priority The priority to attach to @p jobReq.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodSetJobRequestPriority(
         jobReq: *mut larodJobRequest,
         priority: u8,
@@ -723,6 +842,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Set additional parameters to a job request.\n\n Copies the @p params map into the job request. The existing parameters map in\n @p jobReq will be overwritten.\n\n @param jobReq Job request handle.\n @param params Additional optional parameters. Please refer to the\n documentation for the @p chip you are using to see what key-value pairs are\n applicable.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if error occurred, otherwise true."]
     pub fn larodSetJobRequestParams(
         jobReq: *mut larodJobRequest,
         params: *const larodMap,
@@ -730,6 +850,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Run a job on a loaded model.\n\n Data will be read or written using the tensors' file descriptors. The maximum\n number of bytes that the larod service will access (read or write) can be set\n by larodSetTensorFdSize() for each tensor. Offsets into the file descriptors\n can be configured using larodSetTensorFdOffset(). If the size value for a\n tensor is 0 (default value) then larod will use file operations to determine\n the file descriptor size. The larod service will also use file operations to\n read and write tensor data, thus the current file positions of tensor file\n descriptors will be updated by the job call. The client should not access the\n file descriptors during this call. Furthermore, if any tensor file descriptor\n is pointing to a dma-buf, make sure to do the proper cache-synchronization\n steps described in the documentation.\n\n @param conn An initialized connection handle.\n @param jobReq An initialized job request handle. The input and output file\n descriptors specified in the request must have reading and writing\n permissions, respectively. Moreover, the input file descriptors' file offsets\n will be set to the beginning before reading, while the output file\n descriptors' file offsets will be untouched before writing (and left at the\n resulting position after the write).\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodRunJob(
         conn: *mut larodConnection,
         jobReq: *const larodJobRequest,
@@ -737,6 +858,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Run a job on a loaded model asynchronously.\n\n This is the asynchronous version of larodRunJob(). The same set of\n parameters as larodRunJob() must be explicitly set in @p jobReq.\n\n Data will be accessed for read or write using the tensor file descriptors.\n Offsets into the file descriptors can be configured using\n larodSetTensorFdOffset(). The maximum number of bytes that the larod service\n will access (read or write) can be set by larodSetTensorFdSize() for each\n tensor. If the size value for a tensor is 0 (default value) then larod will\n use file operations to determine the file descriptor size. The larod service\n will also use file operations to read and write tensor data, thus the current\n file positions of tensor file descriptors will be updated by the job call.\n The client should not access the file descriptors while an asynchronous job\n is running. Furthermore, if any tensor file descriptor is pointing to a\n dma-buf, make sure to do the proper cache-synchronization steps described in\n the documentation.\n\n The user-specified callback function @p callback will be called as soon as\n the job has finished. @p userData will be given as input argument to the\n callback function which enables the user to associate executing callbacks\n with their corresponding requests. Refer to the documentation of @c\n larodRunJobCallback for additional rules that apply to the callback function.\n\n @param conn An initialized connection handle.\n @param jobReq An initialized job request handle. The input and output\n file descriptors specified in the request must have reading and writing\n permissions, respectively. Moreover, the input file descriptors' file offsets\n will be set to the beginning before reading, while the output file\n descriptors' file offsets will be untouched before writing (and left at the\n resulting position after the write).\n @param callback Callback function.\n @param userData User data that will be passed to the callback function.\n @param error An uninitialized handle to an error. @p error can also be NULL\n if one does not want any error information. In case of errors (when return\n value is false), it must later be deallocated with larodClearError().\n @return False if any errors occur, otherwise true."]
     pub fn larodRunJobAsync(
         conn: *mut larodConnection,
         jobReq: *const larodJobRequest,

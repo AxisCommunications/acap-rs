@@ -115,57 +115,75 @@ impl bbox_color_t {
 }
 pub type bbox_channel_t = u32;
 extern "C" {
+    #[doc = " @brief Create a new bbox object with global coordinate-space\n\n@verbatim\n[0,0]\n┏━━━━━━━━━━━━━┓\n┃\u{a0}\u{a0}\u{a0}┏━━━━━┓\u{a0}\u{a0}\u{a0}┃\n┃\u{a0}\u{a0}\u{a0}┃View1┃\u{a0}\u{a0}\u{a0}┃\n┃\u{a0}\u{a0}\u{a0}┗━━━━━┛\u{a0}\u{a0}\u{a0}┃\n┗━━━━━━━━━━━━━┛\n[1,1]\n@endverbatim\n\n @param n_channels Number of channels to draw upon\n @param ...        List of @c bbox_channel_t to draw upon\n\n @return A bbox object or @c NULL on error. Free with @c bbox_destroy."]
     pub fn bbox_new(n_channels: usize, ...) -> *mut bbox_t;
 }
 extern "C" {
+    #[doc = " @brief Create a new bbox object with view coordinate-space\n\n@verbatim\n┏━━━━━━━━━━━━━┓\n┃\u{a0}[0,0]\u{a0}\u{a0}\u{a0}\u{a0}\u{a0}\u{a0}\u{a0}┃\n┃\u{a0}\u{a0}\u{a0}┏━━━━━┓\u{a0}\u{a0}\u{a0}┃\n┃\u{a0}\u{a0}\u{a0}┃View1┃\u{a0}\u{a0}\u{a0}┃\n┃\u{a0}\u{a0}\u{a0}┗━━━━━┛\u{a0}\u{a0}\u{a0}┃\n┃\u{a0}\u{a0}\u{a0}\u{a0}\u{a0}\u{a0}\u{a0}[1,1]\u{a0}┃\n┗━━━━━━━━━━━━━┛\n@endverbatim\n\n @param view The view to draw upon\n\n @return A bbox object or @c NULL on error. Free with @c bbox_destroy."]
     pub fn bbox_view_new(view: bbox_channel_t) -> *mut bbox_t;
 }
 extern "C" {
+    #[doc = " @brief Destroy the bbox object\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_destroy(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Switch to scene normalized coordinate space [Default]\n\n This coordinate system is normalized to [0,0]-[1,1] and follows the filmed scene,\n i.e. static objects in the world have the same coordinates regardless of global rotation.\n\n @param self The bbox object\n\n @return Success, check @c errno on error."]
     pub fn bbox_coordinates_scene_normalized(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Switch to frame normalized coordinate space\n\n This coordinate system is normalized and aligned with the camera frame,\n i.e. top-left is [0,0] and bottom-right is [1,1].\n\n @param self The bbox object\n\n @return Success, check @c errno on error."]
     pub fn bbox_coordinates_frame_normalized(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Control drawing on video-output\n\n The effect of this call is delayed until the next @c bbox_commit\n\n @param self    The bbox object\n @param enabled Enable or Disable drawing on video-output\n\n @return Success, check @c errno on error."]
     pub fn bbox_video_output(self_: *mut bbox_t, enabled: bool) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Create a new native color from rgb\n\n @param r Red\n @param g Green\n @param b Blue\n\n @return A @c bbox_color_t in native format"]
     pub fn bbox_color_from_rgb(r: u8, g: u8, b: u8) -> bbox_color_t;
 }
 extern "C" {
+    #[doc = " @brief Create a new native color from rgba\n\n @param r Red\n @param g Green\n @param b Blue\n @param a Alpha\n\n @return A @c bbox_color_t in native format"]
     pub fn bbox_color_from_rgba(r: u8, g: u8, b: u8, a: u8) -> bbox_color_t;
 }
 extern "C" {
+    #[doc = " @brief Clear all existing geometry\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_clear(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Apply color to all new geometry\n\n @param self  The bbox object\n @param color The color to apply\n @return Success, check @c errno on error."]
     pub fn bbox_color(self_: *mut bbox_t, color: bbox_color_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Replace existing style with `┏━━━━━┓` for all new rectangles\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_style_outline(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Replace existing style with `┏━\u{a0}\u{a0}\u{a0}━┓` for all new rectangles\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_style_corners(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Change line-thickness to @c thin for all new geometry\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_thickness_thin(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Change line-thickness to @c medium for all new geometry\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_thickness_medium(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Change line-thickness to @c thick for all new geometry\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_thickness_thick(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Create a new Rectangle\n\n The visible coordinates are in the range 0.0 to 1.0.\n Coordinates outside of this range will be clipped,\n this can result in partial rectangles being drawn.\n\n The effect of this call is delayed until the next @c bbox_commit\n\n @param self  The bbox object\n @param x1    Left\n @param y1    Top\n @param x2    Right\n @param y2    Bottom\n @return Success, check @c errno on error."]
     pub fn bbox_rectangle(self_: *mut bbox_t, x1: f32, y1: f32, x2: f32, y2: f32) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Create a new Line\n\n The visible coordinates are in the range 0.0 to 1.0.\n Coordinates outside of this range will be clipped,\n this can result in partial lines being drawn.\n\n The effect of this call is delayed until the next @c bbox_commit\n\n @param self  The bbox object\n @param x1    Left\n @param y1    Top\n @param x2    Right\n @param y2    Bottom\n @return Success, check @c errno on error."]
     pub fn bbox_line(self_: *mut bbox_t, x1: f32, y1: f32, x2: f32, y2: f32) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Create a new Quadrilateral\n\n The visible coordinates are in the range 0.0 to 1.0.\n Coordinates outside of this range will be clipped,\n this can result in partial quads being drawn.\n\n The effect of this call is delayed until the next @c bbox_commit\n\n @param self  The bbox object\n @param x1    Vertex1\n @param y1    Vertex1\n @param x2    Vertex2\n @param y2    Vertex2\n @param x3    Vertex3\n @param y3    Vertex3\n @param x4    Vertex4\n @param y4    Vertex4\n @return Success, check @c errno on error."]
     pub fn bbox_quad(
         self_: *mut bbox_t,
         x1: f32,
@@ -179,14 +197,18 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Move to the specified point\n\n @code\n // Draw a polyline\n bbox_move_to(bbox, 0.2, 0.2);\n bbox_line_to(bbox, 0.5, 0.5);\n bbox_line_to(bbox, 0.8, 0.4);\n bbox_draw_path(bbox);\n @endcode\n\n @param self  The bbox object\n @param x     Left\n @param y     Top\n @return Success, check @c errno on error."]
     pub fn bbox_move_to(self_: *mut bbox_t, x: f32, y: f32) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Adds a point to the current path\n\n @code\n // Draw a polyline\n bbox_move_to(bbox, 0.2, 0.2);\n bbox_line_to(bbox, 0.5, 0.5);\n bbox_line_to(bbox, 0.8, 0.4);\n bbox_draw_path(bbox);\n @endcode\n\n @param self  The bbox object\n @param x     Left\n @param y     Top\n @return Success, check @c errno on error."]
     pub fn bbox_line_to(self_: *mut bbox_t, x: f32, y: f32) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Draw the current path\n\n @code\n // Draw a polyline\n bbox_move_to(bbox, 0.2, 0.2);\n bbox_line_to(bbox, 0.5, 0.5);\n bbox_line_to(bbox, 0.8, 0.4);\n bbox_draw_path(bbox);\n @endcode\n\n @param self  The bbox object\n @return Success, check @c errno on error."]
     pub fn bbox_draw_path(self_: *mut bbox_t) -> bool;
 }
 extern "C" {
+    #[doc = " @brief Draw all queued geometry\n\n @param self     The bbox object\n @param when_us  Synchronization time in µs.\n @return Success, check @c errno on error."]
     pub fn bbox_commit(self_: *mut bbox_t, when_us: i64) -> bool;
 }
