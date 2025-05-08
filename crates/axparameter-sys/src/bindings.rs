@@ -8,22 +8,17 @@ extern "C" {
 pub struct _AXParameter {
     _unused: [u8; 0],
 }
-#[doc = " @brief Opaque structure for the AXParameter."]
 pub type AXParameter = _AXParameter;
-#[doc = " @brief The typedef for a callback function registered by\n ax_parameter_register_callback()\n\n @param name Name of the updated parameter.\n @param value Value of the updated parameter.\n @param data  User data to be passed to the callback."]
 pub type AXParameterCallback = ::std::option::Option<
     unsafe extern "C" fn(name: *const gchar, value: *const gchar, data: gpointer),
 >;
 extern "C" {
-    #[doc = " @brief Creates a new AXParameter.\n\n @param app_name The name of the application. Must match APPNAME in\n package.conf. Make sure to only create one AXParameter, see more info in\n \\ref parameters\n\n @param error Return location for a GError or NULL.\n\n @return A new AXParameter."]
     pub fn ax_parameter_new(app_name: *const gchar, error: *mut *mut GError) -> *mut AXParameter;
 }
 extern "C" {
-    #[doc = " @brief Frees an AXParameter.\n\n @param parameter An AXParameter."]
     pub fn ax_parameter_free(parameter: *mut AXParameter);
 }
 extern "C" {
-    #[doc = " @brief Adds a new parameter. Returns failure if the parameter already exists.\n\n @param parameter An AXParameter.\n\n @param name Name of the parameter to be added.\n\n @param initial_value Initial value of the parameter. Passing NULL will set\n  the parameter to an empty string.\n\n @param type Parameter type. Passing NULL will set the type to \"string\".\n The parameters are for plain config generation and are not validated.\n For other allowed types, see \\ref parametertypes\n\n @param error Return the location for a GError or NULL.\n\n @return TRUE if a parameter could be added, FALSE otherwise."]
     pub fn ax_parameter_add(
         parameter: *mut AXParameter,
         name: *const gchar,
@@ -33,7 +28,6 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
-    #[doc = " @brief Removes a parameter. Returns FALSE if the parameter doesn't exist.\n\n @param parameter An AXParameter.\n\n @param name Name of the parameter to be removed.\n\n @param error Return the location for a GError or NULL.\n\n @return TRUE if a parameter could be removed, FALSE otherwise."]
     pub fn ax_parameter_remove(
         parameter: *mut AXParameter,
         name: *const gchar,
@@ -41,7 +35,6 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
-    #[doc = " @brief Sets the value of a parameter.\n\n @param parameter An AXParameter.\n\n @param name Name of the parameter. Using only the parameter name will set a\n parameter in the group that belongs to the application. Using the\n complete path (root.Group.Name) will set any parameter in the Axis product\n provided that the application has proper access rights to the parameter.\n\n @param value Value to set the parameter to. Passing NULL will set\n the value to an empty string.\n\n @param do_sync If set to FALSE, the change won't be written to file\n and callbacks won't be run until a new ax_parameter_set() with do_sync\n set to TRUE is sent. This is recommended when updating several parameters at\n the same time.\n\n @param error Return the location for a GError or NULL.\n\n @return TRUE if the parameter could be set, FALSE otherwise."]
     pub fn ax_parameter_set(
         parameter: *mut AXParameter,
         name: *const gchar,
@@ -51,7 +44,6 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
-    #[doc = " @brief Retrieves the value of a parameter.\n\n @param parameter An AXParameter.\n\n @param name Name of the parameter. Using only the parameter name will retrieve a\n parameter from the group that belongs to the application. Using the\n complete path (root.Group.Name) will retrieve any parameter in the Axis product\n provided that the application has proper access rights to the parameter.\n\n @param value Address of a character pointer. The function will allocate\n memory for the new value and set the provided pointer to the address of this\n location. This pointer should be freed by the caller. Use g_free to release\n the allocated storage when it is no longer needed.\n\n @param error Return the location for a GError or NULL.\n\n @return TRUE if a parameter could be retrieved, FALSE otherwise."]
     pub fn ax_parameter_get(
         parameter: *mut AXParameter,
         name: *const gchar,
@@ -60,11 +52,9 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
-    #[doc = " @brief Lists all parameters for the application. The returned list and its\n members must be freed by the caller. Use g_free for the members and\n g_list_free for the list.\n\n @param parameter An AXParameter.\n\n @param error Return the location for a GError or NULL.\n\n @return A GList of allocated strings or NULL if empty."]
     pub fn ax_parameter_list(parameter: *mut AXParameter, error: *mut *mut GError) -> *mut GList;
 }
 extern "C" {
-    #[doc = " @brief Registers a callback function to be run whenever a parameter\n        value is updated.\n\n @param parameter An AXParameter.\n\n @param name Name of the parameter.\n\n @param callback The callback function to be run when the parameter is updated.\n\n @param userdata Userdata to be passed to the callback or NULL.\n\n @param error Return the location for a GError or NULL.\n\n @return TRUE if a callback could be registered, FALSE otherwise."]
     pub fn ax_parameter_register_callback(
         parameter: *mut AXParameter,
         name: *const gchar,
@@ -74,6 +64,5 @@ extern "C" {
     ) -> gboolean;
 }
 extern "C" {
-    #[doc = " @brief Unregisters the parameter callback function\n\n @param parameter An AXParameter.\n\n @param name Name of the parameter.\n"]
     pub fn ax_parameter_unregister_callback(parameter: *mut AXParameter, name: *const gchar);
 }

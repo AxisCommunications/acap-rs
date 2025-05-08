@@ -4,6 +4,7 @@ fn populated_bindings(dst: &path::PathBuf) {
     let library = pkg_config::Config::new().probe("licensekey").unwrap();
     let mut bindings = bindgen::Builder::default()
         .header("wrapper.h")
+        .generate_comments(false)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         // None of the foreign functions construct this enum so rustifying it is safe.
         .rustified_enum("LicenseKeyState")

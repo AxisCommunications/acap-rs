@@ -4,6 +4,7 @@ fn populated_bindings(dst: &path::PathBuf) {
     let library = pkg_config::Config::new().probe("axevent").unwrap();
     let mut bindings = bindgen::Builder::default()
         .header("wrapper.h")
+        .generate_comments(false)
         .allowlist_recursively(false)
         .allowlist_function("^(ax_.*)$")
         .allowlist_type("^(_?AX.*)$")

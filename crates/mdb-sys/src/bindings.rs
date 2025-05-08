@@ -9,23 +9,17 @@ pub const mdb_error_code_t_MDB_ERROR_TIMEOUT: mdb_error_code_t = -5;
 pub const mdb_error_code_t_MDB_ERROR_USER: mdb_error_code_t = -6;
 pub const mdb_error_code_t_MDB_ERROR_VERSION_ERROR: mdb_error_code_t = -7;
 pub const mdb_error_code_t_MDB_ERROR_TOO_MANY_PENDING_MESSAGES: mdb_error_code_t = -8;
-#[doc = " Enum type for error codes.\n\n These are set in mdb_error_t on errors. Note that only the negative\n values are defined in this enum explicitly. mdb_error_code_t can also be\n a positive value, this corresponds then to Linux style errno values."]
 pub type mdb_error_code_t = ::std::os::raw::c_int;
-#[doc = " Type containing error information.\n\n This is passed as a pointer argument to most library functions. An\n initialized pointer of this type needs to be deallocated with\n mdb_clear_error(). The field message will always be non-NULL on errors.\n\n The contents will not be changed unless there is an error."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mdb_error_t {
-    #[doc = "< the error code"]
     pub code: mdb_error_code_t,
-    #[doc = "< the error message"]
     pub message: *mut ::std::os::raw::c_char,
 }
-#[doc = " Error callback.\n\n When this function is called the associated object is deemed unusable and\n should be destroyed.\n\n In this callback function, one must not free the error with\n mdb_error_destroy(), since the library will do it when returning from this\n callback."]
 pub type mdb_on_error_t = ::std::option::Option<
     unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut ::std::os::raw::c_void),
 >;
 extern "C" {
-    #[doc = " Deallocate an error handle.\n\n Functions that have an argument of type mdb_error_t** allocate an\n mdb_error_t when errors occur. After processing the error, this function must\n be used to free the mdb_error_t.\n\n @param error An initialized error handle or NULL. If error is NULL this\n function will do nothing. *error will be set to NULL after this call."]
     pub fn mdb_error_destroy(error: *mut *mut mdb_error_t);
 }
 #[repr(C)]
@@ -33,10 +27,8 @@ extern "C" {
 pub struct mdb_connection {
     _unused: [u8; 0],
 }
-#[doc = " A connection is a context used to hold the state of the connection to the\n Message Broker.\n\n The connection may be used/shared by multiple channels and subscribers."]
 pub type mdb_connection_t = mdb_connection;
 extern "C" {
-    #[doc = " Create a Message Broker connection.\n\n Any errors delivered via the provided callback are fatal to the connection\n and affects all objects associated with it. I.e., all channels and\n subscribers using the connection, as well as the connection itself, must be\n destroyed and recreated. Subsequent calls to library functions will return\n the error generated via on_error on subsequent calls.\n\n @param on_error Will be called if any asynchronous error occurs during the\n lifecycle of the returned connection. Can be set to NULL.\n @param user_data Optional user data, will be argument to the callback\n on_error.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return Connection on success, NULL on failure."]
     pub fn mdb_connection_create(
         on_error: mdb_on_error_t,
         user_data: *mut ::std::os::raw::c_void,
@@ -44,7 +36,6 @@ extern "C" {
     ) -> *mut mdb_connection_t;
 }
 extern "C" {
-    #[doc = " Destroy given connection.\n\n Tries to wait for and flush any pending requests before freeing resources\n and returning.\n\n @param self Connection to destroy or NULL. If connection is NULL this\n function will do nothing. *self will be set to NULL after this call."]
     pub fn mdb_connection_destroy(self_: *mut *mut mdb_connection_t);
 }
 #[repr(C)]
@@ -52,29 +43,21 @@ extern "C" {
 pub struct mdb_message {
     _unused: [u8; 0],
 }
-#[doc = " The message type is as a container for a payload."]
 pub type mdb_message_t = mdb_message;
-#[doc = " The message payload type represents a payload data in the mdb_message_t\n message."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mdb_message_payload {
-    #[doc = "< the size"]
     pub size: usize,
-    #[doc = "< the data"]
     pub data: *mut u8,
 }
-#[doc = " The message payload type represents a payload data in the mdb_message_t\n message."]
 pub type mdb_message_payload_t = mdb_message_payload;
 extern "C" {
-    #[doc = " Access payload associated with delivered message.\n\n The data returned share lifetime with the message.\n\n @param message Container returned by on_message.\n @return Payload from the message."]
     pub fn mdb_message_get_payload(message: *const mdb_message_t) -> *const mdb_message_payload_t;
 }
 extern "C" {
-    #[doc = " Access timestamp associated with delivered message\n\n The data returned share lifetime with the message.\n\n @param message Container returned by on_message.\n @return Timestamp of the message, in monotonic time."]
     pub fn mdb_message_get_timestamp(message: *const mdb_message_t) -> *const timespec;
 }
 extern "C" {
-    #[doc = " Create a message.\n\n The payload is copied into the message on creation.\n\n @param timestamp Timestamp associated with the message, in monotonic time.\n @param payload The payload data.\n @param payload_size The size of the payload.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return Message on success, NULL on failure."]
     pub fn mdb_message_create(
         timestamp: timespec,
         payload: *const u8,
@@ -83,10 +66,8 @@ extern "C" {
     ) -> *mut mdb_message_t;
 }
 extern "C" {
-    #[doc = " Destroy given message.\n\n @param self Message to destroy or NULL. If message is NULL this\n function will do nothing. *self will be set to NULL after this call."]
     pub fn mdb_message_destroy(self_: *mut *mut mdb_message_t);
 }
-#[doc = " Callback function signature for the completion of asynchronous functions."]
 pub type mdb_on_done_t = ::std::option::Option<
     unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut ::std::os::raw::c_void),
 >;
@@ -97,7 +78,6 @@ pub struct mdb_dict {
 }
 pub type mdb_dict_t = mdb_dict;
 extern "C" {
-    #[doc = " Set the value of key in the dict.\n If there already is a value for key, it is replaced by the new value.\n\n @param self Dict object.\n @param key Must be a valid null terminated UTF-8 encoded Unicode string.\n @param value Must be a valid null terminated UTF-8 encoded Unicode string.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return False on error, otherwise true."]
     pub fn mdb_dict_set_str(
         self_: *mut mdb_dict_t,
         key: *const ::std::os::raw::c_char,
@@ -106,7 +86,6 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
-    #[doc = " Get a string value corresponding to key from the dict.\n\n @param self Dict object.\n @param key Must be a valid null terminated UTF-8 encoded Unicode string.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return NULL if key is not found or if any error occurs, otherwise the\n corresponding string value."]
     pub fn mdb_dict_get_str(
         self_: *const mdb_dict_t,
         key: *const ::std::os::raw::c_char,
@@ -120,32 +99,27 @@ pub struct mdb_channel_info {
 }
 pub type mdb_channel_info_t = mdb_channel_info;
 extern "C" {
-    #[doc = " Create a channel info object.\n\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return Channel Info object on success, NULL on error."]
     pub fn mdb_channel_info_create(error: *mut *mut mdb_error_t) -> *mut mdb_channel_info_t;
 }
 extern "C" {
-    #[doc = " Create a deep copy of a channel info object.\n\n @param self Channel Info object.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return Channel Info object on success, NULL on error."]
     pub fn mdb_channel_info_copy(
         self_: *const mdb_channel_info_t,
         error: *mut *mut mdb_error_t,
     ) -> *mut mdb_channel_info_t;
 }
 extern "C" {
-    #[doc = " Get immutable application_data.\n\n Application data. This data is defined by the producer and is specific to the\n producer application.\n\n The dict object is owned by the info object.\n\n @param self Channel Info object.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return An immutable reference to application_data dict contained in the info\n object, NULL on error."]
     pub fn mdb_channel_info_get_application_data(
         self_: *const mdb_channel_info_t,
         error: *mut *mut mdb_error_t,
     ) -> *const mdb_dict_t;
 }
 extern "C" {
-    #[doc = " Get mutable application_data.\n\n Application data. This data is defined by the producer and is specific to the\n producer application.\n\n The dict object is owned by the info object.\n\n @param self Channel Info object.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return A mutable reference to application_data dict contained in the info\n object, NULL on error."]
     pub fn mdb_channel_info_get_application_data_mutable(
         self_: *mut mdb_channel_info_t,
         error: *mut *mut mdb_error_t,
     ) -> *mut mdb_dict_t;
 }
 extern "C" {
-    #[doc = " Destroy given Channel Info object.\n\n @param self Channel Info to destroy or NULL. If channel info is NULL this\n function will do nothing. *self will be set to NULL after this call."]
     pub fn mdb_channel_info_destroy(self_: *mut *mut mdb_channel_info_t);
 }
 #[repr(C)]
@@ -153,21 +127,16 @@ extern "C" {
 pub struct mdb_subscriber_config {
     _unused: [u8; 0],
 }
-#[doc = " The subscriber config type is a container for a subscriber configuration,\n which is used when creating a subscriber."]
 pub type mdb_subscriber_config_t = mdb_subscriber_config;
-#[doc = " Called when a message published on the channel is received.\n\n The message and its content is only valid during the callback, i.e. the\n associated memory is freed immediately following the return of callback.\n\n @param message The message.\n @param user_data User data from mdb_subscriber_subscribe."]
 pub type mdb_subscriber_on_message_t = ::std::option::Option<
     unsafe extern "C" fn(message: *const mdb_message_t, user_data: *mut ::std::os::raw::c_void),
 >;
-#[doc = " Called when the channel is registered.\n\n The memory for the info object is freed immediately following the return of\n callback.\n\n Callbacks to on_message are guaranteed to only be received after this\n callback.\n\n A channel may be unregistered, and re-registered, to be able to change the\n info. After this callback triggers the channel info is valid until the\n unregister callback runs.\n\n @param info Channel info.\n @param user_data User data from\n mdb_subscriber_config_set_on_channel_registered_callback."]
 pub type mdb_subscriber_on_channel_registered_t = ::std::option::Option<
     unsafe extern "C" fn(info: *const mdb_channel_info_t, user_data: *mut ::std::os::raw::c_void),
 >;
-#[doc = " Called when the channel is unregistered or lost.\n\n Callbacks to on_message are guaranteed to never be received after this\n callback, until on_channel_registered is triggered.\n\n A channel may be unregistered, and re-registered, to be able to change the\n info. After this callback triggers the channel info is no longer valid.\n\n @param user_data User data from\n mdb_subscriber_config_set_on_channel_unregistered_callback."]
 pub type mdb_subscriber_on_channel_unregistered_t =
     ::std::option::Option<unsafe extern "C" fn(user_data: *mut ::std::os::raw::c_void)>;
 extern "C" {
-    #[doc = " Create a subscriber configuration.\n\n The subscriber configuration contains all data structures needed to create a\n subscriber.\n\n @param topic The topic is used to group similar channels.\n Permissions are set per topic.\n @param source The source or number of the channel.\n @param on_message The message delivery callback function.\n @param user_data Optional user data, will be argument to the on_message\n callback\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return Subscriber config on success, NULL on failure."]
     pub fn mdb_subscriber_config_create(
         topic: *const ::std::os::raw::c_char,
         source: *const ::std::os::raw::c_char,
@@ -177,14 +146,12 @@ extern "C" {
     ) -> *mut mdb_subscriber_config_t;
 }
 extern "C" {
-    #[doc = " Disable immediate subscribe, which otherwise occurs by default as part of\n mdb_subscriber_create_async. Using this option requires calling\n mdb_subscriber_manual_subscribe before receiving any on_message callbacks.\n\n @param self Subscriber configuration.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return False if any error occurs, otherwise true."]
     pub fn mdb_subscriber_config_disable_auto_subscribe(
         self_: *mut mdb_subscriber_config_t,
         error: *mut *mut mdb_error_t,
     ) -> bool;
 }
 extern "C" {
-    #[doc = " Register a callback to get notified on channel registration.\n\n The callback will be called when the channel is registered, or directly if it\n is already registered. The channel shall be considered unregistered until the\n callback is triggered.\n\n @param self Subscriber configuration.\n @param on_registered The function that will be called when the channel is\n registered.\n @param user_data Optional user data, will be argument to callback\n on_registered.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return False if error occur, otherwise true."]
     pub fn mdb_subscriber_config_set_on_channel_registered_callback(
         self_: *mut mdb_subscriber_config_t,
         on_registered: mdb_subscriber_on_channel_registered_t,
@@ -193,7 +160,6 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
-    #[doc = " Register a callback to get notified on channel unregistration.\n\n @param self subscriber configuration.\n @param on_unregistered The function that will be called when the channel is\n unregistered.\n @param user_data Optional user data, will be argument to callback\n on_unregistered.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return False if error occur, otherwise true."]
     pub fn mdb_subscriber_config_set_on_channel_unregistered_callback(
         self_: *mut mdb_subscriber_config_t,
         on_unregistered: mdb_subscriber_on_channel_unregistered_t,
@@ -202,7 +168,6 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
-    #[doc = " Destroy given subscriber configuration.\n\n @param self Subscriber configuration to destroy or NULL. If subscriber\n configuration is NULL this function will do nothing. *self will be set to\n NULL after this call."]
     pub fn mdb_subscriber_config_destroy(self_: *mut *mut mdb_subscriber_config_t);
 }
 #[repr(C)]
@@ -210,10 +175,8 @@ extern "C" {
 pub struct mdb_subscriber {
     _unused: [u8; 0],
 }
-#[doc = " The subscriber type represents a subscriber."]
 pub type mdb_subscriber_t = mdb_subscriber;
 extern "C" {
-    #[doc = " Create a subscriber for a specific channel.\n\n It is possible to create a subscriber before the corresponding\n channel is registered.\n\n In the default case creating a subscriber will signal the producer to start\n publishing on the channel unless it has already been signaled to start by\n another subscriber. Don't create a subscriber until you intend to use the\n published data since it might consume producer resources, or use the setting\n 'mdb_subscriber_config_disable_auto_subscribe' on the\n subscriber_config object to change this behaviour.\n\n @param connection Connection.\n @param config Subscriber configuration.\n @param on_done Callback triggered when initial setup of subscriber done or on\n error.\n @param user_data Passed to the on_done callback.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return Subscriber on success, NULL on failure."]
     pub fn mdb_subscriber_create_async(
         connection: *mut mdb_connection_t,
         config: *mut mdb_subscriber_config_t,
@@ -223,7 +186,6 @@ extern "C" {
     ) -> *mut mdb_subscriber_t;
 }
 extern "C" {
-    #[doc = " Manual subscribe, to be used together with\n mdb_subscriber_config_disable_auto_subscribe.\n\n @param self Subscriber.\n @param on_done Callback triggered when subscribed to the channel or on\n error.\n @param user_data Passed to the on_done callback.\n @param error An mdb_error_t pointer reference or NULL. An mdb_error_t will be\n allocated on failure and must then be destroyed with mdb_error_destroy().\n @return False if any error occurs, otherwise true."]
     pub fn mdb_subscriber_manual_subscribe_async(
         self_: *mut mdb_subscriber_t,
         on_done: mdb_on_done_t,
@@ -232,6 +194,5 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
-    #[doc = " Destroy given subscriber.\n\n Also ends any active subscription.\n\n @param self Subscriber to destroy or NULL. If subscriber is NULL this\n function will do nothing. *self will be set to NULL after this call."]
     pub fn mdb_subscriber_destroy(self_: *mut *mut mdb_subscriber_t);
 }
