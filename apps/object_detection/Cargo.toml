@@ -1,0 +1,12 @@
+[package]
+name = "object_detection"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+larod-sys = { workspace = true }

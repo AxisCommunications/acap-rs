@@ -8,6 +8,7 @@
 1406	target-aarch64/acap/hello_world_0_0_0_aarch64.eap
 1441	target-aarch64/acap/inspect_env_0_0_0_aarch64.eap
 1430	target-aarch64/acap/licensekey_handler_0_0_0_aarch64.eap
+1408	target-aarch64/acap/object_detection_1_0_0_aarch64.eap
 10362	target-aarch64/acap/reverse_proxy_0_0_0_aarch64.eap
 3430	target-aarch64/acap/send_event_1_0_0_aarch64.eap
 899	target-aarch64/acap/using_a_build_script_0_0_0_aarch64.eap
