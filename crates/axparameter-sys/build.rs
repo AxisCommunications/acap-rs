@@ -20,7 +20,7 @@ fn populated_bindings(dst: &path::PathBuf) {
     }
 
     for path in library.include_paths {
-        bindings = bindings.clang_args(&["-F", path.to_str().unwrap()]);
+        bindings = bindings.clang_args(&["-I", path.to_str().unwrap()]);
     }
     bindings.generate().unwrap().write_to_file(dst).unwrap();
 }
