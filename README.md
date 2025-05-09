@@ -228,6 +228,7 @@ by this project.
 
 - [Related projects](docs/related-projects.md)
 - [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
+- [Managing the size of Rust binaries](https://github.com/apljungquist/managing-the-size-of-rust-binaries)
 
 ## Troubleshooting
 
