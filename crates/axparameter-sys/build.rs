@@ -4,6 +4,7 @@ fn populated_bindings(dst: &path::PathBuf) {
     let library = pkg_config::Config::new().probe("axparameter").unwrap();
     let mut bindings = bindgen::Builder::default()
         .header("wrapper.h")
+        .generate_comments(false)
         .allowlist_recursively(false)
         .allowlist_function("^(_?ax.*)$")
         .allowlist_type("^(_?AX.*)$")
@@ -20,7 +21,7 @@ fn populated_bindings(dst: &path::PathBuf) {
     }
 
     for path in library.include_paths {
-        bindings = bindings.clang_args(&["-F", path.to_str().unwrap()]);
+        bindings = bindings.clang_args(&["-I", path.to_str().unwrap()]);
     }
     bindings.generate().unwrap().write_to_file(dst).unwrap();
 }
