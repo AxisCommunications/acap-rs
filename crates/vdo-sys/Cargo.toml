@@ -1,0 +1,12 @@
+[package]
+name = "vdo-sys"
+version = "0.0.0"
+edition.workspace = true
+
+[build-dependencies]
+bindgen = { workspace = true }
+pkg-config = { workspace = true }
+
+[dependencies]
+glib-sys = { workspace = true }
+gobject-sys = "0.19.5"
