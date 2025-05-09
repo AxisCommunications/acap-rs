@@ -1,0 +1,11 @@
+[package]
+name = "vdo_encode_client"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+vdo-sys = { workspace = true }
