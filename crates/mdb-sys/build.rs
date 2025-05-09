@@ -4,6 +4,7 @@ fn populated_bindings(dst: &path::PathBuf) {
     let library = pkg_config::Config::new().probe("mdb").unwrap();
     let mut bindings = bindgen::Builder::default()
         .header("wrapper.h")
+        .generate_comments(false)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_function("^(mdb_.*)$")
         .allowlist_type("^(mdb_.*)$")
@@ -11,7 +12,7 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_recursively(false)
         .layout_tests(false);
     for path in library.include_paths {
-        bindings = bindings.clang_args(&["-F", path.to_str().unwrap()]);
+        bindings = bindings.clang_args(&["-I", path.to_str().unwrap()]);
     }
     bindings.generate().unwrap().write_to_file(dst).unwrap();
 }

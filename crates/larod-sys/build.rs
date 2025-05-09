@@ -1,13 +1,18 @@
 use std::{env, path};
 
 fn populated_bindings(dst: &path::PathBuf) {
-    let library = pkg_config::Config::new().probe("licensekey").unwrap();
+    let library = pkg_config::Config::new().probe("liblarod").unwrap();
     let mut bindings = bindgen::Builder::default()
         .header("wrapper.h")
         .generate_comments(false)
+        .allowlist_recursively(false)
+        .allowlist_function("^(larod.*)$")
+        .allowlist_type("^(_?larod.*)$")
+        .default_enum_style(bindgen::EnumVariation::NewType {
+            is_global: false,
+            is_bitfield: true,
+        })
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        // None of the foreign functions construct this enum so rustifying it is safe.
-        .rustified_enum("LicenseKeyState")
         .layout_tests(false);
     for path in library.include_paths {
         bindings = bindings.clang_args(&["-I", path.to_str().unwrap()]);
