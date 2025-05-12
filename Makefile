@@ -241,6 +241,11 @@ check_tests:
 
 ## Attempt to fix formatting automatically
 fix_format:
+	find apps/axoverlay_example crates/axoverlay -type f -name '*.rs' \
+	| xargs rustfmt \
+		--config imports_granularity=Crate \
+		--config group_imports=StdExternalCrate \
+		--edition 2021
 	cargo fmt
 .PHONY: fix_format
 
