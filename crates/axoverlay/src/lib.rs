@@ -23,11 +23,11 @@ use axoverlay_sys::{
     axoverlay_settings, axoverlay_stream_data, axoverlay_stream_type,
     axoverlay_stream_type_AXOVERLAY_STREAM_AV1, axoverlay_stream_type_AXOVERLAY_STREAM_H264,
     axoverlay_stream_type_AXOVERLAY_STREAM_H265, axoverlay_stream_type_AXOVERLAY_STREAM_JPEG,
-    axoverlay_stream_type_AXOVERLAY_STREAM_OTHER, axoverlay_stream_type_AXOVERLAY_STREAM_RGB,
-    axoverlay_stream_type_AXOVERLAY_STREAM_VOUT, axoverlay_stream_type_AXOVERLAY_STREAM_YCBCR,
+    axoverlay_stream_type_AXOVERLAY_STREAM_RGB, axoverlay_stream_type_AXOVERLAY_STREAM_VOUT,
+    axoverlay_stream_type_AXOVERLAY_STREAM_YCBCR,
 };
-use glib::translate::from_glib_full;
 pub use glib::Error;
+use glib::{translate::from_glib_full, MainLoop};
 use glib_sys::{gboolean, gpointer, GError, GFALSE, GTRUE};
 use log::error;
 
@@ -91,8 +91,8 @@ impl Backend {
 pub struct Camera(i32);
 
 impl Camera {
-    pub fn new(camera: i32) -> Self {
-        Self(camera)
+    pub fn new(_guard: &ApiGuard, id: i32) -> Self {
+        Self(id)
     }
 
     pub fn max_height(&self) -> Result<i32> {
@@ -115,7 +115,7 @@ impl std::fmt::Display for Camera {
 pub struct Color(axoverlay_palette_color);
 
 impl Color {
-    pub fn new(red: u8, green: u8, blue: u8, alpha: u8, pixelate: bool) -> Self {
+    pub fn new(_guard: &ApiGuard, red: u8, green: u8, blue: u8, alpha: u8, pixelate: bool) -> Self {
         Self(axoverlay_palette_color {
             red,
             green,
@@ -126,6 +126,10 @@ impl Color {
                 false => GFALSE,
             },
         })
+    }
+    pub fn set_palette(&mut self, index: usize) -> Result<()> {
+        // TODO: Safety
+        unsafe { try_func!(axoverlay_set_palette_color, index as c_int, &mut self.0) }
     }
 }
 
@@ -147,20 +151,9 @@ impl ColorSpace {
     }
 }
 
-pub struct OverlayData(axoverlay_overlay_data);
+pub struct OverlayBuilder(axoverlay_overlay_data);
 
-impl Default for OverlayData {
-    fn default() -> Self {
-        let mut inner = MaybeUninit::<axoverlay_overlay_data>::uninit();
-        // TODO: Safety
-        unsafe {
-            axoverlay_init_overlay_data(inner.as_mut_ptr());
-            Self(inner.assume_init())
-        }
-    }
-}
-
-impl OverlayData {
+impl OverlayBuilder {
     pub fn height(&mut self, height: i32) -> &mut Self {
         self.0.height = height;
         self
@@ -189,6 +182,17 @@ impl OverlayData {
 #[derive(Debug, Eq, PartialEq)]
 pub struct OverlayId(c_int);
 
+impl OverlayId {
+    pub fn builder(_guard: &ApiGuard) -> OverlayBuilder {
+        let mut inner = MaybeUninit::<axoverlay_overlay_data>::uninit();
+        // TODO: Safety
+        unsafe {
+            axoverlay_init_overlay_data(inner.as_mut_ptr());
+            OverlayBuilder(inner.assume_init())
+        }
+    }
+}
+
 impl Drop for OverlayId {
     fn drop(&mut self) {
         // TODO: Safety
@@ -200,9 +204,6 @@ impl Drop for OverlayId {
         }
     }
 }
-
-#[derive(Debug)]
-pub struct Settings(axoverlay_settings);
 
 type AdjustmentFunction = fn(
     id: OverlayId,
@@ -293,6 +294,9 @@ type SelectFunction = extern "C" fn(
     type_: axoverlay_stream_type,
 ) -> gboolean;
 
+#[derive(Debug)]
+pub struct Settings(axoverlay_settings);
+
 impl Settings {
     pub fn backend(&mut self, backend: Backend) -> &mut Self {
         self.0.backend = backend.as_c_uint();
@@ -320,9 +324,12 @@ impl Settings {
         self
     }
 
-    pub fn init(&mut self) -> Result<()> {
+    pub fn init(&mut self, _main_loop: &MainLoop) -> Result<ApiGuard> {
         // TODO: Safety
-        unsafe { try_func!(axoverlay_init, &mut self.0) }
+        match unsafe { try_func!(axoverlay_init, &mut self.0) } {
+            Ok(()) => Ok(ApiGuard {}),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -337,25 +344,15 @@ impl Default for Settings {
     }
 }
 
-pub fn set_palette_color(index: usize, color: &mut Color) -> Result<()> {
-    // TODO: Safety
-    unsafe { try_func!(axoverlay_set_palette_color, index as c_int, &mut color.0) }
-}
+pub struct ApiGuard {}
 
+/// Must not be called before `API` has been initialized
 pub fn redraw() -> Result<()> {
     // TODO: Safety
     unsafe { try_func!(axoverlay_redraw,) }
 }
 
-pub struct CleanupGuard;
-
-impl Default for CleanupGuard {
-    fn default() -> Self {
-        Self
-    }
-}
-
-impl Drop for CleanupGuard {
+impl Drop for ApiGuard {
     fn drop(&mut self) {
         ADJUSTMENT_CALLBACK.lock().unwrap().take();
         // TODO: Safety
@@ -396,7 +393,7 @@ impl StreamData {
 
     pub fn camera(&self) -> Camera {
         // TODO: Safety
-        Camera::new(unsafe { (*self.0).camera })
+        Camera(unsafe { (*self.0).camera })
     }
 
     pub fn width(&self) -> i32 {
@@ -449,19 +446,6 @@ impl StreamType {
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_RGB => Self::RGB,
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_AV1 => Self::AV1,
             _ => Self::Other,
-        }
-    }
-
-    pub fn as_c_uint(&self) -> axoverlay_stream_type {
-        match self {
-            Self::JPEG => axoverlay_stream_type_AXOVERLAY_STREAM_JPEG,
-            Self::H264 => axoverlay_stream_type_AXOVERLAY_STREAM_H264,
-            Self::H265 => axoverlay_stream_type_AXOVERLAY_STREAM_H265,
-            Self::YCbCr => axoverlay_stream_type_AXOVERLAY_STREAM_YCBCR,
-            Self::VOut => axoverlay_stream_type_AXOVERLAY_STREAM_VOUT,
-            Self::Other => axoverlay_stream_type_AXOVERLAY_STREAM_OTHER,
-            Self::RGB => axoverlay_stream_type_AXOVERLAY_STREAM_RGB,
-            Self::AV1 => axoverlay_stream_type_AXOVERLAY_STREAM_AV1,
         }
     }
 }

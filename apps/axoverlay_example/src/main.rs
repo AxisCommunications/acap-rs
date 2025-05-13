@@ -1,4 +1,4 @@
-// #![forbid(unsafe_code)]
+#![forbid(unsafe_code)]
 
 use std::{
     ffi::{c_float, c_int},
@@ -6,14 +6,11 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-use axoverlay::{
-    redraw, set_palette_color, Backend, Camera, CleanupGuard, Color, OverlayData, OverlayId,
-    PosType, Settings, StreamData,
-};
+use axoverlay::{redraw, Backend, Camera, Color, OverlayId, PosType, Settings, StreamData};
 use libc::{SIGINT, SIGTERM};
 use log::{error, info};
 
-// TODO: Investiagate if this can be thread local
+// TODO: Investigate if this can be thread local
 static SHARED_STATE: Mutex<Option<GlobalState>> = Mutex::new(None);
 const PALETTE_VALUE_RANGE: f64 = 255.0;
 struct GlobalState {
@@ -209,21 +206,21 @@ fn main() -> anyhow::Result<()> {
         bail!("AXOVERLAY_CAIRO_IMAGE_BACKEND is not supported");
     }
 
-    Settings::default()
+    let guard = Settings::default()
         .render_callback(render_overlay_cb)
         .adjustment_callback(adjustment_cb)
         .backend(Backend::CairoImage)
-        .init()
+        .init(&main_loop)
         .context("Failed to initialize axoverlay")?;
 
     Ok(())
-        .and_then(|()| set_palette_color(0, &mut Color::new(0, 0, 0, 0, false)))
-        .and_then(|()| set_palette_color(1, &mut Color::new(255, 0, 0, 255, false)))
-        .and_then(|()| set_palette_color(2, &mut Color::new(0, 255, 0, 255, false)))
-        .and_then(|()| set_palette_color(3, &mut Color::new(0, 0, 255, 255, false)))
+        .and_then(|()| Color::new(&guard, 0, 0, 0, 0, false).set_palette(0))
+        .and_then(|()| Color::new(&guard, 255, 0, 0, 255, false).set_palette(1))
+        .and_then(|()| Color::new(&guard, 0, 255, 0, 255, false).set_palette(2))
+        .and_then(|()| Color::new(&guard, 0, 0, 255, 255, false).set_palette(3))
         .context("Failed to set palette color")?;
 
-    let camera = Camera::new(1);
+    let camera = Camera::new(&guard, 1);
     let camera_width = camera
         .max_width()
         .context("Failed to get max resolution width")?;
@@ -232,21 +229,19 @@ fn main() -> anyhow::Result<()> {
         .context("Failed to get max resolution height")?;
     info!("Max resolution (width x height): {camera_width} x {camera_height}");
 
-    let overlay_id = OverlayData::default()
+    let overlay_id = OverlayId::builder(&guard)
         .width(camera_width)
         .height(camera_height)
         .colorspace(axoverlay::ColorSpace::ARGB32)
         .create_overlay()
         .context("Failed to create first overlay")?;
 
-    let overlay_id_text = OverlayData::default()
+    let overlay_id_text = OverlayId::builder(&guard)
         .width(camera_width)
         .height(camera_height)
         .colorspace(axoverlay::ColorSpace::ARGB32)
         .create_overlay()
         .context("Failed to create first overlay")?;
-
-    let _cleanup_guard = CleanupGuard::default();
 
     redraw().context("Failed to draw overlays")?;
 
