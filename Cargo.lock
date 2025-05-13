@@ -250,6 +250,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "axserialport"
+version = "0.0.0"
+dependencies = [
+ "axserialport-sys",
+ "glib",
+ "glib-sys",
+]
+
+[[package]]
+name = "axserialport-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen 0.69.5",
+ "glib-sys",
+ "pkg-config",
+]
+
+[[package]]
+name = "axserialport_example"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "axserialport",
+ "glib",
+ "glib-sys",
+ "libc",
+ "log",
+]
+
+[[package]]
 name = "axstorage"
 version = "0.0.0"
 dependencies = [
