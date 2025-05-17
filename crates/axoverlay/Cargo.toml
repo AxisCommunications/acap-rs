@@ -7,9 +7,7 @@ license = "MIT"
 [dependencies]
 glib = { workspace = true }
 glib-sys = { workspace = true }
-libc = { workspace = true }
 log = { workspace = true }
-thiserror = { workspace = true }
 cairo-rs = { workspace = true }
 
 axoverlay-sys = { workspace = true }

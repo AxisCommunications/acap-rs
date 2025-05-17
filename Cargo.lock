@@ -229,9 +229,7 @@ dependencies = [
  "cairo-rs",
  "glib",
  "glib-sys",
- "libc",
  "log",
- "thiserror 1.0.69",
 ]
 
 [[package]]
