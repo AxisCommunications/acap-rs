@@ -10,7 +10,7 @@ anyhow = "1.0.86"
 async-channel = "2.3.1"
 axum = "0.7.4"
 bindgen = "0.69.4"
-cairo-rs = "0.20.7"
+cairo-rs = { version = "0.20.7", default-features = false }
 clap = "4.5.1"
 clap_complete = "4.5.2"
 diqwest = "3.1.0"

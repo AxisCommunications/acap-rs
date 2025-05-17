@@ -1,25 +1,23 @@
 #![forbid(unsafe_code)]
 
-use std::{
-    ffi::{c_float, c_int},
-    sync::Mutex,
-};
+use std::cell::RefCell;
 
 use anyhow::{bail, Context};
-use axoverlay::{redraw, Backend, Camera, Color, OverlayId, PosType, Settings, StreamData};
+use axoverlay::{
+    redraw, AnchorPoint, Backend, Camera, Color, Overlay, OverlayInfo, PosType, Settings,
+    StreamData,
+};
 use libc::{SIGINT, SIGTERM};
-use log::{error, info};
+use log::{error, info, warn};
 
-// TODO: Investigate if this can be thread local
-static SHARED_STATE: Mutex<Option<GlobalState>> = Mutex::new(None);
 const PALETTE_VALUE_RANGE: f64 = 255.0;
-struct GlobalState {
-    animation_timer: glib::SourceId,
-    overlay_id: OverlayId,
-    overlay_id_text: OverlayId,
-    counter: usize,
-    top_color: i32,
-    bottom_color: i32,
+
+thread_local! {
+    static COUNTER: RefCell<i32> = const { RefCell::new(10) };
+    static TOP_COLOR: RefCell<i32> = const { RefCell::new(1) };
+    static BOTTOM_COLOR: RefCell<i32> = const { RefCell::new(3) };
+    static OVERLAY_ID: RefCell<Option<i32>> = const { RefCell::new(None) };
+    static OVERLAY_ID_TEXT: RefCell<Option<i32>> = const { RefCell::new(None) };
 }
 
 fn index2cairo(color_index: i32) -> f64 {
@@ -40,10 +38,12 @@ fn draw_rectangle(
     context.set_operator(cairo::Operator::Source);
     context.set_line_width(line_width);
     context.rectangle(left, top, right - left, bottom - top);
-    let _ = context.stroke();
+    if let Err(e) = context.stroke() {
+        warn!("Error when drawing rectangle: {e:?}");
+    }
 }
 
-fn draw_text(context: &cairo::Context, pos_x: f64, pos_y: f64, counter: usize) {
+fn draw_text(context: &cairo::Context, pos_x: f64, pos_y: f64) -> anyhow::Result<()> {
     //  Show text in black
     context.set_source_rgb(0.0, 0.0, 0.0);
     context.select_font_face("serif", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
@@ -51,25 +51,24 @@ fn draw_text(context: &cairo::Context, pos_x: f64, pos_y: f64, counter: usize) {
 
     // Position the text at a fix centered position
     let str_length = "Countdown  ";
-    let Ok(te_length) = context.text_extents(str_length) else {
-        return;
-    };
+    let te_length = context.text_extents(str_length)?;
     context.move_to(pos_x - te_length.width() / 2.0, pos_y);
 
-    // Add the counter number to the shown text
-    let s = format!("Countdown {}", counter);
-    let _ = context.text_extents(&s);
-    let _ = context.show_text(&s);
+    // Add the counter-number to the shown text
+    let s = COUNTER.with(|c| format!("Countdown {}", *c.borrow()));
+    let _te = context.text_extents(&s)?;
+    context.show_text(&s)?;
+    Ok(())
 }
 
 fn adjustment_cb(
-    _id: OverlayId,
+    _id: i32,
     stream: &StreamData,
     _postype: &PosType,
-    _overlay_x: &mut c_float,
-    _overlay_y: &mut c_float,
-    overlay_width: &mut c_int,
-    overlay_height: &mut c_int,
+    _overlay_x: &mut f32,
+    _overlay_y: &mut f32,
+    overlay_width: &mut i32,
+    overlay_height: &mut i32,
 ) {
     *overlay_width = stream.width();
     *overlay_height = stream.height();
@@ -88,20 +87,21 @@ fn adjustment_cb(
         stream.height()
     );
     info!(
-        "Stream or rotation changed, rotation angle is now: {}",
+        "Stream or rotation changed, the rotation angle is now: {}",
         stream.rotation()
     );
 }
 
 fn render_overlay_cb(
     rendering_context: &cairo::Context,
-    id: OverlayId,
+    id: i32,
     stream: &StreamData,
     _postype: PosType,
-    _overlay_x: c_float,
-    _overlay_y: c_float,
-    overlay_width: c_int,
-    overlay_height: c_int,
+    OverlayInfo {
+        width: overlay_width,
+        height: overlay_height,
+        ..
+    }: OverlayInfo,
 ) {
     info!("Render callback for camera: {}", stream.camera());
     info!(
@@ -115,22 +115,18 @@ fn render_overlay_cb(
     );
     info!("Render callback for rotation: {}", stream.rotation());
 
-    let state = SHARED_STATE.lock().unwrap();
-    let GlobalState {
-        overlay_id,
-        overlay_id_text,
-        counter,
-        top_color,
-        bottom_color,
-        ..
-    } = state.as_ref().unwrap();
+    // Unwrap is OK because these variables are set on the same thread before redraw is first called.
+    let overlay_id = OVERLAY_ID.with(|id| *id.borrow()).unwrap();
+    let overlay_text_id = OVERLAY_ID_TEXT.with(|id| *id.borrow()).unwrap();
 
-    if id == *overlay_id {
+    if id == overlay_id {
         let val = index2cairo(0);
         rendering_context.set_source_rgba(val, val, val, val);
         rendering_context.set_operator(cairo::Operator::Source);
         rendering_context.rectangle(0.0, 0.0, overlay_width as f64, overlay_height as f64);
-        let _ = rendering_context.fill();
+        if let Err(e) = rendering_context.fill() {
+            warn!("Failed to render overlay: {e:?}");
+        };
 
         //  Draw a top rectangle in toggling color
         draw_rectangle(
@@ -139,7 +135,7 @@ fn render_overlay_cb(
             0.0,
             overlay_width as f64,
             overlay_height as f64 / 4.0,
-            *top_color,
+            TOP_COLOR.with_borrow(|c| *c),
             9.6,
         );
 
@@ -150,37 +146,32 @@ fn render_overlay_cb(
             overlay_height as f64 * 3.0 / 4.0,
             overlay_width as f64,
             overlay_height as f64,
-            *bottom_color,
+            BOTTOM_COLOR.with_borrow(|c| *c),
             2.0,
         );
-    } else if id == *overlay_id_text {
+    } else if id == overlay_text_id {
         //  Show text in black
-        draw_text(
+        if let Err(e) = draw_text(
             rendering_context,
             overlay_width as f64 / 2.0,
             overlay_height as f64 / 2.0,
-            *counter,
-        );
+        ) {
+            error!("Failed to draw text: {e:?}");
+        }
     } else {
         info!("Unknown overlay id!");
     }
 }
 
 fn update_overlay_cb() -> glib::ControlFlow {
-    if let Some(GlobalState {
-        counter,
-        top_color,
-        bottom_color,
-        ..
-    }) = SHARED_STATE.lock().unwrap().as_mut()
-    {
+    let counter = COUNTER.with_borrow_mut(|counter| {
         *counter = if *counter < 1 { 10 } else { *counter - 1 };
-        *top_color = if *top_color > 2 { 1 } else { *top_color + 1 };
-        *bottom_color = if *bottom_color > 2 {
-            1
-        } else {
-            *bottom_color + 1
-        };
+        *counter
+    });
+
+    if counter == 0 {
+        TOP_COLOR.with_borrow_mut(|color| *color = if *color > 2 { 1 } else { *color + 1 });
+        BOTTOM_COLOR.with_borrow_mut(|color| *color = if *color > 2 { 1 } else { *color + 1 });
     }
 
     if let Err(e) = redraw() {
@@ -203,7 +194,7 @@ fn main() -> anyhow::Result<()> {
     });
 
     if !Backend::CairoImage.is_supported() {
-        bail!("AXOVERLAY_CAIRO_IMAGE_BACKEND is not supported");
+        bail!("The cairo backend is not supported");
     }
 
     let guard = Settings::default()
@@ -229,42 +220,38 @@ fn main() -> anyhow::Result<()> {
         .context("Failed to get max resolution height")?;
     info!("Max resolution (width x height): {camera_width} x {camera_height}");
 
-    let overlay_id = OverlayId::builder(&guard)
+    let rectangle = Overlay::builder(&guard)
+        .position_type(PosType::CustomNormalized)
+        .anchor_point(AnchorPoint::Center)
+        .x(0.0)
+        .y(0.0)
         .width(camera_width)
         .height(camera_height)
-        .colorspace(axoverlay::ColorSpace::ARGB32)
+        .colorspace(axoverlay::ColorSpace::FourBitPalette)
         .create_overlay()
-        .context("Failed to create first overlay")?;
+        .context("Failed to create rectangle overlay")?;
+    OVERLAY_ID.with_borrow_mut(|id| *id = Some(rectangle.id()));
 
-    let overlay_id_text = OverlayId::builder(&guard)
+    let text = Overlay::builder(&guard)
+        .position_type(PosType::CustomNormalized)
+        .anchor_point(AnchorPoint::Center)
+        .x(0.0)
+        .y(0.0)
+        .scale_to_stream(false)
         .width(camera_width)
         .height(camera_height)
         .colorspace(axoverlay::ColorSpace::ARGB32)
         .create_overlay()
-        .context("Failed to create first overlay")?;
+        .context("Failed to create text overlay")?;
+    OVERLAY_ID_TEXT.with_borrow_mut(|id| *id = Some(text.id()));
 
     redraw().context("Failed to draw overlays")?;
 
     let animation_timer = glib::timeout_add_seconds(1, update_overlay_cb);
 
-    SHARED_STATE.lock().unwrap().replace(GlobalState {
-        animation_timer,
-        overlay_id,
-        overlay_id_text,
-        counter: 10,
-        top_color: 1,
-        bottom_color: 3,
-    });
-
     main_loop.run();
 
-    SHARED_STATE
-        .lock()
-        .unwrap()
-        .take()
-        .unwrap()
-        .animation_timer
-        .remove();
+    animation_timer.remove();
 
     Ok(())
 }

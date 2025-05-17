@@ -517,7 +517,6 @@ checksum = "ae50b5510d86cf96ac2370e66d8dc960882f3df179d6a5a1e52bd94a1416c0f7"
 dependencies = [
  "bitflags 2.9.0",
  "cairo-sys-rs",
- "glib",
  "libc",
 ]
 
@@ -527,7 +526,6 @@ version = "0.20.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f18b6bb8e43c7eb0f2aac7976afe0c61b6f5fc2ab7bc4c139537ea56c92290df"
 dependencies = [
- "glib-sys",
  "libc",
  "system-deps",
 ]

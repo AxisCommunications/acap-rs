@@ -8,6 +8,8 @@ use std::{
 };
 
 use axoverlay_sys::{
+    axoverlay_anchor_point_AXOVERLAY_ANCHOR_CENTER,
+    axoverlay_anchor_point_AXOVERLAY_ANCHOR_TOP_LEFT,
     axoverlay_backend_type_AXOVERLAY_CAIRO_IMAGE_BACKEND, axoverlay_cleanup,
     axoverlay_colorspace_AXOVERLAY_COLORSPACE_1BIT_PALETTE,
     axoverlay_colorspace_AXOVERLAY_COLORSPACE_4BIT_PALETTE,
@@ -64,6 +66,21 @@ macro_rules! try_func_retval {
     }}
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AnchorPoint {
+    TopLeft,
+    Center,
+}
+
+impl AnchorPoint {
+    fn as_int(self) -> u32 {
+        match self {
+            AnchorPoint::TopLeft => axoverlay_anchor_point_AXOVERLAY_ANCHOR_TOP_LEFT,
+            AnchorPoint::Center => axoverlay_anchor_point_AXOVERLAY_ANCHOR_CENTER,
+        }
+    }
+}
+
 // TODO: Implement support for other backends in `render_callback_trampoline`
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -74,7 +91,7 @@ pub enum Backend {
 }
 
 impl Backend {
-    fn as_c_uint(self) -> u32 {
+    fn as_int(self) -> u32 {
         match self {
             Backend::CairoImage => axoverlay_backend_type_AXOVERLAY_CAIRO_IMAGE_BACKEND,
             // Backend::OpenGLES => axoverlay_backend_type_AXOVERLAY_OPENGLES_BACKEND,
@@ -84,7 +101,7 @@ impl Backend {
 
     pub fn is_supported(&self) -> bool {
         // TODO: Safety
-        unsafe { axoverlay_is_backend_supported(self.as_c_uint()) == 0 }
+        unsafe { axoverlay_is_backend_supported(self.as_int()) == GTRUE }
     }
 }
 
@@ -142,7 +159,7 @@ pub enum ColorSpace {
 }
 
 impl ColorSpace {
-    fn as_c_uint(self) -> u32 {
+    fn as_int(self) -> u32 {
         match self {
             ColorSpace::ARGB32 => axoverlay_colorspace_AXOVERLAY_COLORSPACE_ARGB32,
             ColorSpace::FourBitPalette => axoverlay_colorspace_AXOVERLAY_COLORSPACE_4BIT_PALETTE,
@@ -164,25 +181,53 @@ impl OverlayBuilder {
         self
     }
 
-    pub fn colorspace(&mut self, colorspace: ColorSpace) -> &mut Self {
-        self.0.colorspace = colorspace.as_c_uint();
+    pub fn x(&mut self, x: f32) -> &mut Self {
+        self.0.x = x;
         self
     }
 
-    pub fn create_overlay(&mut self) -> Result<OverlayId> {
+    pub fn y(&mut self, y: f32) -> &mut Self {
+        self.0.y = y;
+        self
+    }
+
+    pub fn anchor_point(&mut self, anchor_point: AnchorPoint) -> &mut Self {
+        self.0.anchor_point = anchor_point.as_int();
+        self
+    }
+
+    pub fn colorspace(&mut self, colorspace: ColorSpace) -> &mut Self {
+        self.0.colorspace = colorspace.as_int();
+        self
+    }
+
+    pub fn position_type(&mut self, pos_type: PosType) -> &mut Self {
+        self.0.postype = pos_type.as_int();
+        self
+    }
+
+    pub fn scale_to_stream(&mut self, scale_to_stream: bool) -> &mut Self {
+        self.0.scale_to_stream = match scale_to_stream {
+            true => GTRUE,
+            false => GFALSE,
+        };
+        self
+    }
+
+    pub fn create_overlay(&mut self) -> Result<Overlay> {
         // TODO: Implement user data
         // TODO: Safety
         match unsafe { try_func_retval!(axoverlay_create_overlay, &mut self.0, ptr::null_mut()) } {
-            Ok(id) => Ok(OverlayId(id)),
+            Ok(id) => Ok(Overlay(id)),
             Err(e) => Err(e),
         }
     }
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct OverlayId(c_int);
+pub struct Overlay(c_int);
 
-impl OverlayId {
+impl Overlay {
     pub fn builder(_guard: &ApiGuard) -> OverlayBuilder {
         let mut inner = MaybeUninit::<axoverlay_overlay_data>::uninit();
         // TODO: Safety
@@ -191,9 +236,13 @@ impl OverlayId {
             OverlayBuilder(inner.assume_init())
         }
     }
+
+    pub fn id(&self) -> i32 {
+        self.0
+    }
 }
 
-impl Drop for OverlayId {
+impl Drop for Overlay {
     fn drop(&mut self) {
         // TODO: Safety
         match unsafe { try_func!(axoverlay_destroy_overlay, self.0) } {
@@ -205,10 +254,17 @@ impl Drop for OverlayId {
     }
 }
 
+pub struct OverlayInfo {
+    pub x: f32,
+    pub y: f32,
+    pub width: i32,
+    pub height: i32,
+}
+
 type AdjustmentFunction = fn(
-    id: OverlayId,
+    id: i32,
     stream: &StreamData,
-    postype: &PosType,
+    position_type: &PosType,
     overlay_x: &mut c_float,
     overlay_y: &mut c_float,
     overlay_width: &mut c_int,
@@ -218,7 +274,7 @@ type AdjustmentFunction = fn(
 extern "C" fn adjustment_callback_trampoline(
     id: c_int,
     stream: *mut axoverlay_stream_data,
-    postype: *mut axoverlay_position_type,
+    position_type: *mut axoverlay_position_type,
     overlay_x: *mut c_float,
     overlay_y: *mut c_float,
     overlay_width: *mut c_int,
@@ -227,16 +283,16 @@ extern "C" fn adjustment_callback_trampoline(
 ) {
     if let Some(adjustment_function) = ADJUSTMENT_CALLBACK.lock().unwrap().as_ref() {
         let stream_data = StreamData(stream);
-        let postype = unsafe { PosType::from_c_uint(*postype) };
+        let position_type = unsafe { PosType::from_int(*position_type) };
         let overlay_x = unsafe { overlay_x.as_mut().unwrap() };
         let overlay_y = unsafe { overlay_y.as_mut().unwrap() };
         let overlay_width = unsafe { overlay_width.as_mut().unwrap() };
         let overlay_height = unsafe { overlay_height.as_mut().unwrap() };
 
         adjustment_function(
-            OverlayId(id),
+            id,
             &stream_data,
-            &postype,
+            &position_type,
             overlay_x,
             overlay_y,
             overlay_width,
@@ -245,11 +301,19 @@ extern "C" fn adjustment_callback_trampoline(
     }
 }
 
+type RenderFunction = fn(
+    rendering_context: &cairo::Context,
+    id: i32,
+    stream: &StreamData,
+    position_type: PosType,
+    info: OverlayInfo,
+);
+
 extern "C" fn render_callback_trampoline(
     rendering_context: gpointer,
     id: c_int,
     stream: *mut axoverlay_stream_data,
-    postype: axoverlay_position_type,
+    position_type: axoverlay_position_type,
     overlay_x: c_float,
     overlay_y: c_float,
     overlay_width: c_int,
@@ -258,32 +322,24 @@ extern "C" fn render_callback_trampoline(
 ) {
     if let Some(render_callback) = RENDER_CALLBACK.lock().unwrap().as_ref() {
         let stream_data = StreamData(stream);
-        let postype = PosType::from_c_uint(postype);
+        let position_type = PosType::from_int(position_type);
         let rendering_context = unsafe {
             cairo::Context::from_raw_borrow(rendering_context as *mut cairo::ffi::cairo_t)
         };
         render_callback(
             &rendering_context,
-            OverlayId(id),
+            id,
             &stream_data,
-            postype,
-            overlay_x,
-            overlay_y,
-            overlay_width,
-            overlay_height,
+            position_type,
+            OverlayInfo {
+                x: overlay_x,
+                y: overlay_y,
+                width: overlay_width,
+                height: overlay_height,
+            },
         );
     }
 }
-type RenderFunction = fn(
-    rendering_context: &cairo::Context,
-    id: OverlayId,
-    stream: &StreamData,
-    postype: PosType,
-    overlay_x: c_float,
-    overlay_y: c_float,
-    overlay_width: c_int,
-    overlay_height: c_int,
-);
 
 type SelectFunction = extern "C" fn(
     camera: c_int,
@@ -299,7 +355,7 @@ pub struct Settings(axoverlay_settings);
 
 impl Settings {
     pub fn backend(&mut self, backend: Backend) -> &mut Self {
-        self.0.backend = backend.as_c_uint();
+        self.0.backend = backend.as_int();
         self
     }
 
@@ -370,7 +426,7 @@ pub enum PosType {
 }
 
 impl PosType {
-    fn from_c_uint(value: axoverlay_position_type) -> Self {
+    fn from_int(value: axoverlay_position_type) -> Self {
         match value {
             i if i == axoverlay_position_type_AXOVERLAY_TOP_LEFT => Self::TopLeft,
             i if i == axoverlay_position_type_AXOVERLAY_TOP_RIGHT => Self::TopRight,
@@ -379,6 +435,17 @@ impl PosType {
             i if i == axoverlay_position_type_AXOVERLAY_CUSTOM_NORMALIZED => Self::CustomNormalized,
             i if i == axoverlay_position_type_AXOVERLAY_CUSTOM_SOURCE => Self::CustomSource,
             _ => unreachable!(),
+        }
+    }
+
+    fn as_int(&self) -> axoverlay_position_type {
+        match self {
+            Self::TopLeft => axoverlay_position_type_AXOVERLAY_TOP_LEFT,
+            Self::TopRight => axoverlay_position_type_AXOVERLAY_TOP_RIGHT,
+            Self::BottomLeft => axoverlay_position_type_AXOVERLAY_BOTTOM_LEFT,
+            Self::BottomRight => axoverlay_position_type_AXOVERLAY_BOTTOM_RIGHT,
+            Self::CustomNormalized => axoverlay_position_type_AXOVERLAY_CUSTOM_NORMALIZED,
+            Self::CustomSource => axoverlay_position_type_AXOVERLAY_CUSTOM_SOURCE,
         }
     }
 }
@@ -418,7 +485,7 @@ impl StreamData {
 
     pub fn type_(&self) -> StreamType {
         // TODO: Safety
-        StreamType::from_c_uint(unsafe { (*self.0).type_ })
+        StreamType::from_int(unsafe { (*self.0).type_ })
     }
 }
 
@@ -436,7 +503,7 @@ pub enum StreamType {
 }
 
 impl StreamType {
-    fn from_c_uint(value: axoverlay_stream_type) -> Self {
+    fn from_int(value: axoverlay_stream_type) -> Self {
         match value {
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_JPEG => Self::JPEG,
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_H264 => Self::H264,
