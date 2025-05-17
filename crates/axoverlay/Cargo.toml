@@ -1,0 +1,13 @@
+[package]
+name = "axoverlay"
+version = "0.0.0"
+edition.workspace = true
+license = "MIT"
+
+[dependencies]
+glib = { workspace = true }
+glib-sys = { workspace = true }
+log = { workspace = true }
+cairo-rs = { workspace = true }
+
+axoverlay-sys = { workspace = true }

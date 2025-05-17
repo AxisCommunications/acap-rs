@@ -1,4 +1,5 @@
 2307f06b6728658c1e0d6d9251e3fbd22f209b9d  target-aarch64/acap/Challenge_Build_Tools_1_0_0_all.eap
+839a1c111f8a7862d23b3b6ec66ddbda4a83d8ec  target-aarch64/acap/axoverlay_example_0_0_0_aarch64.eap
 db7ab42f035a7eae0b5a82eb7ec9cc5d0584a8cc  target-aarch64/acap/axparameter_example_0_0_0_aarch64.eap
 bd570bf0158fddfd9bc741099c87a1a14ffe788f  target-aarch64/acap/axstorage_example_0_0_0_aarch64.eap
 dd15c890a3fb8fb38c5ce2e8364f215ff1eb8610  target-aarch64/acap/bounding_box_example_0_0_0_aarch64.eap

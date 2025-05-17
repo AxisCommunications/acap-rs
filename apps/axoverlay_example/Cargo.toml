@@ -1,0 +1,18 @@
+[package]
+name = "axoverlay_example"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+cairo-rs = { workspace = true }
+glib = { workspace = true }
+log = { workspace = true }
+libc = { workspace = true }
+
+acap-logging = { workspace = true }
+axoverlay = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]

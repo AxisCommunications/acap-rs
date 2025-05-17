@@ -10,6 +10,7 @@ anyhow = "1.0.86"
 async-channel = "2.3.1"
 axum = "0.7.4"
 bindgen = "0.69.4"
+cairo-rs = { version = "0.20.7", default-features = false }
 clap = "4.5.1"
 clap_complete = "4.5.2"
 diqwest = "3.1.0"
@@ -50,6 +51,8 @@ acap-ssh-utils = { path = "crates/acap-ssh-utils" }
 acap-vapix = { path = "crates/acap-vapix" }
 axevent = { path = "crates/axevent" }
 axevent-sys = { path = "crates/axevent-sys" }
+axoverlay = { path = "crates/axoverlay" }
+axoverlay-sys = { path = "crates/axoverlay-sys" }
 axparameter = { path = "crates/axparameter" }
 axparameter-sys = { path = "crates/axparameter-sys" }
 axstorage = { path = "crates/axstorage" }

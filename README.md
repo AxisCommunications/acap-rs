@@ -135,7 +135,8 @@ Each crate has a corresponding `*-sys`, which is omitted for brevity.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axevent/src/lib.rs)
 - `axoverlay`: Bindings for the Overlay API
-  - Status: 📄 Not started
+  - Status: 🧻 Proof of Concept
+  - Documentation: [Source code](crates/axoverlay/src/lib.rs)
 - `axserialport`: Bindings for the Serial Port API
   - Status: 📄 Not started
 - `axstorage`: Bindings for the Edge Storage API.
@@ -188,6 +189,9 @@ by this project.
 - `axparameter_example`: Creates, reads, updates, deletes, and subscribes to parameters.
   - Status: ⚠️ Alpha
   - [Source code](apps/axparameter_example/src/main.rs)
+- `axoverlay_example`: Draws two rectangles and a countdown in video streams.
+  - Status: 🧻 Proof of Concept
+  - [Source code](apps/axoverlay_example/src/main.rs)
 - `axstorage_example`: Writes data to files on all connected storages.
   - Status: ⚠️ Alpha
   - [Source code](apps/axstorage_example/src/main.rs)

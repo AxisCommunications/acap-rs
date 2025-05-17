@@ -13,6 +13,7 @@ apt-get install \
   g++-arm-linux-gnueabihf \
   git \
   iputils-ping \
+  libcairo2-dev \
   libglib2.0-dev \
   libssl-dev \
   pkg-config \
