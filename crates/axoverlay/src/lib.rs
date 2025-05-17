@@ -185,7 +185,7 @@ impl OverlayBuilder {
         self
     }
 
-    pub fn position_type(&mut self, pos_type: PosType) -> &mut Self {
+    pub fn position_type(&mut self, pos_type: PositionType) -> &mut Self {
         self.0.postype = pos_type.as_int();
         self
     }
@@ -239,7 +239,7 @@ pub struct OverlayInfo {
 type AdjustmentFunction = fn(
     id: i32,
     stream: &StreamData,
-    position_type: &PosType,
+    position_type: &PositionType,
     overlay_x: &mut c_float,
     overlay_y: &mut c_float,
     overlay_width: &mut c_int,
@@ -258,7 +258,7 @@ extern "C" fn adjustment_callback_trampoline(
 ) {
     if let Some(adjustment_function) = ADJUSTMENT_CALLBACK.lock().unwrap().as_ref() {
         let stream_data = StreamData(stream);
-        let position_type = unsafe { PosType::from_int(*position_type) };
+        let position_type = unsafe { PositionType::from_int(*position_type) };
         let overlay_x = unsafe { overlay_x.as_mut().unwrap() };
         let overlay_y = unsafe { overlay_y.as_mut().unwrap() };
         let overlay_width = unsafe { overlay_width.as_mut().unwrap() };
@@ -280,7 +280,7 @@ type RenderFunction = fn(
     rendering_context: &cairo::Context,
     id: i32,
     stream: &StreamData,
-    position_type: PosType,
+    position_type: PositionType,
     info: OverlayInfo,
 );
 
@@ -297,7 +297,7 @@ extern "C" fn render_callback_trampoline(
 ) {
     if let Some(render_callback) = RENDER_CALLBACK.lock().unwrap().as_ref() {
         let stream_data = StreamData(stream);
-        let position_type = PosType::from_int(position_type);
+        let position_type = PositionType::from_int(position_type);
         let rendering_context = unsafe {
             cairo::Context::from_raw_borrow(rendering_context as *mut cairo::ffi::cairo_t)
         };
@@ -405,7 +405,7 @@ impl Drop for Api {
     }
 }
 
-pub enum PosType {
+pub enum PositionType {
     TopLeft,
     TopRight,
     BottomLeft,
@@ -414,7 +414,7 @@ pub enum PosType {
     CustomSource,
 }
 
-impl PosType {
+impl PositionType {
     fn from_int(value: axoverlay_position_type) -> Self {
         match value {
             i if i == axoverlay_position_type_AXOVERLAY_TOP_LEFT => Self::TopLeft,

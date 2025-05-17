@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 
 use anyhow::{bail, Context};
-use axoverlay::{redraw, AnchorPoint, Backend, OverlayInfo, PosType, Settings, StreamData};
+use axoverlay::{redraw, AnchorPoint, Backend, OverlayInfo, PositionType, Settings, StreamData};
 use libc::{SIGINT, SIGTERM};
 use log::{error, info, warn};
 
@@ -46,7 +46,7 @@ fn draw_text(context: &cairo::Context, pos_x: f64, pos_y: f64) -> anyhow::Result
     context.select_font_face("serif", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
     context.set_font_size(32.0);
 
-    // Position the text at a fix centered position
+    // Position the text at a fix-centered position
     let str_length = "Countdown  ";
     let te_length = context.text_extents(str_length)?;
     context.move_to(pos_x - te_length.width() / 2.0, pos_y);
@@ -61,7 +61,7 @@ fn draw_text(context: &cairo::Context, pos_x: f64, pos_y: f64) -> anyhow::Result
 fn adjustment_cb(
     _id: i32,
     stream: &StreamData,
-    _postype: &PosType,
+    _postype: &PositionType,
     _overlay_x: &mut f32,
     _overlay_y: &mut f32,
     overlay_width: &mut i32,
@@ -93,13 +93,14 @@ fn render_overlay_cb(
     rendering_context: &cairo::Context,
     id: i32,
     stream: &StreamData,
-    _postype: PosType,
-    OverlayInfo {
+    _: PositionType,
+    info: OverlayInfo,
+) {
+    let OverlayInfo {
         width: overlay_width,
         height: overlay_height,
         ..
-    }: OverlayInfo,
-) {
+    } = info;
     info!("Render callback for camera: {}", stream.camera());
     info!(
         "Render callback for overlay: {} x {}",
@@ -219,7 +220,7 @@ fn main() -> anyhow::Result<()> {
 
     let rectangle = api
         .overlay_builder()
-        .position_type(PosType::CustomNormalized)
+        .position_type(PositionType::CustomNormalized)
         .anchor_point(AnchorPoint::Center)
         .x(0.0)
         .y(0.0)
@@ -227,12 +228,12 @@ fn main() -> anyhow::Result<()> {
         .height(camera_height)
         .colorspace(axoverlay::ColorSpace::FourBitPalette)
         .create_overlay()
-        .context("Failed to create rectangle overlay")?;
+        .context("Failed to create a rectangle overlay")?;
     OVERLAY_ID.with_borrow_mut(|id| *id = Some(rectangle.id()));
 
     let text = api
         .overlay_builder()
-        .position_type(PosType::CustomNormalized)
+        .position_type(PositionType::CustomNormalized)
         .anchor_point(AnchorPoint::Center)
         .x(0.0)
         .y(0.0)
