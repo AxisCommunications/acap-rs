@@ -202,11 +202,17 @@ fn main() -> anyhow::Result<()> {
         .init(&main_loop)
         .context("Failed to initialize axoverlay")?;
 
-    Ok(())
-        .and_then(|()| api.color(0, 0, 0, 0, false).set_palette(0))
-        .and_then(|()| api.color(255, 0, 0, 255, false).set_palette(1))
-        .and_then(|()| api.color(0, 255, 0, 255, false).set_palette(2))
-        .and_then(|()| api.color(0, 0, 255, 255, false).set_palette(3))
+    api.color(0, 0, 0, 0, false)
+        .set_palette(0)
+        .context("Failed to set palette color")?;
+    api.color(255, 0, 0, 255, false)
+        .set_palette(1)
+        .context("Failed to set palette color")?;
+    api.color(0, 255, 0, 255, false)
+        .set_palette(2)
+        .context("Failed to set palette color")?;
+    api.color(0, 0, 255, 255, false)
+        .set_palette(3)
         .context("Failed to set palette color")?;
 
     let camera = api.camera(1);
