@@ -341,15 +341,6 @@ extern "C" fn render_callback_trampoline(
     }
 }
 
-type SelectFunction = extern "C" fn(
-    camera: c_int,
-    width: c_int,
-    height: c_int,
-    rotation: c_int,
-    is_mirrored: gboolean,
-    type_: axoverlay_stream_type,
-) -> gboolean;
-
 #[derive(Debug)]
 pub struct Settings(axoverlay_settings);
 
@@ -372,11 +363,6 @@ impl Settings {
             panic!("Render function already set");
         }
         self.0.render_callback = Some(render_callback_trampoline);
-        self
-    }
-
-    pub fn select_callback(&mut self, f: SelectFunction) -> &mut Self {
-        self.0.select_callback = Some(f);
         self
     }
 
