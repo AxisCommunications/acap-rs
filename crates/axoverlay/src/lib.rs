@@ -108,10 +108,6 @@ impl Backend {
 pub struct Camera(i32);
 
 impl Camera {
-    pub fn new(_guard: &ApiGuard, id: i32) -> Self {
-        Self(id)
-    }
-
     pub fn max_height(&self) -> Result<i32> {
         // TODO: Safety
         unsafe { try_func_retval!(axoverlay_get_max_resolution_height, self.0) }
@@ -132,18 +128,6 @@ impl std::fmt::Display for Camera {
 pub struct Color(axoverlay_palette_color);
 
 impl Color {
-    pub fn new(_guard: &ApiGuard, red: u8, green: u8, blue: u8, alpha: u8, pixelate: bool) -> Self {
-        Self(axoverlay_palette_color {
-            red,
-            green,
-            blue,
-            alpha,
-            pixelate: match pixelate {
-                true => GTRUE,
-                false => GFALSE,
-            },
-        })
-    }
     pub fn set_palette(&mut self, index: usize) -> Result<()> {
         // TODO: Safety
         unsafe { try_func!(axoverlay_set_palette_color, index as c_int, &mut self.0) }
@@ -228,15 +212,6 @@ impl OverlayBuilder {
 pub struct Overlay(c_int);
 
 impl Overlay {
-    pub fn builder(_guard: &ApiGuard) -> OverlayBuilder {
-        let mut inner = MaybeUninit::<axoverlay_overlay_data>::uninit();
-        // TODO: Safety
-        unsafe {
-            axoverlay_init_overlay_data(inner.as_mut_ptr());
-            OverlayBuilder(inner.assume_init())
-        }
-    }
-
     pub fn id(&self) -> i32 {
         self.0
     }
@@ -366,10 +341,10 @@ impl Settings {
         self
     }
 
-    pub fn init(&mut self, _main_loop: &MainLoop) -> Result<ApiGuard> {
+    pub fn init(&mut self, _main_loop: &MainLoop) -> Result<Api> {
         // TODO: Safety
         match unsafe { try_func!(axoverlay_init, &mut self.0) } {
-            Ok(()) => Ok(ApiGuard {}),
+            Ok(()) => Ok(Api {}),
             Err(e) => Err(e),
         }
     }
@@ -386,7 +361,35 @@ impl Default for Settings {
     }
 }
 
-pub struct ApiGuard {}
+pub struct Api {}
+
+impl Api {
+    pub fn camera(&self, id: i32) -> Camera {
+        Camera(id)
+    }
+
+    pub fn color(&self, red: u8, green: u8, blue: u8, alpha: u8, pixelate: bool) -> Color {
+        Color(axoverlay_palette_color {
+            red,
+            green,
+            blue,
+            alpha,
+            pixelate: match pixelate {
+                true => GTRUE,
+                false => GFALSE,
+            },
+        })
+    }
+
+    pub fn overlay_builder(&self) -> OverlayBuilder {
+        let mut inner = MaybeUninit::<axoverlay_overlay_data>::uninit();
+        // TODO: Safety
+        unsafe {
+            axoverlay_init_overlay_data(inner.as_mut_ptr());
+            OverlayBuilder(inner.assume_init())
+        }
+    }
+}
 
 /// Must not be called before `API` has been initialized
 pub fn redraw() -> Result<()> {
@@ -394,7 +397,7 @@ pub fn redraw() -> Result<()> {
     unsafe { try_func!(axoverlay_redraw,) }
 }
 
-impl Drop for ApiGuard {
+impl Drop for Api {
     fn drop(&mut self) {
         ADJUSTMENT_CALLBACK.lock().unwrap().take();
         // TODO: Safety

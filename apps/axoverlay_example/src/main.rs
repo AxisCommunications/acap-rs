@@ -197,7 +197,7 @@ fn main() -> anyhow::Result<()> {
         bail!("The cairo backend is not supported");
     }
 
-    let guard = Settings::default()
+    let api = Settings::default()
         .render_callback(render_overlay_cb)
         .adjustment_callback(adjustment_cb)
         .backend(Backend::CairoImage)
@@ -205,13 +205,13 @@ fn main() -> anyhow::Result<()> {
         .context("Failed to initialize axoverlay")?;
 
     Ok(())
-        .and_then(|()| Color::new(&guard, 0, 0, 0, 0, false).set_palette(0))
-        .and_then(|()| Color::new(&guard, 255, 0, 0, 255, false).set_palette(1))
-        .and_then(|()| Color::new(&guard, 0, 255, 0, 255, false).set_palette(2))
-        .and_then(|()| Color::new(&guard, 0, 0, 255, 255, false).set_palette(3))
+        .and_then(|()| api.color(0, 0, 0, 0, false).set_palette(0))
+        .and_then(|()| api.color(255, 0, 0, 255, false).set_palette(1))
+        .and_then(|()| api.color(0, 255, 0, 255, false).set_palette(2))
+        .and_then(|()| api.color(0, 0, 255, 255, false).set_palette(3))
         .context("Failed to set palette color")?;
 
-    let camera = Camera::new(&guard, 1);
+    let camera = api.camera(1);
     let camera_width = camera
         .max_width()
         .context("Failed to get max resolution width")?;
@@ -220,7 +220,8 @@ fn main() -> anyhow::Result<()> {
         .context("Failed to get max resolution height")?;
     info!("Max resolution (width x height): {camera_width} x {camera_height}");
 
-    let rectangle = Overlay::builder(&guard)
+    let rectangle = api
+        .overlay_builder()
         .position_type(PosType::CustomNormalized)
         .anchor_point(AnchorPoint::Center)
         .x(0.0)
@@ -232,7 +233,8 @@ fn main() -> anyhow::Result<()> {
         .context("Failed to create rectangle overlay")?;
     OVERLAY_ID.with_borrow_mut(|id| *id = Some(rectangle.id()));
 
-    let text = Overlay::builder(&guard)
+    let text = api
+        .overlay_builder()
         .position_type(PosType::CustomNormalized)
         .anchor_point(AnchorPoint::Center)
         .x(0.0)
