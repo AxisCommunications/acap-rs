@@ -3,10 +3,7 @@
 use std::cell::RefCell;
 
 use anyhow::{bail, Context};
-use axoverlay::{
-    redraw, AnchorPoint, Backend, Camera, Color, Overlay, OverlayInfo, PosType, Settings,
-    StreamData,
-};
+use axoverlay::{redraw, AnchorPoint, Backend, OverlayInfo, PosType, Settings, StreamData};
 use libc::{SIGINT, SIGTERM};
 use log::{error, info, warn};
 

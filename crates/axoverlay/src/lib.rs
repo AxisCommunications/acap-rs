@@ -30,7 +30,7 @@ use axoverlay_sys::{
 };
 pub use glib::Error;
 use glib::{translate::from_glib_full, MainLoop};
-use glib_sys::{gboolean, gpointer, GError, GFALSE, GTRUE};
+use glib_sys::{gpointer, GError, GFALSE, GTRUE};
 use log::error;
 
 static ADJUSTMENT_CALLBACK: Mutex<Option<AdjustmentFunction>> = Mutex::new(None);
