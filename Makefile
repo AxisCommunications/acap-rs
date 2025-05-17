@@ -216,8 +216,8 @@ check_lint:
 
 ## Check that risky FFI patterns are sound using miri
 check_miri:
-	rustup +nightly component add miri
-	cargo +nightly miri test \
+	rustup +nightly-2025-04-18 component add miri
+	cargo +nightly-2025-04-18 miri test \
 		--package ffi_patterns \
 		--target aarch64-unknown-linux-gnu \
 		--target thumbv7neon-unknown-linux-gnueabihf
