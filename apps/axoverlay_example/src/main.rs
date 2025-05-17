@@ -29,15 +29,14 @@ fn draw_rectangle(
     bottom: f64,
     color_index: i32,
     line_width: f64,
-) {
+) -> anyhow::Result<()> {
     let val = index2cairo(color_index);
     context.set_source_rgba(val, val, val, val);
     context.set_operator(cairo::Operator::Source);
     context.set_line_width(line_width);
     context.rectangle(left, top, right - left, bottom - top);
-    if let Err(e) = context.stroke() {
-        warn!("Error when drawing rectangle: {e:?}");
-    }
+    context.stroke()?;
+    Ok(())
 }
 
 fn draw_text(context: &cairo::Context, pos_x: f64, pos_y: f64) -> anyhow::Result<()> {
@@ -127,7 +126,7 @@ fn render_overlay_cb(
         };
 
         //  Draw a top rectangle in toggling color
-        draw_rectangle(
+        if let Err(e) = draw_rectangle(
             rendering_context,
             0.0,
             0.0,
@@ -135,10 +134,12 @@ fn render_overlay_cb(
             overlay_height as f64 / 4.0,
             TOP_COLOR.with_borrow(|c| *c),
             9.6,
-        );
+        ) {
+            warn!("Error when drawing rectangle: {e:?}");
+        }
 
         //  Draw a bottom rectangle in toggling color
-        draw_rectangle(
+        if let Err(e) = draw_rectangle(
             rendering_context,
             0.0,
             overlay_height as f64 * 3.0 / 4.0,
@@ -146,7 +147,9 @@ fn render_overlay_cb(
             overlay_height as f64,
             BOTTOM_COLOR.with_borrow(|c| *c),
             2.0,
-        );
+        ) {
+            warn!("Error when drawing rectangle: {e:?}");
+        }
     } else if id == overlay_text_id {
         //  Show text in black
         if let Err(e) = draw_text(
