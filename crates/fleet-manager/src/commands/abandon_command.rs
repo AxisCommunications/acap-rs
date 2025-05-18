@@ -22,7 +22,8 @@ impl AbandonCommand {
             let device = database.content.devices.remove(&alias).unwrap();
             device_manager::restore(
                 &device.host,
-                device.port,
+                device.http_port,
+                device.https_port,
                 &device.primary.user,
                 &device.primary.pass,
             )

@@ -23,7 +23,8 @@ impl Cli {
             netloc:
                 Netloc {
                     host,
-                    port,
+                    http_port,
+                    https_port,
                     user,
                     pass,
                 },
@@ -31,14 +32,14 @@ impl Cli {
         } = self;
         match command {
             Command::Reinit => {
-                restore(&host, port, &user, &pass).await?;
-                initialize(host, port, &pass).await?;
+                restore(&host, http_port, https_port, &user, &pass).await?;
+                initialize(host, http_port, &pass).await?;
                 if user != "root" {
                     println!("Remember that the primary user has changed from {user} to root")
                 }
             }
             Command::Restore => {
-                restore(&host, port, &user, &pass).await?;
+                restore(&host, http_port, https_port, &user, &pass).await?;
             }
         }
         Ok(())
@@ -50,9 +51,12 @@ struct Netloc {
     /// Hostname or IP address of the device.
     #[arg(long, value_parser = url::Host::parse, env = "AXIS_DEVICE_IP")]
     host: Host,
-    /// Override the default port for HTTP / HTTPS.
-    #[clap(long, env = "AXIS_DEVICE_PORT")]
-    port: Option<u16>,
+    /// Override the default port for HTTP.
+    #[clap(long, env = "AXIS_DEVICE_HTTP_PORT")]
+    http_port: Option<u16>,
+    /// Override the default port for HTTPS.
+    #[clap(long, env = "AXIS_DEVICE_HTTPS_PORT")]
+    https_port: Option<u16>,
     /// The username to use for the ssh connection.
     #[clap(short, long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,

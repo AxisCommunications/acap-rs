@@ -22,12 +22,13 @@ impl ReinitializeCommand {
             let device = database.content.devices.get_mut(&alias).unwrap();
             device_manager::restore(
                 &device.host,
-                device.port,
+                device.http_port,
+                device.https_port,
                 &device.primary.user,
                 &device.primary.pass,
             )
             .await?;
-            device_manager::initialize(device.host.clone(), device.port, &device.primary.pass)
+            device_manager::initialize(device.host.clone(), device.http_port, &device.primary.pass)
                 .await?;
             device.primary.user = "root".to_string();
         }
