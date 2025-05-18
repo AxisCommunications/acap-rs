@@ -126,9 +126,9 @@ impl<'a> UptimeRestartDetector<'a> {
     }
 }
 
-pub async fn restore(host: &Host, user: &str, pass: &str) -> anyhow::Result<()> {
+pub async fn restore(host: &Host, port: Option<u16>, user: &str, pass: &str) -> anyhow::Result<()> {
     info!("Restoring device...");
-    let mut client = HttpClient::from_host(host).await?;
+    let mut client = HttpClient::from_host(host, port).await?;
     debug!("Checking if factory default is needed...");
     if systemready::systemready()
         .execute(&client)

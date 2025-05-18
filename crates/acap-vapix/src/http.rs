@@ -54,12 +54,15 @@ impl Client {
     ///
     /// The returned client may use HTTP, including if the server certificate is invalid.
     /// For this reason this function should not be used, except possibly during development.
-    pub async fn from_host(host: &Host) -> anyhow::Result<Self> {
+    pub async fn from_host(host: &Host, port: Option<u16>) -> anyhow::Result<Self> {
         // TODO: Allow users explicit control over whether to accept or reject invalid certs.
         for scheme in ["https", "http"] {
             debug!("Trying {scheme}");
-            let url = Url::parse(&format!("{scheme}://{host}"))
-                .expect("Valid schema and host produces valid URL");
+            let url = match port {
+                None => &format!("{scheme}://{host}"),
+                Some(port) => &format!("{scheme}://{host}:{port}"),
+            };
+            let url = Url::parse(url).expect("Valid schema, host and port produce a valid URL");
             let client = Self::new(url);
             if systemready::systemready()
                 .execute(&client)

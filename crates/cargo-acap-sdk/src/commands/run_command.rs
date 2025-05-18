@@ -22,6 +22,7 @@ impl RunCommand {
 
         let DeployOptions {
             host: address,
+            port: _,
             user: username,
             pass: password,
         } = deploy_options;

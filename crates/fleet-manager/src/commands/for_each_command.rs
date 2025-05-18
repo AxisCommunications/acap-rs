@@ -44,6 +44,9 @@ impl ForEachCommand {
             );
             cmd.args(command.iter().skip(1));
             cmd.env("AXIS_DEVICE_IP", device.host.to_string());
+            if let Some(port) = device.port {
+                cmd.env("AXIS_DEVICE_PORT", port.to_string());
+            }
             cmd.env("AXIS_DEVICE_ARCH", device.arch.nickname());
             cmd.env("AXIS_DEVICE_USER", &device.primary.user);
             cmd.env("AXIS_DEVICE_PASS", &device.primary.pass);

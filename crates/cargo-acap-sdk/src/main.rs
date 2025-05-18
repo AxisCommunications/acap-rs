@@ -110,6 +110,9 @@ struct DeployOptions {
     /// Hostname or IP address of the device.
     #[arg(long, value_parser = url::Host::parse, env="AXIS_DEVICE_IP")]
     host: Host,
+    /// Override the default port for HTTP / HTTPS.
+    #[clap(long, env = "AXIS_DEVICE_PORT")]
+    port: Option<u16>,
     /// Username of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
@@ -131,8 +134,13 @@ impl DeployOptions {
         // first this will probably improve as https and digest support are added and
         // `device-manager` is changed to set up the devices accordingly.
         // TODO: Consider allowing the resolved settings to be cached or configured
-        let Self { host, user, pass } = self;
-        HttpClient::from_host(host)
+        let Self {
+            host,
+            port,
+            user,
+            pass,
+        } = self;
+        HttpClient::from_host(host, *port)
             .await?
             .automatic_auth(user, pass)
             .await

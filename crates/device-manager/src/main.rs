@@ -20,19 +20,25 @@ struct Cli {
 impl Cli {
     async fn exec(self) -> anyhow::Result<()> {
         let Self {
-            netloc: Netloc { host, user, pass },
+            netloc:
+                Netloc {
+                    host,
+                    port,
+                    user,
+                    pass,
+                },
             command,
         } = self;
         match command {
             Command::Reinit => {
-                restore(&host, &user, &pass).await?;
-                initialize(host, &pass).await?;
+                restore(&host, port, &user, &pass).await?;
+                initialize(host, port, &pass).await?;
                 if user != "root" {
                     println!("Remember that the primary user has changed from {user} to root")
                 }
             }
             Command::Restore => {
-                restore(&host, &user, &pass).await?;
+                restore(&host, port, &user, &pass).await?;
             }
         }
         Ok(())
@@ -44,6 +50,9 @@ struct Netloc {
     /// Hostname or IP address of the device.
     #[arg(long, value_parser = url::Host::parse, env = "AXIS_DEVICE_IP")]
     host: Host,
+    /// Override the default port for HTTP / HTTPS.
+    #[clap(long, env = "AXIS_DEVICE_PORT")]
+    port: Option<u16>,
     /// The username to use for the ssh connection.
     #[clap(short, long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,

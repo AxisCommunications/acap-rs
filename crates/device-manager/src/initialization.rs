@@ -62,9 +62,13 @@ async fn wait_for_param(client: &HttpClient, key: &str, value: &str) -> anyhow::
     }
 }
 
-pub async fn initialize(host: Host, pass: &str) -> anyhow::Result<HttpClient> {
+pub async fn initialize(host: Host, port: Option<u16>, pass: &str) -> anyhow::Result<HttpClient> {
     let primary_user = "root";
-    let mut client = HttpClient::new(Url::parse(&format!("http://{host}")).unwrap());
+    let url = match port {
+        Some(port) => &format!("http://{host}:{port}"),
+        None => &format!("http://{host}"),
+    };
+    let mut client = HttpClient::new(Url::parse(url).unwrap());
 
     debug!("Assert that device can be adopted...");
     assert!(systemready::systemready()
