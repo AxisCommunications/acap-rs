@@ -222,6 +222,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "axoverlay"
+version = "0.0.0"
+dependencies = [
+ "axoverlay-sys",
+ "cairo-rs",
+ "glib",
+ "glib-sys",
+ "log",
+]
+
+[[package]]
+name = "axoverlay-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen 0.69.5",
+ "glib-sys",
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
+name = "axoverlay_example"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "anyhow",
+ "axoverlay",
+ "cairo-rs",
+ "glib",
+ "libc",
+ "log",
+]
+
+[[package]]
 name = "axparameter"
 version = "0.0.0"
 dependencies = [
@@ -503,6 +537,27 @@ name = "bytes"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a12916984aab3fa6e39d655a33e09c0071eb36d6ab3aea5c2d78551f1df6d952"
+
+[[package]]
+name = "cairo-rs"
+version = "0.20.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae50b5510d86cf96ac2370e66d8dc960882f3df179d6a5a1e52bd94a1416c0f7"
+dependencies = [
+ "bitflags 2.9.0",
+ "cairo-sys-rs",
+ "libc",
+]
+
+[[package]]
+name = "cairo-sys-rs"
+version = "0.20.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f18b6bb8e43c7eb0f2aac7976afe0c61b6f5fc2ab7bc4c139537ea56c92290df"
+dependencies = [
+ "libc",
+ "system-deps",
+]
 
 [[package]]
 name = "cargo-acap-build"
