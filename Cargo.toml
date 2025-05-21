@@ -55,6 +55,8 @@ axoverlay = { path = "crates/axoverlay" }
 axoverlay-sys = { path = "crates/axoverlay-sys" }
 axparameter = { path = "crates/axparameter" }
 axparameter-sys = { path = "crates/axparameter-sys" }
+axserialport = { path = "crates/axserialport" }
+axserialport-sys = { path = "crates/axserialport-sys" }
 axstorage = { path = "crates/axstorage" }
 axstorage-sys = { path = "crates/axstorage-sys" }
 bbox = { path = "crates/bbox" }
