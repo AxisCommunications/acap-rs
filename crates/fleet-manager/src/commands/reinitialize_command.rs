@@ -20,9 +20,16 @@ impl ReinitializeCommand {
         for alias in database.filtered_aliases(&self.alias)? {
             info!("Reinitializing device {alias}...");
             let device = database.content.devices.get_mut(&alias).unwrap();
-            device_manager::restore(&device.host, &device.primary.user, &device.primary.pass)
+            device_manager::restore(
+                &device.host,
+                device.http_port,
+                device.https_port,
+                &device.primary.user,
+                &device.primary.pass,
+            )
+            .await?;
+            device_manager::initialize(device.host.clone(), device.http_port, &device.primary.pass)
                 .await?;
-            device_manager::initialize(device.host.clone(), &device.primary.pass).await?;
             device.primary.user = "root".to_string();
         }
         Ok(())

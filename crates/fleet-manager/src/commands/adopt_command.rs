@@ -14,6 +14,12 @@ pub struct AdoptCommand {
     /// IP Address or hostname of device to adopt.
     #[arg(long, value_parser = url::Host::parse)]
     host: Host,
+    /// Override the default port for HTTP.
+    #[clap(long, env = "AXIS_DEVICE_HTTP_PORT")]
+    http_port: Option<u16>,
+    /// Override the default port for HTTPS.
+    #[clap(long, env = "AXIS_DEVICE_HTTPS_PORT")]
+    https_port: Option<u16>,
     /// The username of the primary user.
     ///
     /// The primary user will be used to create any other users needed.
@@ -36,6 +42,8 @@ impl AdoptCommand {
     pub async fn exec(self, file: PathBuf) -> anyhow::Result<()> {
         let Self {
             host,
+            http_port,
+            https_port,
             user,
             pass,
             alias,
@@ -43,7 +51,7 @@ impl AdoptCommand {
         let alias = alias.unwrap_or_else(|| host.to_string());
         info!("Adopting device {host} as {alias}...");
 
-        let client = match acap_vapix::HttpClient::from_host(&host)
+        let client = match acap_vapix::HttpClient::from_host(&host, http_port, https_port)
             .await?
             .automatic_auth(&user, &pass)
             .await
@@ -52,7 +60,7 @@ impl AdoptCommand {
             Err(e) => {
                 debug!("Could not create client because {e:?}");
                 info!("Could not adopt device as is, attempting to initialize it");
-                device_manager::initialize(host.clone(), &pass).await?
+                device_manager::initialize(host.clone(), http_port, &pass).await?
             }
         };
         let arch = acap_vapix::basic_device_info::Client::new(&client)
@@ -65,6 +73,8 @@ impl AdoptCommand {
             .parse()?;
         let device = Device {
             host,
+            http_port,
+            https_port,
             arch,
             primary: Account { user, pass },
         };
