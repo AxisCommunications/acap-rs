@@ -20,8 +20,14 @@ impl AbandonCommand {
         for alias in database.filtered_aliases(&self.alias)? {
             info!("Abandoning device {alias}...");
             let device = database.content.devices.remove(&alias).unwrap();
-            device_manager::restore(&device.host, &device.primary.user, &device.primary.pass)
-                .await?;
+            device_manager::restore(
+                &device.host,
+                device.http_port,
+                device.https_port,
+                &device.primary.user,
+                &device.primary.pass,
+            )
+            .await?;
             // Update database only after the device has been restored to minimize the risk that we lose
             // track of devices with our credentials set.
             database.save()?;
