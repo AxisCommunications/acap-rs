@@ -12,7 +12,7 @@
 1408	target-aarch64/acap/object_detection_1_0_0_aarch64.eap
 10362	target-aarch64/acap/reverse_proxy_0_0_0_aarch64.eap
 3430	target-aarch64/acap/send_event_1_0_0_aarch64.eap
-3414	target-aarch64/acap/subscribe_to_event_1_0_0_aarch64.eap
+3409	target-aarch64/acap/subscribe_to_event_1_0_0_aarch64.eap
 899	target-aarch64/acap/using_a_build_script_0_0_0_aarch64.eap
 11378	target-aarch64/acap/vapix_access_0_0_0_aarch64.eap
 1407	target-aarch64/acap/vdoencodeclient_1_0_0_aarch64.eap
