@@ -10,8 +10,7 @@ glib = { workspace = true }
 log = { workspace = true }
 
 acap-logging = { workspace = true }
-axevent = { workspace = true, features=["async"] }
-futures-lite = "2.6.0"
+axevent = { workspace = true }
 
 [features]
 default = ["acap-logging/default"]

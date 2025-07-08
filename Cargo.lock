@@ -2593,7 +2593,6 @@ dependencies = [
  "acap-logging",
  "anyhow",
  "axevent",
- "futures-lite",
  "glib",
  "log",
 ]
