@@ -36,12 +36,14 @@ The recommended setup is using the [dev container](#dev-container) and the most 
 ### Dev container
 
 The quickest way to build the `hello_world` example is to launch the dev container and
-run `make build AXIS_PACKAGE=hello_world`.
-Once it completes there should be an `.eap` file in `target/acap`:
+run `cargo-acap-build -- -p hello_world`.
+Once it completes there should be `.eap` files in `target/acap`:
 
 ```console
 $ ls -1 target/acap
-hello_world_1_0_0_aarch64.eap
+hello_world_0_0_0_aarch64.eap
+hello_world_0_0_0_armv7hf.eap
+
 ```
 
 This works with any of the [example applications](#example-applications).
