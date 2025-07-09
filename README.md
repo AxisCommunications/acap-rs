@@ -43,7 +43,6 @@ Once it completes there should be `.eap` files in `target/acap`:
 $ ls -1 target/acap
 hello_world_0_0_0_aarch64.eap
 hello_world_0_0_0_armv7hf.eap
-
 ```
 
 This works with any of the [example applications](#example-applications).
