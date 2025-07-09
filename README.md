@@ -219,6 +219,9 @@ by this project.
 - `send_event`: Sends events using `axevent`.
   - Status: ⚠️ Alpha
   - [Source code](apps/send_event/src/main.rs)
+- `subscribe_to_event`: Subscribe to an event using `axevent`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/subscribe_to_event/src/main.rs)
 - `using_a_build_script`: Generates html, lib and app manifest files using a build script.
   - Status: ⚠️ Alpha
   - [Source code](apps/using_a_build_script/src/main.rs)

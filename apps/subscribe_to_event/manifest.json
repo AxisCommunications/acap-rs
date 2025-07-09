@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.4.0",
+  "acapPackageConf": {
+    "setup": {
+      "friendlyName": "subscribe_to_event",
+      "appName": "subscribe_to_event",
+      "vendor": "Axis Communications",
+      "runMode": "never",
+      "embeddedSdkVersion": "3.0",
+      "version": "1.0.0"
+    }
+  }
+}
