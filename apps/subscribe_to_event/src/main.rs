@@ -14,18 +14,17 @@ fn onviftrigger_subscription(handler: &Handler, token: u32) -> anyhow::Result<Su
         .add_key_value(c"topic0", Some(c"tns1"), Some(c"Monitoring"))?
         .add_key_value(c"topic1", Some(c"tns1"), Some(c"ProcessorUsage"))?;
 
-    let _subscription =
-        handler.subscribe(key_value_set, move |_subscription, event| {
-            match event.key_value_set().get_double(c"Value", None) {
-                Ok(value) => {
-                    info!("Received event with value: {}", value);
-                }
-
-                Err(e) => {
-                    error!("Error {}", e);
-                }
+    let _subscription = handler.subscribe(key_value_set, |_subscription, event| {
+        match event.key_value_set().get_double(c"Value", None) {
+            Ok(value) => {
+                info!("Received event with value: {}", value);
             }
-        })?;
+
+            Err(e) => {
+                error!("Error {}", e);
+            }
+        }
+    })?;
 
     info!("And here is the token: {}", token);
 
