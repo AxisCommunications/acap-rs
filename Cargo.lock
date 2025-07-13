@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "acap-ssh-utils"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -546,7 +546,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-acap-sdk"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "acap-ssh-utils",
  "acap-vapix",
