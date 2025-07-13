@@ -36,12 +36,13 @@ The recommended setup is using the [dev container](#dev-container) and the most 
 ### Dev container
 
 The quickest way to build the `hello_world` example is to launch the dev container and
-run `make build AXIS_PACKAGE=hello_world`.
-Once it completes there should be an `.eap` file in `target/acap`:
+run `cargo-acap-build -- -p hello_world`.
+Once it completes there should be `.eap` files in `target/acap`:
 
 ```console
 $ ls -1 target/acap
-hello_world_1_0_0_aarch64.eap
+hello_world_0_0_0_aarch64.eap
+hello_world_0_0_0_armv7hf.eap
 ```
 
 This works with any of the [example applications](#example-applications).
@@ -219,6 +220,9 @@ by this project.
 - `send_event`: Sends events using `axevent`.
   - Status: ⚠️ Alpha
   - [Source code](apps/send_event/src/main.rs)
+- `subscribe_to_event`: Subscribe to an event using `axevent`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/subscribe_to_event/src/main.rs)
 - `using_a_build_script`: Generates html, lib and app manifest files using a build script.
   - Status: ⚠️ Alpha
   - [Source code](apps/using_a_build_script/src/main.rs)
