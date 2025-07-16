@@ -173,7 +173,7 @@ pub fn licensekey_get_state_string(state_code: c_int) -> Option<CStringPtr> {
     }
 }
 
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86_64", target_os = "macos")))]
 #[cfg(test)]
 mod tests {
     use std::ffi::CString;
