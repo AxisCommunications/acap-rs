@@ -7,10 +7,10 @@ use glib_sys::{gboolean, gpointer, GError, GList, GQuark};
 
 type gchar = ::std::os::raw::c_char;
 
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86_64", target_os = "macos")))]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", target_os = "macos"))]
 include!("bindings.rs");
 
 // Due to an issue specified in https://github.com/rust-lang/rust-bindgen/issues/1966

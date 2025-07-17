@@ -25,7 +25,7 @@ impl RunCommand {
             http_port: _,
             https_port: _,
             ssh_port,
-            user: _,
+            user: username,
             ssh_user: username,
             pass: password,
         } = deploy_options;
