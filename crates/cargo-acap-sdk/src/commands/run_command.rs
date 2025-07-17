@@ -25,7 +25,7 @@ impl RunCommand {
             http_port: _,
             https_port: _,
             ssh_port,
-            user: username,
+            user: _,
             ssh_user: username,
             pass: password,
         } = deploy_options;
@@ -55,14 +55,13 @@ impl RunCommand {
                     )?
                 }
                 Artifact::Exe { path } => {
-                    let username = DeployOptions::username_for_exe();
                     debug!(
                         "Running exe {}",
                         path.file_name().unwrap().to_string_lossy()
                     );
                     acap_ssh_utils::run_other(
                         &path,
-                        &username,
+                        DeployOptions::username_for_exe(),
                         &password,
                         &address,
                         ssh_port,
