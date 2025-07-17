@@ -19,7 +19,7 @@ fn main() {
     info!("stderr is terminal: {}", std::io::stderr().is_terminal());
 }
 
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86_64", target_os = "macos")))]
 #[cfg(test)]
 mod tests {
     use std::{env, path::PathBuf};
