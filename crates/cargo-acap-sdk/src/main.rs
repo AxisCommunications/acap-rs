@@ -116,7 +116,10 @@ struct DeployOptions {
     /// Override the default port for HTTPS.
     #[clap(long, env = "AXIS_DEVICE_HTTPS_PORT")]
     https_port: Option<u16>,
-    /// Username of SSH- and/or VAPIX-account to authenticate as.
+    /// Override the default port for SSH.
+    #[clap(long, env = "AXIS_DEVICE_SSH_PORT")]
+    ssh_port: Option<u16>,
+    /// Username of VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
     #[clap(long, env = "AXIS_DEVICE_USER", default_value = "root")]
@@ -141,6 +144,7 @@ impl DeployOptions {
             host,
             http_port,
             https_port,
+            ssh_port: _,
             user,
             pass,
         } = self;
