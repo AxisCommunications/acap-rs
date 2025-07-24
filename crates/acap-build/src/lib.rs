@@ -136,6 +136,7 @@ impl<'a> AppBuilder<'a> {
         let mut archive = Archive::new(cursor);
         archive.set_preserve_permissions(self.preserve_permissions);
         archive.set_preserve_mtime(false);
+        archive.set_overwrite(false);
         archive.unpack(self.staging_dir)?;
 
         match AcapBuildImpl::from_env_or_default()? {
