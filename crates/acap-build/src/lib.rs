@@ -116,6 +116,7 @@ impl<'a> AppBuilder<'a> {
         }
 
         let dst = self.staging_dir.join(name);
+        self.files.push(name.to_string());
 
         debug!("Added {name} from {path:?}");
         Ok(dst)
