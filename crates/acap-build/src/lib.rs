@@ -154,8 +154,13 @@ impl<'a> AppBuilder<'a> {
         let Self {
             staging_dir,
             default_architecture,
+            manifest,
             ..
         } = &self;
+
+        fs::File::create_new(staging_dir.join("manifest.json"))
+            .context("creating manifest.json")?
+            .write_all(manifest.try_to_string()?.as_bytes())?;
 
         let mut acap_build = Command::new("acap-build");
         acap_build.args(["--build", "no-build"]);
@@ -367,7 +372,6 @@ impl<'a> AppBuilder<'a> {
         [
             Some(self.app_name.as_str()),
             Some("LICENSE"),
-            Some("manifest.json"),
             self.manifest.try_find_post_install_script().ok(),
             self.manifest.try_find_pre_uninstall_script().ok(),
         ]
