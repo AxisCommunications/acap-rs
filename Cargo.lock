@@ -16,6 +16,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "tar",
  "tempdir",
  "tempfile",
 ]
