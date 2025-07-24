@@ -134,7 +134,6 @@ impl<'a> AppBuilder<'a> {
     pub fn build(mut self) -> anyhow::Result<OsString> {
         let cursor = Cursor::new(self.ar.take().unwrap().into_inner()?.into_inner());
         let mut archive = Archive::new(cursor);
-        archive.set_preserve_permissions(self.preserve_permissions);
         archive.set_preserve_mtime(false);
         archive.set_overwrite(false);
         archive.unpack(self.staging_dir)?;
