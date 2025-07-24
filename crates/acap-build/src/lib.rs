@@ -46,7 +46,7 @@ fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
             cp.arg("--preserve=mode");
         }
 
-        cp.arg("-d").arg("--update=none").arg(src.as_os_str()).arg(dst.as_os_str());
+        cp.arg("-dn").arg(src.as_os_str()).arg(dst.as_os_str());
 
         if !cp.status()?.success() {
             bail!("Failed to copy symlink: {}", src.display());
