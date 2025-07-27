@@ -33,16 +33,31 @@ fn sshpass(pass: &str, program: &str) -> std::process::Command {
     cmd
 }
 
-fn scp(src: &Path, user: &str, pass: &str, host: &Host, tgt: &str) -> std::process::Command {
+fn scp(
+    src: &Path,
+    user: &str,
+    pass: &str,
+    host: &Host,
+    port: Option<u16>,
+    tgt: &str,
+) -> std::process::Command {
     let mut cmd = sshpass(pass, "scp");
+    if let Some(port) = port {
+        // Note that scp uses an uppercase P while ssh uses a lowercase P.
+        cmd.arg("-P").arg(port.to_string());
+    }
     cmd.arg("-p"); // Ensure temporary files become executable.
     cmd.arg(src);
     cmd.arg(format!("{user}@{host}:{tgt}"));
     cmd
 }
 
-fn ssh(user: &str, pass: &str, host: &Host) -> std::process::Command {
+fn ssh(user: &str, pass: &str, host: &Host, port: Option<u16>) -> std::process::Command {
     let mut cmd = sshpass(pass, "ssh");
+    if let Some(port) = port {
+        // Note that scp uses an uppercase P while ssh uses a lowercase P.
+        cmd.arg("-p").arg(port.to_string());
+    }
     cmd.arg("-x"); // Makes no difference when I have tested but seems to be the right thing to do.
     cmd.arg(format!("{user}@{host}"));
     cmd
@@ -119,11 +134,11 @@ struct RemoteTemporaryFile {
 }
 
 impl RemoteTemporaryFile {
-    fn try_new(user: &str, pass: &str, host: &Host) -> anyhow::Result<Self> {
-        let mut ssh_mktemp = ssh(user, pass, host);
+    fn try_new(user: &str, pass: &str, host: &Host, port: Option<u16>) -> anyhow::Result<Self> {
+        let mut ssh_mktemp = ssh(user, pass, host, port);
         ssh_mktemp.arg("mktemp");
         let path = ssh_mktemp.run_with_captured_stdout()?.trim().to_string();
-        let mut ssh_rm = ssh(user, pass, host);
+        let mut ssh_rm = ssh(user, pass, host, port);
         ssh_rm.arg("rm");
         ssh_rm.arg(&path);
         Ok(Self {
@@ -158,18 +173,19 @@ pub fn run_other(
     user: &str,
     pass: &str,
     host: &Host,
+    port: Option<u16>,
     env: HashMap<&str, &str>,
     args: &[&str],
 ) -> anyhow::Result<()> {
-    let temp_file = RemoteTemporaryFile::try_new(user, pass, host)?;
+    let temp_file = RemoteTemporaryFile::try_new(user, pass, host, port)?;
 
-    scp(prog, user, pass, host, &temp_file.path).run_with_logged_stdout()?;
+    scp(prog, user, pass, host, port, &temp_file.path).run_with_logged_stdout()?;
 
     let mut exec = std::process::Command::new(&temp_file.path);
     exec.envs(env);
     exec.args(args);
 
-    let mut ssh_exec = ssh(user, pass, host);
+    let mut ssh_exec = ssh(user, pass, host, port);
     ssh_exec.arg(format!("{exec:?}"));
     ssh_exec.run_with_inherited_stdout()?;
 
@@ -194,6 +210,7 @@ pub fn run_package(
     user: &str,
     pass: &str,
     host: &Host,
+    port: Option<u16>,
     package: &str,
     env: HashMap<&str, &str>,
     args: &[&str],
@@ -222,7 +239,7 @@ pub fn run_package(
 
     // TODO: Consider giving user control over what happens with stdout when running concurrently.
     // The escaping of quotation marks is ridiculous, but it's automatic and empirically verifiable.
-    let mut ssh_exec_as_package = ssh(user, pass, host);
+    let mut ssh_exec_as_package = ssh(user, pass, host, port);
     ssh_exec_as_package.arg(format!("{cd:?} && {exec_as_package:?}"));
     ssh_exec_as_package.run_with_inherited_stdout()?;
     Ok(())
@@ -239,7 +256,13 @@ pub fn run_package(
 /// - configured the SSH user with a password and the necessary permissions,
 /// - installed the app, and
 /// - stopped the app, if it was running.
-pub fn patch_package(package: &Path, user: &str, pass: &str, host: &Host) -> anyhow::Result<()> {
+pub fn patch_package(
+    package: &Path,
+    user: &str,
+    pass: &str,
+    host: &Host,
+    port: Option<u16>,
+) -> anyhow::Result<()> {
     // Not all files can be replaced, so we upload only the ones that can.
     // This archive will hold the files that will be uploded.
     let mut partial = tar::Builder::new(Vec::new());
@@ -270,7 +293,7 @@ pub fn patch_package(package: &Path, user: &str, pass: &str, host: &Host) -> any
     // Currently the error when an app is not installed is not very helpful:
     // tar: can't change directory to '/usr/local/packages/<APP_NAME>': No such file or directory
     // TODO: Better error when application is not installed
-    let mut ssh_tar = ssh(user, pass, host);
+    let mut ssh_tar = ssh(user, pass, host, port);
     ssh_tar.args(["tar", "-xvC", package_dir.to_str().unwrap()]);
 
     ssh_tar.stdin(Stdio::piped());

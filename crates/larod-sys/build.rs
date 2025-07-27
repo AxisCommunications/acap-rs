@@ -22,7 +22,9 @@ fn populated_bindings(dst: &path::PathBuf) {
 
 fn main() {
     let dst = path::PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs");
-    if env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default() != "x86_64" {
+    if env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default() != "x86_64"
+        && env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() != "macos"
+    {
         populated_bindings(&dst);
     }
 }
