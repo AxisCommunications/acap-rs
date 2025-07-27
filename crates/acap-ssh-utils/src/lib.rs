@@ -27,7 +27,9 @@ fn sshpass(pass: &str, program: &str) -> std::process::Command {
         .arg(program)
         // The ssh client will try keys until it finds one that works.
         // If it tries to many keys that fail it will be disconnected by the server.
-        .args(["-o", "PubkeyAuthentication=no"]);
+        .args(["-o", "PubkeyAuthentication=no"])
+        // TODO: Consider not disabling this as aggressively
+        .args(["-o", "StrictHostKeyChecking=no"]);
     cmd
 }
 
