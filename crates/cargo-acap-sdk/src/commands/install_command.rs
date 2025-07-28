@@ -1,4 +1,7 @@
-use acap_vapix::applications_upload;
+use acap_vapix::{
+    applications_upload,
+    applications_upload::{HttpRpcError, UploadApplicationError},
+};
 use cargo_acap_build::{AppBuilder, Architecture, Artifact};
 use log::debug;
 
@@ -44,7 +47,18 @@ impl InstallCommand {
                     applications_upload::Client::new(&deploy_options.http_client().await?)
                         .upload(path)?
                         .send()
-                        .await?;
+                        .await
+                        .map_err(|e| {
+                            let context = if matches!(
+                                e,
+                                HttpRpcError::Remote(UploadApplicationError::Verification)
+                            ) {
+                                "Could not upload app, are unsigned apps allowed on the device?"
+                            } else {
+                                "Could not upload app"
+                            };
+                            anyhow::Error::new(e).context(context)
+                        })?;
                     debug!("Installed app {name}");
                 }
                 Artifact::Exe { path } => {
