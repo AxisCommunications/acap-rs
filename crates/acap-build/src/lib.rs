@@ -136,7 +136,18 @@ impl<'a> AppBuilder<'a> {
         let mut archive = Archive::new(cursor);
         archive.set_preserve_mtime(false);
         archive.set_overwrite(false);
-        archive.unpack(self.staging_dir)?;
+
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            if !self.preserve_permissions {
+                entry.set_mask(0o333); // Clear executable bit for everyone
+                if entry.path()?.to_str().expect("Valid unicode in path") == &self.app_name {
+                    entry.set_mask(0o33); // Clear executable bit for everyone but user
+                }
+            }
+
+            entry.unpack_in(&self.staging_dir)?;
+        }
 
         match AcapBuildImpl::from_env_or_default()? {
             AcapBuildImpl::Reference => {
