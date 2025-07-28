@@ -5,7 +5,7 @@ use std::{
     env,
     ffi::OsString,
     fs,
-    io::Write,
+    io::{Cursor, Write},
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
@@ -18,6 +18,8 @@ use log::{debug, info};
 use semver::Version;
 use serde_json::Value;
 
+use tar::{Builder, Archive};
+
 use crate::files::{
     cgi_conf::CgiConf, manifest::Manifest, package_conf::PackageConf, param_conf::ParamConf,
 };
@@ -26,65 +28,6 @@ mod command_utils;
 mod json_ext;
 
 mod files;
-
-// TODO: Find a better way to support reproducible builds
-fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
-    src: P,
-    dst: Q,
-    copy_permissions: bool,
-) -> anyhow::Result<()> {
-    let src = src.as_ref();
-    let dst = dst.as_ref();
-    if dst.symlink_metadata().is_ok() {
-        bail!("Path already exists {dst:?}");
-    }
-    if src.is_symlink() {
-        // FIXME: Copy symlink in Rust
-        let mut cp = Command::new("cp");
-
-        if copy_permissions {
-            cp.arg("--preserve=mode");
-        }
-
-        cp.arg("-dn").arg(src.as_os_str()).arg(dst.as_os_str());
-
-        if !cp.status()?.success() {
-            bail!("Failed to copy symlink: {}", src.display());
-        }
-    } else if copy_permissions {
-        fs::copy(src, dst)?;
-    } else {
-        let mut src = fs::File::open(src)?;
-        let mut dst = fs::File::create(dst)?;
-        std::io::copy(&mut src, &mut dst)?;
-    }
-    Ok(())
-}
-
-fn copy_recursively(src: &Path, dst: &Path, copy_permissions: bool) -> anyhow::Result<()> {
-    if !src.is_dir() {
-        copy(src, dst, copy_permissions)?;
-        debug!("Created reg {dst:?}");
-        return Ok(());
-    }
-    match fs::create_dir(dst) {
-        Ok(()) => {
-            debug!("Created dir {dst:?}");
-            Ok(())
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
-        Err(e) => Err(e),
-    }?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        copy_recursively(
-            &entry.path(),
-            &dst.join(entry.file_name()),
-            copy_permissions,
-        )?;
-    }
-    Ok(())
-}
 
 enum AcapBuildImpl {
     Reference,
@@ -111,6 +54,7 @@ pub struct AppBuilder<'a> {
     files: Vec<String>,
     default_architecture: Architecture,
     app_name: String,
+    ar: Option<Builder::<Cursor::<Vec::<u8>>>>,
 }
 
 impl<'a> AppBuilder<'a> {
@@ -123,6 +67,8 @@ impl<'a> AppBuilder<'a> {
         let manifest: Value = serde_json::from_reader(fs::File::open(manifest)?)?;
         let manifest = Manifest::new(manifest, default_architecture)?;
         let app_name = manifest.try_find_app_name()?.to_string();
+        let mut ar = Builder::new(Cursor::new(Vec::new()));
+        ar.follow_symlinks(false);
         Ok(Self {
             preserve_permissions,
             staging_dir,
@@ -130,6 +76,7 @@ impl<'a> AppBuilder<'a> {
             app_name,
             files: Vec::new(),
             default_architecture,
+            ar: Some(ar),
         })
     }
 
@@ -161,20 +108,16 @@ impl<'a> AppBuilder<'a> {
         Ok(self)
     }
 
-    // TODO: Remove the file system copy
     pub fn add_as(&mut self, path: &Path, name: &str) -> anyhow::Result<PathBuf> {
+        if path.symlink_metadata().unwrap().file_type().is_dir() {
+            self.ar.as_mut().unwrap().append_dir_all(name, path)?;
+        } else {
+            self.ar.as_mut().unwrap().append_path_with_name(path, name)?;
+        }
+
         let dst = self.staging_dir.join(name);
-        if dst.symlink_metadata().is_ok() {
-            bail!("Cannot add {path:?} because {name} already exists");
-        }
-        copy_recursively(path, &dst, self.preserve_permissions)?;
         self.files.push(name.to_string());
-        if name == self.app_name && !self.preserve_permissions {
-            let mut permissions = fs::metadata(&dst)?.permissions();
-            let mode = permissions.mode();
-            permissions.set_mode(mode | 0o111);
-            fs::set_permissions(&dst, permissions)?;
-        }
+
         debug!("Added {name} from {path:?}");
         Ok(dst)
     }
@@ -188,7 +131,24 @@ impl<'a> AppBuilder<'a> {
     }
 
     /// Build the EAP and return its path.
-    pub fn build(self) -> anyhow::Result<OsString> {
+    pub fn build(mut self) -> anyhow::Result<OsString> {
+        let cursor = Cursor::new(self.ar.take().unwrap().into_inner()?.into_inner());
+        let mut archive = Archive::new(cursor);
+        archive.set_preserve_mtime(false);
+        archive.set_overwrite(false);
+
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            if !self.preserve_permissions {
+                entry.set_mask(0o333); // Clear executable bit for everyone
+                if entry.path()?.to_str().expect("Valid unicode in path") == &self.app_name {
+                    entry.set_mask(0o33); // Clear executable bit for everyone but user
+                }
+            }
+
+            entry.unpack_in(&self.staging_dir)?;
+        }
+
         match AcapBuildImpl::from_env_or_default()? {
             AcapBuildImpl::Reference => {
                 debug!("Using acap-build");
