@@ -588,7 +588,7 @@ impl KeyValueSet {
 
     pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<bool> {
         unsafe {
-            let mut value = gboolean::default();
+            let mut value = 3;
             try_func!(
                 ax_event_key_value_set_get_boolean,
                 self.raw.as_ptr(),

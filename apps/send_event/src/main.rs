@@ -87,6 +87,38 @@ mod tests {
     };
     use log::debug;
 
+    #[test]
+    fn get_integer_none() {
+        let mut kvs = axevent::flex::KeyValueSet::new();
+        kvs.add_key_value::<i32>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_integer(c"foo", None).unwrap(), 0);
+    }
+
+    // thread 'tests::get_double_none' panicked at crates/axevent/src/flex.rs:605:22:
+    // Expected gboolean to be either 0 or 1 but got 3
+    #[test]
+    fn get_boolean_none() {
+        let mut kvs = axevent::flex::KeyValueSet::new();
+        kvs.add_key_value::<f64>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_double(c"foo", None).unwrap(), 0.0);
+    }
+
+    #[test]
+    fn get_double_none() {
+        let mut kvs = axevent::flex::KeyValueSet::new();
+        kvs.add_key_value::<bool>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_boolean(c"foo", None).unwrap(), false);
+    }
+
+    // thread 'tests::read_none_string' panicked at crates/axevent/src/flex.rs:80:9:
+    // assertion failed: !ptr.is_null()
+    #[test]
+    fn get_string_none() {
+        let mut kvs = axevent::flex::KeyValueSet::new();
+        kvs.add_key_value::<&CStr>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_string(c"foo", None).unwrap().as_c_str(), c"");
+    }
+
     fn topic() -> anyhow::Result<KeyValueSet> {
         let mut kvs = KeyValueSet::default();
         kvs.add_key_value(
