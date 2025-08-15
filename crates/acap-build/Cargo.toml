@@ -16,3 +16,4 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 tempfile = { workspace = true }
 regex = { workspace = true }
 tempdir = { workspace = true }
+tar = { workspace = true }
