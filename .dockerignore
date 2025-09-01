@@ -1,5 +1,6 @@
 *
 !/.devhost/
+!/.git/
 !/Cargo.lock
 !/Cargo.toml
 !/about.hbs
