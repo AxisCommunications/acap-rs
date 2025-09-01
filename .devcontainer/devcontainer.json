@@ -5,7 +5,7 @@
         "context": ".."
     },
     "features": {
-        "ghcr.io/devcontainers/features/common-utils:2": {}
+        "ghcr.io/devcontainers/features/common-utils:": {}
     },
     "remoteUser": "${localEnv:USER}",
     "runArgs": ["--network=host"]
