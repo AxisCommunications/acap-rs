@@ -82,7 +82,7 @@ fn from_env() -> anyhow::Result<HttpClient> {
 /// Construct a new [`HttpClient`] for ACAP apps connecting to VAPIX.
 pub fn local_client() -> anyhow::Result<HttpClient> {
     // TODO: Find a more robust configuration
-    if cfg!(target_arch = "x86_64") {
+    if cfg!(any(target_arch = "x86_64", target_os = "macos")) {
         from_env()
     } else {
         from_dbus()
