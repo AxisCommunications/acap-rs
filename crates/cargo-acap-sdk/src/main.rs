@@ -124,6 +124,15 @@ struct DeployOptions {
     /// It is up to the user to ensure that these have been created on the device as needed.
     #[clap(long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
+    /// Override the username of SSH-account to authenticate as.
+    /// The defaults are:
+    /// - "acap-{package}" when deploying an embedded application.
+    /// - "root" when deploying a standalone executable.
+    ///   This happens only for crates that don't have an ACAP manifest.
+    ///
+    /// It is up to the user to ensure that this has been created on the device as needed.
+    #[clap(long, env = "AXIS_DEVICE_SSH_USER")]
+    ssh_user: Option<String>,
     /// Password of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
@@ -146,12 +155,24 @@ impl DeployOptions {
             https_port,
             ssh_port: _,
             user,
+            ssh_user: _,
             pass,
         } = self;
         HttpClient::from_host(host, *http_port, *https_port)
             .await?
             .automatic_auth(user, pass)
             .await
+    }
+
+    pub fn username_for_eap(username: &Option<String>, package_name: &str) -> String {
+        match &username {
+            None => format!("acap-{package_name}"),
+            Some(u) => u.to_owned(),
+        }
+    }
+
+    pub fn username_for_exe() -> &'static str {
+        "root"
     }
 }
 
