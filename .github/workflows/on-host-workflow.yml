@@ -24,7 +24,7 @@ jobs:
     # created should allow blending global and local installations as the user sees fit.
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Global setup
         # These steps typically need to be done once per machine, or when the project dependencies change.
         #
@@ -61,7 +61,7 @@ jobs:
     # `acap-build` can be used for an easier setup:
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install system packages
         run: |
           sudo apt-get update
