@@ -85,7 +85,15 @@ mod tests {
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
         flex::{CStringPtr, Event, Handler, KeyValueSet},
     };
-    use log::debug;
+    use log::{debug, LevelFilter};
+
+    fn init() {
+        let _ = env_logger::Builder::new()
+            .filter_level(LevelFilter::Debug)
+            .parse_default_env()
+            .is_test(true)
+            .try_init();
+    }
 
     fn topic() -> anyhow::Result<KeyValueSet> {
         let mut kvs = KeyValueSet::default();
@@ -158,6 +166,61 @@ mod tests {
 
         let actual = send_and_receive_event(expected).unwrap();
         assert_eq!(actual.as_c_str(), expected);
+    }
+
+    #[test]
+    fn can_send_and_receive_stateful_boolean() -> anyhow::Result<()> {
+        init();
+
+        let main_loop = MainLoop::new();
+
+        let handler = Handler::new();
+
+        debug!("Subscribing to events...");
+        let subscription = Subscription::try_new(topic()?, &handler)?;
+
+        debug!("Declaring event...");
+        let topic2 = c"active";
+        let mut dec_kvs = topic()?;
+        dec_kvs.add_key_value(topic2, None, Some(false))?;
+        let declaration = Declaration::try_new(dec_kvs, true, &handler)?;
+        debug!("Waiting for declaration to be registered...");
+        assert!(declaration.rx.recv_timeout(Duration::from_secs(5)).is_ok());
+
+        debug!("Activating event...");
+        let mut activate_kvs = KeyValueSet::new();
+        activate_kvs.add_key_value(topic2, None, Some(true))?;
+        declaration.send_event(Event::new2(activate_kvs, None))?;
+
+        debug!("Verifying active state...");
+        assert_eq!(
+            true,
+            subscription
+                .rx
+                .recv_timeout(Duration::from_secs(5))?
+                .key_value_set()
+                .get_boolean(topic2, None)?
+        );
+
+        debug!("Deactivating event...");
+        let mut inactivate_kvs = KeyValueSet::new();
+        inactivate_kvs.add_key_value(topic2, None, Some(false))?;
+        declaration.send_event(Event::new2(inactivate_kvs, None))?;
+
+        debug!("Verifying inactive state...");
+        assert_eq!(
+            false,
+            subscription
+                .rx
+                .recv_timeout(Duration::from_secs(5))?
+                .key_value_set()
+                .get_boolean(topic2, None)?
+        );
+
+        if let Err(e) = main_loop.quit_and_join() {
+            bail!("Main loop exited with an error: {e:?}");
+        }
+        Ok(())
     }
 
     #[test]
