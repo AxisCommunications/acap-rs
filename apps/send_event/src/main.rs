@@ -193,14 +193,12 @@ mod tests {
         declaration.send_event(Event::new2(activate_kvs, None))?;
 
         debug!("Verifying active state...");
-        assert_eq!(
-            true,
-            subscription
-                .rx
-                .recv_timeout(Duration::from_secs(5))?
-                .key_value_set()
-                .get_boolean(topic2, None)?
-        );
+        let active = subscription
+            .rx
+            .recv_timeout(Duration::from_secs(5))?
+            .key_value_set()
+            .get_boolean(topic2, None)?;
+        assert!(active);
 
         debug!("Deactivating event...");
         let mut inactivate_kvs = KeyValueSet::new();
@@ -208,14 +206,12 @@ mod tests {
         declaration.send_event(Event::new2(inactivate_kvs, None))?;
 
         debug!("Verifying inactive state...");
-        assert_eq!(
-            false,
-            subscription
-                .rx
-                .recv_timeout(Duration::from_secs(5))?
-                .key_value_set()
-                .get_boolean(topic2, None)?
-        );
+        let active = subscription
+            .rx
+            .recv_timeout(Duration::from_secs(5))?
+            .key_value_set()
+            .get_boolean(topic2, None)?;
+        assert!(!active);
 
         if let Err(e) = main_loop.quit_and_join() {
             bail!("Main loop exited with an error: {e:?}");
