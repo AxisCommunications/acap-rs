@@ -691,7 +691,7 @@ impl Subscription {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Int(i32),
-    Bool(bool),
+    Bool(i32),
     Double(f64),
     String(CString),
 }
@@ -720,7 +720,7 @@ macro_rules! impl_from_value {
         }
     };
 }
-impl_from_value!(Bool, bool);
+impl_from_value!(Bool, bool, |v| v != 0);
 impl_from_value!(Double, f64);
 impl_from_value!(Int, i32);
 impl_from_value!(String, CString);
@@ -750,10 +750,10 @@ macro_rules! impl_typed_value {
         }
     };
 }
-impl_typed_value!(bool, Bool, |v| v);
+impl_typed_value!(bool, Bool, |v| v as i32);
 impl_typed_value!(f64, Double, |v| v);
 impl_typed_value!(i32, Int, |v| v);
-impl_typed_value!(&bool, Bool, |v: &bool| *v);
+impl_typed_value!(&bool, Bool, |v: &bool| *v as i32);
 impl_typed_value!(&f64, Double, |v: &f64| *v);
 impl_typed_value!(&i32, Int, |v: &i32| *v);
 impl_typed_value!(&CStr, String, |v: &CStr| v.into());
