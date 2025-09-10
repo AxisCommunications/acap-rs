@@ -2429,6 +2429,7 @@ dependencies = [
  "acap-logging",
  "anyhow",
  "axevent",
+ "env_logger",
  "glib",
  "log",
 ]

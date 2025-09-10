@@ -12,5 +12,8 @@ log = { workspace = true }
 acap-logging = { workspace = true }
 axevent = { workspace = true }
 
+[dev-dependencies]
+env_logger = { workspace = true }
+
 [features]
 default = ["acap-logging/default"]
