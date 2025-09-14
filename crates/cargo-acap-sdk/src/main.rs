@@ -110,11 +110,29 @@ struct DeployOptions {
     /// Hostname or IP address of the device.
     #[arg(long, value_parser = url::Host::parse, env="AXIS_DEVICE_IP")]
     host: Host,
-    /// Username of SSH- and/or VAPIX-account to authenticate as.
+    /// Override the default port for HTTP.
+    #[clap(long, env = "AXIS_DEVICE_HTTP_PORT")]
+    http_port: Option<u16>,
+    /// Override the default port for HTTPS.
+    #[clap(long, env = "AXIS_DEVICE_HTTPS_PORT")]
+    https_port: Option<u16>,
+    /// Override the default port for SSH.
+    #[clap(long, env = "AXIS_DEVICE_SSH_PORT")]
+    ssh_port: Option<u16>,
+    /// Username of VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
     #[clap(long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
+    /// Override the username of SSH-account to authenticate as.
+    /// The defaults are:
+    /// - "acap-{package}" when deploying an embedded application.
+    /// - "root" when deploying a standalone executable.
+    ///   This happens only for crates that don't have an ACAP manifest.
+    ///
+    /// It is up to the user to ensure that this has been created on the device as needed.
+    #[clap(long, env = "AXIS_DEVICE_SSH_USER")]
+    ssh_user: Option<String>,
     /// Password of SSH- and/or VAPIX-account to authenticate as.
     ///
     /// It is up to the user to ensure that these have been created on the device as needed.
@@ -131,11 +149,30 @@ impl DeployOptions {
         // first this will probably improve as https and digest support are added and
         // `device-manager` is changed to set up the devices accordingly.
         // TODO: Consider allowing the resolved settings to be cached or configured
-        let Self { host, user, pass } = self;
-        HttpClient::from_host(host)
+        let Self {
+            host,
+            http_port,
+            https_port,
+            ssh_port: _,
+            user,
+            ssh_user: _,
+            pass,
+        } = self;
+        HttpClient::from_host(host, *http_port, *https_port)
             .await?
             .automatic_auth(user, pass)
             .await
+    }
+
+    pub fn username_for_eap(username: &Option<String>, package_name: &str) -> String {
+        match &username {
+            None => format!("acap-{package_name}"),
+            Some(u) => u.to_owned(),
+        }
+    }
+
+    pub fn username_for_exe() -> &'static str {
+        "root"
     }
 }
 

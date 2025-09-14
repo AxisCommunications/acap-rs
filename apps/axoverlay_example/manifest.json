@@ -1,0 +1,19 @@
+{
+    "schemaVersion": "1.7.0",
+    "acapPackageConf": {
+        "setup": {
+            "appName": "axoverlay_example",
+            "vendor": "Axis Communications",
+            "runMode": "never",
+            "version": "0.0.0"
+        }
+    },
+    "resources": {
+        "dbus": {
+            "requiredMethods": [
+                "com.axis.Graphics2.*",
+                "com.axis.Overlay2.*"
+            ]
+        }
+    }
+}

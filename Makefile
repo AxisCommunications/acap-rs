@@ -63,6 +63,12 @@ build:
 		--package $(AXIS_PACKAGE) \
 		--profile app
 
+## Discover Axis devices on the local network
+##
+## Note that this does not work inside a container unless it's running on a Linux host.
+discover-devices:
+	rs4a discover-devices
+
 ## Install <AXIS_PACKAGE> on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install:
 	cargo-acap-sdk install \
@@ -210,8 +216,8 @@ check_lint:
 
 ## Check that risky FFI patterns are sound using miri
 check_miri:
-	rustup +nightly component add miri
-	cargo +nightly miri test \
+	rustup +nightly-2025-04-18 component add miri
+	cargo +nightly-2025-04-18 miri test \
 		--package ffi_patterns \
 		--target aarch64-unknown-linux-gnu \
 		--target thumbv7neon-unknown-linux-gnueabihf

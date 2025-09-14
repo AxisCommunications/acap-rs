@@ -1,0 +1,16 @@
+[package]
+name = "subscribe_to_event"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+glib = { workspace = true }
+log = { workspace = true }
+
+acap-logging = { workspace = true }
+axevent = { workspace = true }
+
+[features]
+default = ["acap-logging/default"]

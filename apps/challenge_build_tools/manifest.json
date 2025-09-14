@@ -43,7 +43,7 @@
       ],
       "paramConfig": [
         {
-          "name": "my-parameter",
+          "name": "MyParameterWith1KindaTrickyName_",
           "default": "yes",
           "type": "bool:no,yes"
         }

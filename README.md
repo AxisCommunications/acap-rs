@@ -36,12 +36,13 @@ The recommended setup is using the [dev container](#dev-container) and the most 
 ### Dev container
 
 The quickest way to build the `hello_world` example is to launch the dev container and
-run `make build AXIS_PACKAGE=hello_world`.
-Once it completes there should be an `.eap` file in `target/acap`:
+run `cargo-acap-build -- -p hello_world`.
+Once it completes there should be `.eap` files in `target/acap`:
 
 ```console
 $ ls -1 target/acap
-hello_world_1_0_0_aarch64.eap
+hello_world_0_0_0_aarch64.eap
+hello_world_0_0_0_armv7hf.eap
 ```
 
 This works with any of the [example applications](#example-applications).
@@ -135,7 +136,8 @@ Each crate has a corresponding `*-sys`, which is omitted for brevity.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/axevent/src/lib.rs)
 - `axoverlay`: Bindings for the Overlay API
-  - Status: 📄 Not started
+  - Status: 🧻 Proof of Concept
+  - Documentation: [Source code](crates/axoverlay/src/lib.rs)
 - `axserialport`: Bindings for the Serial Port API
   - Status: 📄 Not started
 - `axstorage`: Bindings for the Edge Storage API.
@@ -188,6 +190,9 @@ by this project.
 - `axparameter_example`: Creates, reads, updates, deletes, and subscribes to parameters.
   - Status: ⚠️ Alpha
   - [Source code](apps/axparameter_example/src/main.rs)
+- `axoverlay_example`: Draws two rectangles and a countdown in video streams.
+  - Status: 🧻 Proof of Concept
+  - [Source code](apps/axoverlay_example/src/main.rs)
 - `axstorage_example`: Writes data to files on all connected storages.
   - Status: ⚠️ Alpha
   - [Source code](apps/axstorage_example/src/main.rs)
@@ -200,6 +205,9 @@ by this project.
 - `embedded_web_page`: Bundles an embedded web page.
   - Status: ⚠️ Alpha
   - [Source code](apps/embedded_web_page/src/main.rs)
+- `event_subscribe`: Subscribe to an event using the non-blocking axevent API. Re-implements the [C example for event subscription](https://developer.axis.com/acap/api/src/api/axevent/html/ax_event_subscription_example_8c-example.html)
+  - Status: ⚠️ Alpha
+  - [Source code](apps/event_subscribe/src/main.rs)
 - `hello_world`:Sets up and uses logging using common functions and `acap-logging`.
   - Status: ⚠️ Alpha
   - [Source code](apps/hello_world/src/main.rs)
@@ -212,6 +220,9 @@ by this project.
 - `send_event`: Sends events using `axevent`.
   - Status: ⚠️ Alpha
   - [Source code](apps/send_event/src/main.rs)
+- `subscribe_to_event`: Subscribe to an event using `axevent`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/subscribe_to_event/src/main.rs)
 - `using_a_build_script`: Generates html, lib and app manifest files using a build script.
   - Status: ⚠️ Alpha
   - [Source code](apps/using_a_build_script/src/main.rs)
@@ -223,8 +234,10 @@ by this project.
 
 ### Articles
 
+- [awesome-acap](https://github.com/apljungquist/awesome-acap) - a list of free resources related to ACAP development.
 - [Related projects](docs/related-projects.md)
 - [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
+- [Managing the size of Rust binaries](https://github.com/apljungquist/managing-the-size-of-rust-binaries)
 
 ## Troubleshooting
 

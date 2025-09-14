@@ -29,9 +29,9 @@ pub enum HttpRpcError<T> {
 impl<T: Display> Display for HttpRpcError<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            HttpRpcError::Remote(e) => Display::fmt(&e, f),
-            HttpRpcError::ParseUrl(e) => Display::fmt(&e, f),
-            HttpRpcError::Other(e) => Display::fmt(&e, f),
+            HttpRpcError::Remote(_) => write!(f, "Server rejected the request"),
+            HttpRpcError::ParseUrl(_) => write!(f, "Failed to parse url"),
+            HttpRpcError::Other(_) => write!(f, "Something went wrong"),
         }
     }
 }
@@ -100,7 +100,7 @@ pub struct UploadRequest<'a> {
     data: Vec<u8>,
 }
 
-impl<'a> UploadRequest<'a> {
+impl UploadRequest<'_> {
     pub async fn send(self) -> Result<(), HttpRpcError<UploadApplicationError>> {
         let Self { client, name, data } = self;
         let mut form = Vec::new();

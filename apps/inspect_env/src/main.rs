@@ -1,14 +1,16 @@
 #![forbid(unsafe_code)]
 //! A simple app that inspects the environment it runs in
 
-use std::{collections::HashMap, env, io::IsTerminal};
+use std::{env, io::IsTerminal};
 
 use log::info;
 
 fn main() {
     acap_logging::init_logger();
     info!("args: {:?}", env::args().collect::<Vec<_>>());
-    info!("vars: {:#?}", env::vars().collect::<HashMap<_, _>>());
+    for (key, value) in env::vars() {
+        info!("var {key}: {value:?}");
+    }
     info!("current_dir: {:?}", env::current_dir());
     info!("current_exe: {:?}", env::current_exe());
     info!("temp_dir: {:?}", env::temp_dir());
@@ -17,7 +19,7 @@ fn main() {
     info!("stderr is terminal: {}", std::io::stderr().is_terminal());
 }
 
-#[cfg(not(target_arch = "x86_64"))]
+#[cfg(not(any(target_arch = "x86_64", target_os = "macos")))]
 #[cfg(test)]
 mod tests {
     use std::{env, path::PathBuf};

@@ -52,7 +52,7 @@ pub struct Declaration<'a> {
     handler: &'a Handler,
 }
 
-impl<'a> Drop for Declaration<'a> {
+impl Drop for Declaration<'_> {
     fn drop(&mut self) {
         if let Err(e) = self.handler.undeclare(&self.id) {
             // TODO: Explore ways to communicate errors within the program
@@ -128,7 +128,7 @@ pub struct Subscription<'a> {
     handler: &'a Handler,
 }
 
-impl<'a> Drop for Subscription<'a> {
+impl Drop for Subscription<'_> {
     fn drop(&mut self) {
         if let Err(e) = self.handler.unsubscribe(&self.id) {
             error!("Could not unsubscribe because {e:?}")

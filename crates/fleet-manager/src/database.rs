@@ -42,6 +42,9 @@ impl ArchAbi {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Device {
     pub host: Host,
+    pub http_port: Option<u16>,
+    pub https_port: Option<u16>,
+    // TODO: Add ssh_port
     pub arch: ArchAbi,
     pub primary: Account,
 }
