@@ -2,7 +2,7 @@
 //! An example of how to subscribe to an ONVIF event. It requires the `send_event` example to be
 //! installed and running as it relies on those events to receive and log data.
 
-use axevent::flex::{Handler, KeyValueSet, Subscription};
+use axevent::flex::{Handler, KeyValueSet, Subscription, DOUBLE_SENTINEL};
 use log::error;
 use log::info;
 
@@ -17,9 +17,11 @@ fn onviftrigger_subscription(handler: &Handler, token: u32) -> anyhow::Result<Su
     let _subscription = handler.subscribe(key_value_set, |_subscription, event| {
         match event.key_value_set().get_double(c"Value", None) {
             Ok(value) => {
-                info!("Received event with value: {}", value);
+                info!(
+                    "Received event with value: {}",
+                    value.unwrap_or(DOUBLE_SENTINEL)
+                );
             }
-
             Err(e) => {
                 error!("Error {}", e);
             }

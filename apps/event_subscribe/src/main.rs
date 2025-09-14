@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! An example of how to subscribe to manual trigger events using `axevent::nonblock`
 
+use anyhow::Context;
 use axevent::flex::{Handler, KeyValueSet};
 use axevent::nonblock::Subscription;
 use glib::MainContext;
@@ -21,8 +22,12 @@ async fn app() -> anyhow::Result<()> {
     while let Some(evt) = manual_trigger_events.next().await {
         info!(
             "Got manual trigger event on port {} with state {}",
-            evt.key_value_set().get_integer(c"port", None)?,
-            evt.key_value_set().get_boolean(c"state", None)?
+            evt.key_value_set()
+                .get_integer(c"port", None)?
+                .context("port is none")?,
+            evt.key_value_set()
+                .get_boolean(c"state", None)?
+                .context("state is none")?
         );
     }
     Ok(())

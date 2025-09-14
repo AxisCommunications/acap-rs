@@ -80,7 +80,8 @@ fn main() {
 mod tests {
     use std::{ffi::CStr, time, time::Duration};
 
-    use anyhow::bail;
+    use anyhow::{bail, Context};
+    use axevent::flex::{DOUBLE_SENTINEL, INTEGER_SENTINEL};
     use axevent::{
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
         flex::{CStringPtr, Event, Handler, KeyValueSet},
@@ -96,35 +97,47 @@ mod tests {
     }
 
     #[test]
-    fn get_integer_none() {
-        let mut kvs = axevent::flex::KeyValueSet::new();
-        kvs.add_key_value::<i32>(c"foo", None, None).unwrap();
-        assert_eq!(kvs.get_integer(c"foo", None).unwrap(), 0);
-    }
-
-    // thread 'tests::get_double_none' panicked at crates/axevent/src/flex.rs:605:22:
-    // Expected gboolean to be either 0 or 1 but got 3
-    #[test]
-    fn get_boolean_none() {
-        let mut kvs = axevent::flex::KeyValueSet::new();
-        kvs.add_key_value::<f64>(c"foo", None, None).unwrap();
-        assert_eq!(kvs.get_double(c"foo", None).unwrap(), 0.0);
+    fn get_double_replaces_sentinel_with_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<f64>(c"foo", None, Some(DOUBLE_SENTINEL))
+            .unwrap();
+        assert!(kvs.get_double(c"foo", None).unwrap().is_none());
     }
 
     #[test]
-    fn get_double_none() {
-        let mut kvs = axevent::flex::KeyValueSet::new();
+    fn get_integer_replaces_sentinel_with_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<i32>(c"foo", None, Some(INTEGER_SENTINEL))
+            .unwrap();
+        assert!(kvs.get_integer(c"foo", None).unwrap().is_none());
+    }
+
+    #[test]
+    fn get_boolean_propagates_none() {
+        let mut kvs = KeyValueSet::new();
         kvs.add_key_value::<bool>(c"foo", None, None).unwrap();
-        assert_eq!(kvs.get_boolean(c"foo", None).unwrap(), false);
+        assert_eq!(kvs.get_boolean(c"foo", None).unwrap(), None);
     }
 
-    // thread 'tests::read_none_string' panicked at crates/axevent/src/flex.rs:80:9:
-    // assertion failed: !ptr.is_null()
+    #[test]
+    fn get_double_propagates_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<f64>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_double(c"foo", None).unwrap(), None);
+    }
+
+    #[test]
+    fn get_integer_propagates_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<i32>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_integer(c"foo", None).unwrap(), None);
+    }
+
     #[test]
     fn get_string_none() {
-        let mut kvs = axevent::flex::KeyValueSet::new();
+        let mut kvs = KeyValueSet::new();
         kvs.add_key_value::<&CStr>(c"foo", None, None).unwrap();
-        assert_eq!(kvs.get_string(c"foo", None).unwrap().as_c_str(), c"");
+        assert!(kvs.get_string(c"foo", None).unwrap().is_none());
     }
 
     fn topic() -> anyhow::Result<KeyValueSet> {
@@ -172,14 +185,20 @@ mod tests {
 
         let kvs = event.key_value_set();
         assert_eq!(
-            kvs.get_string(c"topic0", Some(c"tnsaxis"))?.as_c_str(),
+            kvs.get_string(c"topic0", Some(c"tnsaxis"))?
+                .context("topic0 is none")?
+                .as_c_str(),
             c"CameraApplicationPlatform"
         );
         assert_eq!(
-            kvs.get_string(c"topic1", Some(c"tnsaxis"))?.as_c_str(),
+            kvs.get_string(c"topic1", Some(c"tnsaxis"))?
+                .context("topic1 is none")?
+                .as_c_str(),
             c"HelloAXEvent"
         );
-        let received = kvs.get_string(c"Greeting", None)?;
+        let received = kvs
+            .get_string(c"Greeting", None)?
+            .context("Greeting is none")?;
 
         if let Err(e) = main_loop.quit_and_join() {
             bail!("Main loop exited with an error: {e:?}");
@@ -229,7 +248,8 @@ mod tests {
             .rx
             .recv_timeout(Duration::from_secs(5))?
             .key_value_set()
-            .get_boolean(topic2, None)?;
+            .get_boolean(topic2, None)?
+            .context("active is none")?;
         assert!(active);
 
         debug!("Deactivating event...");
@@ -242,7 +262,8 @@ mod tests {
             .rx
             .recv_timeout(Duration::from_secs(5))?
             .key_value_set()
-            .get_boolean(topic2, None)?;
+            .get_boolean(topic2, None)?
+            .context("active is none")?;
         assert!(!active);
 
         if let Err(e) = main_loop.quit_and_join() {

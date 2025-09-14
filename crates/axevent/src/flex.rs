@@ -10,7 +10,7 @@
 use std::{
     any,
     collections::HashMap,
-    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
+    ffi::{c_char, c_int, c_uint, c_void, CStr, CString},
     fmt::Debug,
     mem::ManuallyDrop,
     process, ptr,
@@ -40,6 +40,9 @@ use glib::{
 };
 use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
+
+pub const DOUBLE_SENTINEL: f64 = f64::MAX;
+pub const INTEGER_SENTINEL: i32 = i32::MAX;
 
 macro_rules! abort_unwind {
     ($f:expr) => {
@@ -569,9 +572,12 @@ impl KeyValueSet {
         }
     }
 
-    pub fn get_integer(&self, key: &CStr, namespace: Option<&CStr>) -> Result<i32> {
+    /// Returns the value associated with the `key` and `namespace`.
+    ///
+    /// Note that this method replaces `INTEGER_SENTINEL` with `None`.
+    pub fn get_integer(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<i32>> {
         unsafe {
-            let mut value = c_int::default();
+            let mut value = INTEGER_SENTINEL;
             try_func!(
                 ax_event_key_value_set_get_integer,
                 self.raw.as_ptr(),
@@ -582,13 +588,19 @@ impl KeyValueSet {
                 },
                 &mut value,
             )?;
-            Ok(value)
+            match value {
+                INTEGER_SENTINEL => Ok(None),
+                _ => Ok(Some(value)),
+            }
         }
     }
 
-    pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<bool> {
+    /// Returns the value associated with the `key` and `namespace`.
+    ///
+    /// Note that this method replaces `gboolean::MAX` with `None`.
+    pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<bool>> {
         unsafe {
-            let mut value = 3;
+            let mut value = gboolean::MAX;
             try_func!(
                 ax_event_key_value_set_get_boolean,
                 self.raw.as_ptr(),
@@ -600,16 +612,22 @@ impl KeyValueSet {
                 &mut value,
             )?;
             Ok(match value {
-                0 => false,
-                1 => true,
-                _ => panic!("Expected gboolean to be either 0 or 1 but got {value}"),
+                0 => Some(false),
+                1 => Some(true),
+                gboolean::MAX => None,
+                _ => {
+                    panic!("Expected 0 or 1 for gboolean or 2 for None, but got {value}")
+                }
             })
         }
     }
 
-    pub fn get_double(&self, key: &CStr, namespace: Option<&CStr>) -> Result<f64> {
+    /// Returns the value associated with the `key` and `namespace`.
+    ///
+    /// Note that this method replaces `DOUBLE_SENTINEL` with `None`.
+    pub fn get_double(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<f64>> {
         unsafe {
-            let mut value = c_double::default();
+            let mut value = DOUBLE_SENTINEL;
             try_func!(
                 ax_event_key_value_set_get_double,
                 self.raw.as_ptr(),
@@ -620,11 +638,15 @@ impl KeyValueSet {
                 },
                 &mut value,
             )?;
-            Ok(value)
+            match value {
+                DOUBLE_SENTINEL => Ok(None),
+                _ => Ok(Some(value)),
+            }
         }
     }
 
-    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<CStringPtr> {
+    /// Returns the value associated with the `key` and `namespace`.
+    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<CStringPtr>> {
         unsafe {
             let mut value: *mut c_char = ptr::null_mut();
             try_func!(
@@ -645,7 +667,11 @@ impl KeyValueSet {
             //   be freed using `g_free`.
             // - This function owns the memory and does not mutate it.
             // - Values will never be longer than `isize::MAX` in practice.
-            Ok(CStringPtr::from_ptr(value))
+            if value.is_null() {
+                Ok(None)
+            } else {
+                Ok(Some(CStringPtr::from_ptr(value)))
+            }
         }
     }
 
@@ -765,4 +791,27 @@ pub enum ValueType {
     Double,
     String,
     Element,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn boolean_values_are_not_normalized() {
+        let kvs = KeyValueSet::new();
+        unsafe {
+            let mut value = i32::MAX;
+            try_func!(
+                ax_event_key_value_set_add_key_value,
+                kvs.raw.as_ptr(),
+                c"foo".as_ptr(),
+                ptr::null(),
+                &mut value as *mut _ as *mut c_void,
+                AXEventValueType_AX_VALUE_TYPE_BOOL,
+            )
+            .unwrap();
+        }
+        assert!(kvs.get_boolean(c"foo", None).unwrap().is_none());
+    }
 }
