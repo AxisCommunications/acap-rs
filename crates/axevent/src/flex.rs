@@ -597,10 +597,10 @@ impl KeyValueSet {
 
     /// Returns the value associated with the `key` and `namespace`.
     ///
-    /// Note that this method replaces `gboolean::MAX` with `None`.
+    /// Note that this method replaces `INTEGER_SENTINEL` with `None`.
     pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<bool>> {
         unsafe {
-            let mut value = gboolean::MAX;
+            let mut value = INTEGER_SENTINEL;
             try_func!(
                 ax_event_key_value_set_get_boolean,
                 self.raw.as_ptr(),
@@ -614,7 +614,7 @@ impl KeyValueSet {
             Ok(match value {
                 0 => Some(false),
                 1 => Some(true),
-                gboolean::MAX => None,
+                INTEGER_SENTINEL => None,
                 _ => {
                     panic!("Expected 0 or 1 for gboolean or 2 for None, but got {value}")
                 }
