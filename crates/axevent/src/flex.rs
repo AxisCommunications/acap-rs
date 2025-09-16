@@ -795,11 +795,16 @@ pub enum ValueType {
 mod tests {
     use super::*;
 
+    /// Document the observation that `axevent` does not normalize booleans in a key-value set.
+    ///
+    /// However, the process of sending and receiving a boolean appears to normalize it.
     #[test]
     fn boolean_values_are_not_normalized() {
         let kvs = KeyValueSet::new();
+
+        let expected = 3;
         unsafe {
-            let mut value = i32::MAX;
+            let mut value = expected;
             try_func!(
                 ax_event_key_value_set_add_key_value,
                 kvs.raw.as_ptr(),
@@ -810,6 +815,19 @@ mod tests {
             )
             .unwrap();
         }
-        assert!(kvs.get_boolean(c"foo", None).unwrap().is_none());
+
+        let mut actual = 0;
+        unsafe {
+            try_func!(
+                ax_event_key_value_set_get_boolean,
+                kvs.raw.as_ptr(),
+                c"foo".as_ptr(),
+                ptr::null(),
+                &mut actual,
+            )
+            .unwrap();
+        }
+
+        assert_eq!(expected, actual);
     }
 }
