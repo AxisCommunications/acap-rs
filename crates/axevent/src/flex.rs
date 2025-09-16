@@ -41,9 +41,6 @@ use glib::{
 use glib_sys::{g_free, gboolean, gpointer, GError};
 use log::debug;
 
-pub const DOUBLE_SENTINEL: f64 = f64::MAX;
-pub const INTEGER_SENTINEL: i32 = i32::MAX;
-
 macro_rules! abort_unwind {
     ($f:expr) => {
         std::panic::catch_unwind($f).unwrap_or_else(|_| {
@@ -573,34 +570,32 @@ impl KeyValueSet {
     }
 
     /// Returns the value associated with the `key` and `namespace`.
-    ///
-    /// Note that this method replaces `INTEGER_SENTINEL` with `None`.
     pub fn get_integer(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<i32>> {
         unsafe {
-            let mut value = INTEGER_SENTINEL;
-            try_func!(
-                ax_event_key_value_set_get_integer,
-                self.raw.as_ptr(),
-                key.as_ptr(),
-                match namespace {
-                    Some(v) => v.as_ptr(),
-                    None => ptr::null(),
-                },
-                &mut value,
-            )?;
-            match value {
-                INTEGER_SENTINEL => Ok(None),
-                _ => Ok(Some(value)),
+            for initial in [i32::MIN, i32::MAX] {
+                let mut value = initial;
+                try_func!(
+                    ax_event_key_value_set_get_integer,
+                    self.raw.as_ptr(),
+                    key.as_ptr(),
+                    match namespace {
+                        Some(v) => v.as_ptr(),
+                        None => ptr::null(),
+                    },
+                    &mut value,
+                )?;
+                if value != initial {
+                    return Ok(Some(value));
+                }
             }
+            Ok(None)
         }
     }
 
     /// Returns the value associated with the `key` and `namespace`.
-    ///
-    /// Note that this method replaces `INTEGER_SENTINEL` with `None`.
     pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<bool>> {
         unsafe {
-            let mut value = INTEGER_SENTINEL;
+            let mut value = i32::MIN;
             try_func!(
                 ax_event_key_value_set_get_boolean,
                 self.raw.as_ptr(),
@@ -614,7 +609,7 @@ impl KeyValueSet {
             Ok(match value {
                 0 => Some(false),
                 1 => Some(true),
-                INTEGER_SENTINEL => None,
+                i32::MIN => None,
                 _ => {
                     panic!("Expected 0 or 1 for gboolean or 2 for None, but got {value}")
                 }
@@ -623,25 +618,25 @@ impl KeyValueSet {
     }
 
     /// Returns the value associated with the `key` and `namespace`.
-    ///
-    /// Note that this method replaces `DOUBLE_SENTINEL` with `None`.
     pub fn get_double(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<f64>> {
         unsafe {
-            let mut value = DOUBLE_SENTINEL;
-            try_func!(
-                ax_event_key_value_set_get_double,
-                self.raw.as_ptr(),
-                key.as_ptr(),
-                match namespace {
-                    Some(v) => v.as_ptr(),
-                    None => ptr::null(),
-                },
-                &mut value,
-            )?;
-            match value {
-                DOUBLE_SENTINEL => Ok(None),
-                _ => Ok(Some(value)),
+            for initial in [f64::MIN, f64::MAX] {
+                let mut value = initial;
+                try_func!(
+                    ax_event_key_value_set_get_double,
+                    self.raw.as_ptr(),
+                    key.as_ptr(),
+                    match namespace {
+                        Some(v) => v.as_ptr(),
+                        None => ptr::null(),
+                    },
+                    &mut value,
+                )?;
+                if value != initial {
+                    return Ok(Some(value));
+                }
             }
+            Ok(None)
         }
     }
 

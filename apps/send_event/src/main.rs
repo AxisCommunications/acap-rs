@@ -81,7 +81,6 @@ mod tests {
     use std::{ffi::CStr, time, time::Duration};
 
     use anyhow::{bail, Context};
-    use axevent::flex::{DOUBLE_SENTINEL, INTEGER_SENTINEL};
     use axevent::{
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
         flex::{CStringPtr, Event, Handler, KeyValueSet},
@@ -97,19 +96,21 @@ mod tests {
     }
 
     #[test]
-    fn get_double_replaces_sentinel_with_none() {
-        let mut kvs = KeyValueSet::new();
-        kvs.add_key_value::<f64>(c"foo", None, Some(DOUBLE_SENTINEL))
-            .unwrap();
-        assert!(kvs.get_double(c"foo", None).unwrap().is_none());
+    fn get_double_works_with_extreme_values() {
+        for v in [f64::MIN, f64::MAX] {
+            let mut kvs = KeyValueSet::new();
+            kvs.add_key_value::<f64>(c"foo", None, Some(v)).unwrap();
+            assert_eq!(kvs.get_double(c"foo", None).unwrap().unwrap(), v);
+        }
     }
 
     #[test]
-    fn get_integer_replaces_sentinel_with_none() {
-        let mut kvs = KeyValueSet::new();
-        kvs.add_key_value::<i32>(c"foo", None, Some(INTEGER_SENTINEL))
-            .unwrap();
-        assert!(kvs.get_integer(c"foo", None).unwrap().is_none());
+    fn get_integer_works_with_extreme_values() {
+        for v in [i32::MIN, i32::MAX] {
+            let mut kvs = KeyValueSet::new();
+            kvs.add_key_value::<i32>(c"foo", None, Some(v)).unwrap();
+            assert_eq!(kvs.get_integer(c"foo", None).unwrap().unwrap(), v);
+        }
     }
 
     #[test]
