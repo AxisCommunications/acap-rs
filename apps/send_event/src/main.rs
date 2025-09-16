@@ -96,8 +96,24 @@ mod tests {
     }
 
     #[test]
-    fn get_double_works_with_extreme_values() {
-        for v in [f64::MIN, f64::MAX] {
+    fn get_boolean_works_with_all_value() {
+        for v in [false, true] {
+            let mut kvs = KeyValueSet::new();
+            kvs.add_key_value::<bool>(c"foo", None, Some(v)).unwrap();
+            assert_eq!(kvs.get_boolean(c"foo", None).unwrap().unwrap(), v);
+        }
+    }
+
+    #[test]
+    fn get_double_works_with_suspicious_values() {
+        for v in [
+            f64::NEG_INFINITY,
+            f64::MIN,
+            -0.0,
+            0.0,
+            f64::MAX,
+            f64::INFINITY,
+        ] {
             let mut kvs = KeyValueSet::new();
             kvs.add_key_value::<f64>(c"foo", None, Some(v)).unwrap();
             assert_eq!(kvs.get_double(c"foo", None).unwrap().unwrap(), v);
@@ -105,8 +121,16 @@ mod tests {
     }
 
     #[test]
-    fn get_integer_works_with_extreme_values() {
-        for v in [i32::MIN, i32::MAX] {
+    fn get_double_works_with_nan() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<f64>(c"foo", None, Some(f64::NAN))
+            .unwrap();
+        assert!(kvs.get_double(c"foo", None).unwrap().unwrap().is_nan());
+    }
+
+    #[test]
+    fn get_integer_works_with_suspicious_values() {
+        for v in [i32::MIN, 0, i32::MAX] {
             let mut kvs = KeyValueSet::new();
             kvs.add_key_value::<i32>(c"foo", None, Some(v)).unwrap();
             assert_eq!(kvs.get_integer(c"foo", None).unwrap().unwrap(), v);

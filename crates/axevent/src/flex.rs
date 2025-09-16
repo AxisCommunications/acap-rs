@@ -595,25 +595,28 @@ impl KeyValueSet {
     /// Returns the value associated with the `key` and `namespace`.
     pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<bool>> {
         unsafe {
-            let mut value = i32::MIN;
-            try_func!(
-                ax_event_key_value_set_get_boolean,
-                self.raw.as_ptr(),
-                key.as_ptr(),
-                match namespace {
-                    Some(v) => v.as_ptr(),
-                    None => ptr::null(),
-                },
-                &mut value,
-            )?;
-            Ok(match value {
-                0 => Some(false),
-                1 => Some(true),
-                i32::MIN => None,
-                _ => {
-                    panic!("Expected 0 or 1 for gboolean or 2 for None, but got {value}")
+            for initial in [i32::MIN, i32::MAX] {
+                let mut value = initial;
+                try_func!(
+                    ax_event_key_value_set_get_boolean,
+                    self.raw.as_ptr(),
+                    key.as_ptr(),
+                    match namespace {
+                        Some(v) => v.as_ptr(),
+                        None => ptr::null(),
+                    },
+                    &mut value,
+                )?;
+                // The FFI allows us to store any integer as a boolean,
+                // but we should never observe that because:
+                // - they appear to be normalized when sent through axevent, and
+                // - we have no interface that allows setting a value other than 0, 1, or null.
+                debug_assert!(value == initial || value == 0 || value == 1);
+                if value != initial {
+                    return Ok(Some(value != 0));
                 }
-            })
+            }
+            Ok(None)
         }
     }
 
