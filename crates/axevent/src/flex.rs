@@ -10,7 +10,7 @@
 use std::{
     any,
     collections::HashMap,
-    ffi::{c_char, c_double, c_int, c_uint, c_void, CStr, CString},
+    ffi::{c_char, c_int, c_uint, c_void, CStr, CString},
     fmt::Debug,
     mem::ManuallyDrop,
     process, ptr,
@@ -569,62 +569,82 @@ impl KeyValueSet {
         }
     }
 
-    pub fn get_integer(&self, key: &CStr, namespace: Option<&CStr>) -> Result<i32> {
+    /// Returns the value associated with the `key` and `namespace`.
+    pub fn get_integer(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<i32>> {
         unsafe {
-            let mut value = c_int::default();
-            try_func!(
-                ax_event_key_value_set_get_integer,
-                self.raw.as_ptr(),
-                key.as_ptr(),
-                match namespace {
-                    Some(v) => v.as_ptr(),
-                    None => ptr::null(),
-                },
-                &mut value,
-            )?;
-            Ok(value)
+            for initial in [i32::MIN, i32::MAX] {
+                let mut value = initial;
+                try_func!(
+                    ax_event_key_value_set_get_integer,
+                    self.raw.as_ptr(),
+                    key.as_ptr(),
+                    match namespace {
+                        Some(v) => v.as_ptr(),
+                        None => ptr::null(),
+                    },
+                    &mut value,
+                )?;
+                if value != initial {
+                    return Ok(Some(value));
+                }
+            }
+            Ok(None)
         }
     }
 
-    pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<bool> {
+    /// Returns the value associated with the `key` and `namespace`.
+    pub fn get_boolean(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<bool>> {
         unsafe {
-            let mut value = gboolean::default();
-            try_func!(
-                ax_event_key_value_set_get_boolean,
-                self.raw.as_ptr(),
-                key.as_ptr(),
-                match namespace {
-                    Some(v) => v.as_ptr(),
-                    None => ptr::null(),
-                },
-                &mut value,
-            )?;
-            Ok(match value {
-                0 => false,
-                1 => true,
-                _ => panic!("Expected gboolean to be either 0 or 1 but got {value}"),
-            })
+            for initial in [i32::MIN, i32::MAX] {
+                let mut value = initial;
+                try_func!(
+                    ax_event_key_value_set_get_boolean,
+                    self.raw.as_ptr(),
+                    key.as_ptr(),
+                    match namespace {
+                        Some(v) => v.as_ptr(),
+                        None => ptr::null(),
+                    },
+                    &mut value,
+                )?;
+                // The FFI allows us to store any integer as a boolean,
+                // but we should never observe that because:
+                // - they appear to be normalized when sent through axevent, and
+                // - we have no interface that allows setting a value other than 0, 1, or null.
+                debug_assert!(value == initial || value == 0 || value == 1);
+                if value != initial {
+                    return Ok(Some(value != 0));
+                }
+            }
+            Ok(None)
         }
     }
 
-    pub fn get_double(&self, key: &CStr, namespace: Option<&CStr>) -> Result<f64> {
+    /// Returns the value associated with the `key` and `namespace`.
+    pub fn get_double(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<f64>> {
         unsafe {
-            let mut value = c_double::default();
-            try_func!(
-                ax_event_key_value_set_get_double,
-                self.raw.as_ptr(),
-                key.as_ptr(),
-                match namespace {
-                    Some(v) => v.as_ptr(),
-                    None => ptr::null(),
-                },
-                &mut value,
-            )?;
-            Ok(value)
+            for initial in [f64::MIN, f64::MAX] {
+                let mut value = initial;
+                try_func!(
+                    ax_event_key_value_set_get_double,
+                    self.raw.as_ptr(),
+                    key.as_ptr(),
+                    match namespace {
+                        Some(v) => v.as_ptr(),
+                        None => ptr::null(),
+                    },
+                    &mut value,
+                )?;
+                if value != initial {
+                    return Ok(Some(value));
+                }
+            }
+            Ok(None)
         }
     }
 
-    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<CStringPtr> {
+    /// Returns the value associated with the `key` and `namespace`.
+    pub fn get_string(&self, key: &CStr, namespace: Option<&CStr>) -> Result<Option<CStringPtr>> {
         unsafe {
             let mut value: *mut c_char = ptr::null_mut();
             try_func!(
@@ -645,7 +665,11 @@ impl KeyValueSet {
             //   be freed using `g_free`.
             // - This function owns the memory and does not mutate it.
             // - Values will never be longer than `isize::MAX` in practice.
-            Ok(CStringPtr::from_ptr(value))
+            if value.is_null() {
+                Ok(None)
+            } else {
+                Ok(Some(CStringPtr::from_ptr(value)))
+            }
         }
     }
 
@@ -765,4 +789,45 @@ pub enum ValueType {
     Double,
     String,
     Element,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Document the observation that `axevent` does not normalize booleans in a key-value set.
+    ///
+    /// However, the process of sending and receiving a boolean appears to normalize it.
+    #[test]
+    fn boolean_values_are_not_normalized() {
+        let kvs = KeyValueSet::new();
+
+        let expected = 3;
+        unsafe {
+            let mut value = expected;
+            try_func!(
+                ax_event_key_value_set_add_key_value,
+                kvs.raw.as_ptr(),
+                c"foo".as_ptr(),
+                ptr::null(),
+                &mut value as *mut _ as *mut c_void,
+                AXEventValueType_AX_VALUE_TYPE_BOOL,
+            )
+            .unwrap();
+        }
+
+        let mut actual = 0;
+        unsafe {
+            try_func!(
+                ax_event_key_value_set_get_boolean,
+                kvs.raw.as_ptr(),
+                c"foo".as_ptr(),
+                ptr::null(),
+                &mut actual,
+            )
+            .unwrap();
+        }
+
+        assert_eq!(expected, actual);
+    }
 }
