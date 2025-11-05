@@ -67,10 +67,10 @@ fn generate_manifest(out_dir: &Path) {
         "schemaVersion": "1.2",
         "acapPackageConf": {
             "setup": {
-                "appName": "using_a_build_script",
+                "appName": env!("CARGO_PKG_NAME"),
                 "vendor": "Axis Communications",
                 "runMode": "never",
-                "version": "0.0.0"
+                "version": env!("CARGO_PKG_VERSION")
             },
             "configuration": {
                 "settingPage": "index.html"
