@@ -25,7 +25,8 @@ impl RunCommand {
             http_port: _,
             https_port: _,
             ssh_port,
-            user: username,
+            user: _,
+            ssh_user: username,
             pass: password,
         } = deploy_options;
 
@@ -38,6 +39,7 @@ impl RunCommand {
                 .collect();
             match artifact {
                 Artifact::Eap { path, name } => {
+                    let username = DeployOptions::username_for_eap(&username, &name);
                     // TODO: Install instead of patch when needed
                     debug!("Patching app {name}");
                     acap_ssh_utils::patch_package(&path, &username, &password, &address, ssh_port)?;
@@ -59,7 +61,7 @@ impl RunCommand {
                     );
                     acap_ssh_utils::run_other(
                         &path,
-                        &username,
+                        DeployOptions::username_for_exe(),
                         &password,
                         &address,
                         ssh_port,

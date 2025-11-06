@@ -80,12 +80,90 @@ fn main() {
 mod tests {
     use std::{ffi::CStr, time, time::Duration};
 
-    use anyhow::bail;
+    use anyhow::{bail, Context};
     use axevent::{
         ergo::{date_time, system_time, Declaration, MainLoop, Subscription},
         flex::{CStringPtr, Event, Handler, KeyValueSet},
     };
-    use log::debug;
+    use log::{debug, LevelFilter};
+
+    fn init() {
+        let _ = env_logger::Builder::new()
+            .filter_level(LevelFilter::Debug)
+            .parse_default_env()
+            .is_test(true)
+            .try_init();
+    }
+
+    #[test]
+    fn get_boolean_works_with_all_value() {
+        for v in [false, true] {
+            let mut kvs = KeyValueSet::new();
+            kvs.add_key_value::<bool>(c"foo", None, Some(v)).unwrap();
+            assert_eq!(kvs.get_boolean(c"foo", None).unwrap().unwrap(), v);
+        }
+    }
+
+    #[test]
+    fn get_double_works_with_suspicious_values() {
+        for v in [
+            f64::NEG_INFINITY,
+            f64::MIN,
+            -0.0,
+            0.0,
+            f64::MAX,
+            f64::INFINITY,
+        ] {
+            let mut kvs = KeyValueSet::new();
+            kvs.add_key_value::<f64>(c"foo", None, Some(v)).unwrap();
+            assert_eq!(kvs.get_double(c"foo", None).unwrap().unwrap(), v);
+        }
+    }
+
+    #[test]
+    fn get_double_works_with_nan() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<f64>(c"foo", None, Some(f64::NAN))
+            .unwrap();
+        assert!(kvs.get_double(c"foo", None).unwrap().unwrap().is_nan());
+    }
+
+    #[test]
+    fn get_integer_works_with_suspicious_values() {
+        for v in [i32::MIN, 0, i32::MAX] {
+            let mut kvs = KeyValueSet::new();
+            kvs.add_key_value::<i32>(c"foo", None, Some(v)).unwrap();
+            assert_eq!(kvs.get_integer(c"foo", None).unwrap().unwrap(), v);
+        }
+    }
+
+    #[test]
+    fn get_boolean_propagates_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<bool>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_boolean(c"foo", None).unwrap(), None);
+    }
+
+    #[test]
+    fn get_double_propagates_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<f64>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_double(c"foo", None).unwrap(), None);
+    }
+
+    #[test]
+    fn get_integer_propagates_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<i32>(c"foo", None, None).unwrap();
+        assert_eq!(kvs.get_integer(c"foo", None).unwrap(), None);
+    }
+
+    #[test]
+    fn get_string_none() {
+        let mut kvs = KeyValueSet::new();
+        kvs.add_key_value::<&CStr>(c"foo", None, None).unwrap();
+        assert!(kvs.get_string(c"foo", None).unwrap().is_none());
+    }
 
     fn topic() -> anyhow::Result<KeyValueSet> {
         let mut kvs = KeyValueSet::default();
@@ -132,14 +210,20 @@ mod tests {
 
         let kvs = event.key_value_set();
         assert_eq!(
-            kvs.get_string(c"topic0", Some(c"tnsaxis"))?.as_c_str(),
+            kvs.get_string(c"topic0", Some(c"tnsaxis"))?
+                .context("topic0 is none")?
+                .as_c_str(),
             c"CameraApplicationPlatform"
         );
         assert_eq!(
-            kvs.get_string(c"topic1", Some(c"tnsaxis"))?.as_c_str(),
+            kvs.get_string(c"topic1", Some(c"tnsaxis"))?
+                .context("topic1 is none")?
+                .as_c_str(),
             c"HelloAXEvent"
         );
-        let received = kvs.get_string(c"Greeting", None)?;
+        let received = kvs
+            .get_string(c"Greeting", None)?
+            .context("Greeting is none")?;
 
         if let Err(e) = main_loop.quit_and_join() {
             bail!("Main loop exited with an error: {e:?}");
@@ -158,6 +242,59 @@ mod tests {
 
         let actual = send_and_receive_event(expected).unwrap();
         assert_eq!(actual.as_c_str(), expected);
+    }
+
+    #[test]
+    fn can_send_and_receive_stateful_boolean() -> anyhow::Result<()> {
+        init();
+
+        let main_loop = MainLoop::new();
+
+        let handler = Handler::new();
+
+        debug!("Subscribing to events...");
+        let subscription = Subscription::try_new(topic()?, &handler)?;
+
+        debug!("Declaring event...");
+        let topic2 = c"active";
+        let mut dec_kvs = topic()?;
+        dec_kvs.add_key_value(topic2, None, Some(false))?;
+        let declaration = Declaration::try_new(dec_kvs, true, &handler)?;
+        debug!("Waiting for declaration to be registered...");
+        assert!(declaration.rx.recv_timeout(Duration::from_secs(5)).is_ok());
+
+        debug!("Activating event...");
+        let mut activate_kvs = KeyValueSet::new();
+        activate_kvs.add_key_value(topic2, None, Some(true))?;
+        declaration.send_event(Event::new2(activate_kvs, None))?;
+
+        debug!("Verifying active state...");
+        let active = subscription
+            .rx
+            .recv_timeout(Duration::from_secs(5))?
+            .key_value_set()
+            .get_boolean(topic2, None)?
+            .context("active is none")?;
+        assert!(active);
+
+        debug!("Deactivating event...");
+        let mut inactivate_kvs = KeyValueSet::new();
+        inactivate_kvs.add_key_value(topic2, None, Some(false))?;
+        declaration.send_event(Event::new2(inactivate_kvs, None))?;
+
+        debug!("Verifying inactive state...");
+        let active = subscription
+            .rx
+            .recv_timeout(Duration::from_secs(5))?
+            .key_value_set()
+            .get_boolean(topic2, None)?
+            .context("active is none")?;
+        assert!(!active);
+
+        if let Err(e) = main_loop.quit_and_join() {
+            bail!("Main loop exited with an error: {e:?}");
+        }
+        Ok(())
     }
 
     #[test]

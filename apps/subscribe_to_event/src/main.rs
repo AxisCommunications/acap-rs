@@ -17,9 +17,8 @@ fn onviftrigger_subscription(handler: &Handler, token: u32) -> anyhow::Result<Su
     let _subscription = handler.subscribe(key_value_set, |_subscription, event| {
         match event.key_value_set().get_double(c"Value", None) {
             Ok(value) => {
-                info!("Received event with value: {}", value);
+                info!("Received event with value: {value:?}");
             }
-
             Err(e) => {
                 error!("Error {}", e);
             }
