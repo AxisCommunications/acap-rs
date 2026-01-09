@@ -14,7 +14,7 @@ The quality of a library has many facets:
   - etc
 - Flexibility: What portion of the programs that one may want to express with the underlying C API can be expressed with the Rust bindings.
 - Performance: How much storage, memory and CPU does an application built using the bindings use.
-- Robustness: Can non-breaking changes to the underlying C API be made without breaking the Rust bindings and could such.
+- Robustness: Can non-breaking changes to the underlying C API be made without breaking the Rust bindings.
 - Soundness: Safe Rust using the library cannot cause undefined behavior [^1].
 - Stability: Can changes to the underlying C API be propagated to the Rust bindings without making breaking changes.
 
