@@ -214,6 +214,18 @@ flowchart LR
 %% ...
 %% vdo-stream.h
 %% ...
+    Map --> vdo_stream_rgb_new
+    Resolution --> vdo_stream_rgb_new
+    vdo_stream_rgb_new --> Stream
+%% ...
+    Map --> vdo_stream_nv12_new
+    Resolution --> vdo_stream_nv12_new
+    vdo_stream_nv12_new --> Stream
+%% ...
+    Map --> vdo_stream_y800_new
+    Resolution --> vdo_stream_y800_new
+    vdo_stream_y800_new --> Stream
+%% ...
     Map --> stream_new
     BufferFinalizer --> stream_new
     stream_new --> Stream
