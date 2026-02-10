@@ -3,7 +3,7 @@
 //! This example creates a video stream, captures a few frames, and prints
 //! information about each frame.
 
-use vdo::{Stream, VdoFormat};
+use vdo::{Resolution, Stream, VdoFormat};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging (optional)
@@ -12,30 +12,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating video stream...");
 
     // Create a stream with YUV format (most portable across platforms)
-    let mut stream = Stream::builder()
+    let stream = Stream::builder()
         .channel(0)
         .format(VdoFormat::VDO_FORMAT_YUV)
-        .resolution(640, 480)
+        .resolution(Resolution::Exact {
+            width: 640,
+            height: 480,
+        })
         .framerate(15)
         .build()?;
 
     println!("Starting stream...");
-    let mut running = stream.start()?;
+    let running = stream.start()?;
 
     println!("Capturing frames...");
-    for (i, buffer) in running.iter().take(10).enumerate() {
-        let frame = buffer.frame()?;
+    for i in 0..10 {
+        let buffer = running.next_buffer()?;
         println!(
             "Frame {}: {} bytes, seq={}, timestamp={}us",
             i,
-            frame.size(),
-            frame.sequence_number(),
-            frame.timestamp()
+            buffer.size(),
+            buffer.sequence_number(),
+            buffer.timestamp()
         );
     }
 
     println!("Stopping stream...");
-    running.stop()?;
+    running.stop();
 
     println!("Done!");
     Ok(())

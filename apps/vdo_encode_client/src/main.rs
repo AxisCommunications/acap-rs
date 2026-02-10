@@ -8,16 +8,22 @@
 //! - Frame capture and metadata access
 //! - Proper resource cleanup
 
-use log::{error, info};
-use vdo::{Error, Stream, VdoFormat};
+// These format tests run on the device as an ACAP application rather than as
+// unit tests because they require access to actual camera hardware via the VDO API.
 
-fn test_format(name: &str, format: VdoFormat, num_frames: usize) -> Result<(), Error> {
+use log::{error, info};
+use vdo::{Error, Resolution, Stream, VdoFormat};
+
+fn capture_format(name: &str, format: VdoFormat, num_frames: usize) -> Result<(), Error> {
     info!("=== Testing {} format ===", name);
 
-    let mut stream = Stream::builder()
+    let stream = Stream::builder()
         .channel(0)
         .format(format)
-        .resolution(640, 480)
+        .resolution(Resolution::Exact {
+            width: 640,
+            height: 480,
+        })
         .framerate(15)
         .build()?;
 
@@ -29,14 +35,14 @@ fn test_format(name: &str, format: VdoFormat, num_frames: usize) -> Result<(), E
         stream_info.dump();
     }
 
-    let mut running = stream.start()?;
+    let running = stream.start()?;
     info!("{}: Stream started", name);
 
-    for (i, buffer) in running.iter().take(num_frames).enumerate() {
-        let frame = buffer.frame()?;
-        let size = frame.size();
-        let seq = frame.sequence_number();
-        let ts = frame.timestamp();
+    for i in 0..num_frames {
+        let buffer = running.next_buffer()?;
+        let size = buffer.size();
+        let seq = buffer.sequence_number();
+        let ts = buffer.timestamp();
 
         info!(
             "{}: Frame {}: {} bytes, seq={}, timestamp={}us",
@@ -54,7 +60,7 @@ fn test_format(name: &str, format: VdoFormat, num_frames: usize) -> Result<(), E
         }
     }
 
-    running.stop()?;
+    running.stop();
     info!("{}: Stream stopped successfully", name);
     info!("");
 
@@ -69,25 +75,25 @@ fn main() {
     info!("");
 
     // Test YUV (most portable format)
-    match test_format("YUV", VdoFormat::VDO_FORMAT_YUV, 5) {
+    match capture_format("YUV", VdoFormat::VDO_FORMAT_YUV, 5) {
         Ok(()) => info!("YUV test: PASSED"),
         Err(e) => error!("YUV test: FAILED - {}", e),
     }
 
     // Test JPEG
-    match test_format("JPEG", VdoFormat::VDO_FORMAT_JPEG, 5) {
+    match capture_format("JPEG", VdoFormat::VDO_FORMAT_JPEG, 5) {
         Ok(()) => info!("JPEG test: PASSED"),
         Err(e) => error!("JPEG test: FAILED - {}", e),
     }
 
     // Test H.264
-    match test_format("H.264", VdoFormat::VDO_FORMAT_H264, 10) {
+    match capture_format("H.264", VdoFormat::VDO_FORMAT_H264, 10) {
         Ok(()) => info!("H.264 test: PASSED"),
         Err(e) => error!("H.264 test: FAILED - {}", e),
     }
 
     // Test H.265 (might not be supported on all platforms)
-    match test_format("H.265", VdoFormat::VDO_FORMAT_H265, 5) {
+    match capture_format("H.265", VdoFormat::VDO_FORMAT_H265, 5) {
         Ok(()) => info!("H.265 test: PASSED"),
         Err(e) => {
             if let Error::Vdo(ref vdo_err) = e {

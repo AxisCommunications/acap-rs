@@ -67,8 +67,8 @@ licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
 mdb = { path = "crates/mdb" }
 mdb-sys = { path = "crates/mdb-sys" }
-vdo-sys = { path = "crates/vdo-sys" }
 vdo = { path = "crates/vdo" }
+vdo-sys = { path = "crates/vdo-sys" }
 
 [workspace.package]
 edition = "2021"
