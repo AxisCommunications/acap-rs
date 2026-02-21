@@ -3,7 +3,7 @@
 use gobject_sys::{g_object_unref, GObject};
 use std::ffi::{c_char, c_void, CStr};
 use std::ptr::{self, NonNull};
-use vdo_sys::*;
+use vdo_sys::VdoMap;
 
 /// An owned pointer to a C string allocated by GLib.
 ///
@@ -49,7 +49,7 @@ pub struct Map {
 
 impl Map {
     pub fn try_new() -> std::result::Result<Self, super::Error> {
-        let map = unsafe { vdo_map_new() };
+        let map = unsafe { vdo_sys::vdo_map_new() };
         if map.is_null() {
             Err(super::Error::NullPointer)
         } else {
@@ -67,21 +67,21 @@ impl Map {
     }
 
     pub fn set_u32(&mut self, key: &CStr, value: u32) {
-        unsafe { vdo_map_set_uint32(self.raw, key.as_ptr(), value) }
+        unsafe { vdo_sys::vdo_map_set_uint32(self.raw, key.as_ptr(), value) }
     }
 
     pub fn get_u32(&self, key: &CStr, default: u32) -> u32 {
-        unsafe { vdo_map_get_uint32(self.raw, key.as_ptr(), default) }
+        unsafe { vdo_sys::vdo_map_get_uint32(self.raw, key.as_ptr(), default) }
     }
 
     pub fn set_string(&mut self, key: &CStr, value: &CStr) {
-        unsafe { vdo_map_set_string(self.raw, key.as_ptr(), value.as_ptr()) }
+        unsafe { vdo_sys::vdo_map_set_string(self.raw, key.as_ptr(), value.as_ptr()) }
     }
 
     /// Returns `None` if the key doesn't exist or the value is null.
     pub fn get_string(&self, key: &CStr) -> Option<CStringPtr> {
         // Passing null as default so missing keys yield null -> None.
-        let ptr = unsafe { vdo_map_dup_string(self.raw, key.as_ptr(), ptr::null()) };
+        let ptr = unsafe { vdo_sys::vdo_map_dup_string(self.raw, key.as_ptr(), ptr::null()) };
         if ptr.is_null() {
             return None;
         }
@@ -95,7 +95,7 @@ impl Map {
         } else {
             glib_sys::GFALSE
         };
-        unsafe { vdo_map_set_boolean(self.raw, key.as_ptr(), gvalue) }
+        unsafe { vdo_sys::vdo_map_set_boolean(self.raw, key.as_ptr(), gvalue) }
     }
 
     pub fn get_bool(&self, key: &CStr, default: bool) -> bool {
@@ -104,12 +104,12 @@ impl Map {
         } else {
             glib_sys::GFALSE
         };
-        unsafe { vdo_map_get_boolean(self.raw, key.as_ptr(), gdefault) != glib_sys::GFALSE }
+        unsafe { vdo_sys::vdo_map_get_boolean(self.raw, key.as_ptr(), gdefault) != glib_sys::GFALSE }
     }
 
     /// Dumps the map contents to stdout (for debugging).
     pub fn dump(&self) {
-        unsafe { vdo_map_dump(self.raw) }
+        unsafe { vdo_sys::vdo_map_dump(self.raw) }
     }
 
     pub(crate) fn as_ptr(&self) -> *mut VdoMap {

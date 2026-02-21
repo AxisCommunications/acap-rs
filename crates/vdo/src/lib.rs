@@ -54,14 +54,14 @@ use gobject_sys::{g_object_unref, GObject};
 use std::fmt::{Debug, Display};
 use std::mem;
 use std::ptr;
-use vdo_sys::*;
+use vdo_sys::{VdoBuffer, VdoBufferStrategy, VdoStream};
 
 pub use vdo_sys::{VdoFormat, VdoFrameType, VdoRateControlMode, VdoRateControlPriority};
 
 /// Macro for calling VDO functions that take a GError** parameter.
 /// Returns a tuple of (result, Option<Error>).
 macro_rules! try_func {
-    ($func:ident $(,)?) => {{
+    ($func:path $(,)?) => {{
         let mut error: *mut GError = ptr::null_mut();
         let success = $func(&mut error);
         if error.is_null() {
@@ -70,7 +70,7 @@ macro_rules! try_func {
             (success, Some(Error::Vdo(VdoError::from_gerror(error))))
         }
     }};
-    ($func:ident, $($arg:expr),+ $(,)?) => {{
+    ($func:path, $($arg:expr),+ $(,)?) => {{
         let mut error: *mut GError = ptr::null_mut();
         let success = $func($( $arg ),+, &mut error);
         if error.is_null() {
@@ -129,26 +129,27 @@ impl VdoError {
     pub fn code_name(&self) -> &'static str {
         let code = self.code as u32;
         match code {
-            x if x == VDO_ERROR_NOT_FOUND.0 => "VDO_ERROR_NOT_FOUND",
-            x if x == VDO_ERROR_EXISTS.0 => "VDO_ERROR_EXISTS",
-            x if x == VDO_ERROR_INVALID_ARGUMENT.0 => "VDO_ERROR_INVALID_ARGUMENT",
-            x if x == VDO_ERROR_PERMISSION_DENIED.0 => "VDO_ERROR_PERMISSION_DENIED",
-            x if x == VDO_ERROR_NOT_SUPPORTED.0 => "VDO_ERROR_NOT_SUPPORTED",
-            x if x == VDO_ERROR_CLOSED.0 => "VDO_ERROR_CLOSED",
-            x if x == VDO_ERROR_BUSY.0 => "VDO_ERROR_BUSY",
-            x if x == VDO_ERROR_IO.0 => "VDO_ERROR_IO",
-            x if x == VDO_ERROR_HAL.0 => "VDO_ERROR_HAL",
-            x if x == VDO_ERROR_DBUS.0 => "VDO_ERROR_DBUS",
-            x if x == VDO_ERROR_OOM.0 => "VDO_ERROR_OOM",
-            x if x == VDO_ERROR_IDLE.0 => "VDO_ERROR_IDLE",
-            x if x == VDO_ERROR_NO_DATA.0 => "VDO_ERROR_NO_DATA",
-            x if x == VDO_ERROR_NO_BUFFER_SPACE.0 => "VDO_ERROR_NO_BUFFER_SPACE",
-            x if x == VDO_ERROR_BUFFER_FAILURE.0 => "VDO_ERROR_BUFFER_FAILURE",
-            x if x == VDO_ERROR_INTERFACE_DOWN.0 => "VDO_ERROR_INTERFACE_DOWN",
-            x if x == VDO_ERROR_FAILED.0 => "VDO_ERROR_FAILED",
-            x if x == VDO_ERROR_FATAL.0 => "VDO_ERROR_FATAL",
-            x if x == VDO_ERROR_NOT_CONTROLLED.0 => "VDO_ERROR_NOT_CONTROLLED",
-            x if x == VDO_ERROR_NO_EVENT.0 => "VDO_ERROR_NO_EVENT",
+            x if x == vdo_sys::VDO_ERROR_NOT_FOUND.0 => "VDO_ERROR_NOT_FOUND",
+            x if x == vdo_sys::VDO_ERROR_EXISTS.0 => "VDO_ERROR_EXISTS",
+            x if x == vdo_sys::VDO_ERROR_INVALID_ARGUMENT.0 => "VDO_ERROR_INVALID_ARGUMENT",
+            x if x == vdo_sys::VDO_ERROR_PERMISSION_DENIED.0 => "VDO_ERROR_PERMISSION_DENIED",
+            x if x == vdo_sys::VDO_ERROR_NOT_SUPPORTED.0 => "VDO_ERROR_NOT_SUPPORTED",
+            x if x == vdo_sys::VDO_ERROR_CLOSED.0 => "VDO_ERROR_CLOSED",
+            x if x == vdo_sys::VDO_ERROR_BUSY.0 => "VDO_ERROR_BUSY",
+            x if x == vdo_sys::VDO_ERROR_IO.0 => "VDO_ERROR_IO",
+            x if x == vdo_sys::VDO_ERROR_HAL.0 => "VDO_ERROR_HAL",
+            x if x == vdo_sys::VDO_ERROR_DBUS.0 => "VDO_ERROR_DBUS",
+            x if x == vdo_sys::VDO_ERROR_OOM.0 => "VDO_ERROR_OOM",
+            x if x == vdo_sys::VDO_ERROR_IDLE.0 => "VDO_ERROR_IDLE",
+            x if x == vdo_sys::VDO_ERROR_NO_DATA.0 => "VDO_ERROR_NO_DATA",
+            x if x == vdo_sys::VDO_ERROR_NO_BUFFER_SPACE.0 => "VDO_ERROR_NO_BUFFER_SPACE",
+            x if x == vdo_sys::VDO_ERROR_BUFFER_FAILURE.0 => "VDO_ERROR_BUFFER_FAILURE",
+            x if x == vdo_sys::VDO_ERROR_INTERFACE_DOWN.0 => "VDO_ERROR_INTERFACE_DOWN",
+            x if x == vdo_sys::VDO_ERROR_FAILED.0 => "VDO_ERROR_FAILED",
+            x if x == vdo_sys::VDO_ERROR_FATAL.0 => "VDO_ERROR_FATAL",
+            x if x == vdo_sys::VDO_ERROR_NOT_CONTROLLED.0 => "VDO_ERROR_NOT_CONTROLLED",
+            x if x == vdo_sys::VDO_ERROR_NO_EVENT.0 => "VDO_ERROR_NO_EVENT",
+            x if x == vdo_sys::VDO_ERROR_NO_VIDEO.0 => "VDO_ERROR_NO_VIDEO",
             _ => "VDO_ERROR_UNKNOWN",
         }
     }
@@ -288,7 +289,7 @@ impl StreamBuilder {
             VdoBufferStrategy::VDO_BUFFER_STRATEGY_INFINITE.0,
         );
 
-        let (stream_raw, maybe_error) = unsafe { try_func!(vdo_stream_new, map.as_ptr(), None) };
+        let (stream_raw, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_new, map.as_ptr(), None) };
 
         if stream_raw.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
@@ -348,7 +349,7 @@ impl Stream {
 
     /// Returns stream information (actual resolution, format, etc.) as a map.
     pub fn info(&self) -> std::result::Result<Map, Error> {
-        let (map_raw, maybe_error) = unsafe { try_func!(vdo_stream_get_info, self.raw) };
+        let (map_raw, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_get_info, self.raw) };
         if map_raw.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
@@ -358,7 +359,7 @@ impl Stream {
 
     /// Returns stream settings as a map.
     pub fn settings(&self) -> std::result::Result<Map, Error> {
-        let (map_raw, maybe_error) = unsafe { try_func!(vdo_stream_get_settings, self.raw) };
+        let (map_raw, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_get_settings, self.raw) };
         if map_raw.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
@@ -369,7 +370,7 @@ impl Stream {
     ///
     /// On failure, the underlying stream is automatically cleaned up.
     pub fn start(self) -> std::result::Result<RunningStream, Error> {
-        let (success, maybe_error) = unsafe { try_func!(vdo_stream_start, self.raw) };
+        let (success, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_start, self.raw) };
         if success != glib_sys::GTRUE {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
@@ -380,7 +381,7 @@ impl Stream {
 impl Drop for Stream {
     fn drop(&mut self) {
         // vdo_stream_stop is idempotent (returns void), safe to call even if never started.
-        unsafe { vdo_stream_stop(self.raw) };
+        unsafe { vdo_sys::vdo_stream_stop(self.raw) };
         // Release our GObject reference to avoid leaking.
         unsafe { g_object_unref(self.raw as *mut GObject) };
     }
@@ -403,7 +404,7 @@ impl RunningStream {
     /// Blocks until a new frame is available and returns it.
     pub fn next_buffer(&self) -> std::result::Result<StreamBuffer<'_>, Error> {
         let (buffer_ptr, maybe_error) =
-            unsafe { try_func!(vdo_stream_get_buffer, self.stream.raw) };
+            unsafe { try_func!(vdo_sys::vdo_stream_get_buffer, self.stream.raw) };
 
         if buffer_ptr.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
@@ -417,7 +418,7 @@ impl RunningStream {
 
     /// Stops the stream, consuming this handle.
     pub fn stop(self) {
-        unsafe { vdo_stream_stop(self.stream.raw) };
+        unsafe { vdo_sys::vdo_stream_stop(self.stream.raw) };
         // self.stream dropped here -> Stream::drop calls g_object_unref
     }
 }
@@ -442,14 +443,14 @@ pub struct StreamBuffer<'a> {
 
 impl StreamBuffer<'_> {
     pub fn capacity(&self) -> usize {
-        unsafe { vdo_buffer_get_capacity(self.raw) }
+        unsafe { vdo_sys::vdo_buffer_get_capacity(self.raw) }
     }
 
     /// Returns the frame data as a byte slice of [`capacity()`](StreamBuffer::capacity) bytes.
     ///
     /// Use [`size()`](StreamBuffer::size) to get the actual frame data size.
     pub fn as_slice(&self) -> std::result::Result<&[u8], Error> {
-        let data = unsafe { vdo_buffer_get_data(self.raw) };
+        let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
         }
@@ -461,7 +462,7 @@ impl StreamBuffer<'_> {
 
     /// Returns a copy of exactly [`size()`](StreamBuffer::size) bytes of frame data.
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
-        let data = unsafe { vdo_buffer_get_data(self.raw) };
+        let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
         }
@@ -471,35 +472,35 @@ impl StreamBuffer<'_> {
     }
 
     pub fn frame_type(&self) -> VdoFrameType {
-        unsafe { vdo_frame_get_frame_type(self.raw) }
+        unsafe { vdo_sys::vdo_frame_get_frame_type(self.raw) }
     }
 
     /// Starts at 0 and increments with each frame. Wrap-around point is undefined.
     pub fn sequence_number(&self) -> u32 {
-        unsafe { vdo_frame_get_sequence_nbr(self.raw) }
+        unsafe { vdo_sys::vdo_frame_get_sequence_nbr(self.raw) }
     }
 
     /// Timestamp in microseconds since boot.
     pub fn timestamp(&self) -> u64 {
-        unsafe { vdo_frame_get_timestamp(self.raw) }
+        unsafe { vdo_sys::vdo_frame_get_timestamp(self.raw) }
     }
 
     pub fn custom_timestamp_us(&self) -> i64 {
-        unsafe { vdo_frame_get_custom_timestamp(self.raw) }
+        unsafe { vdo_sys::vdo_frame_get_custom_timestamp(self.raw) }
     }
 
     /// Actual frame data size in bytes (may be less than [`capacity()`](StreamBuffer::capacity)).
     pub fn size(&self) -> usize {
-        unsafe { vdo_frame_get_size(self.raw) }
+        unsafe { vdo_sys::vdo_frame_get_size(self.raw) }
     }
 
     pub fn header_size(&self) -> isize {
-        unsafe { vdo_frame_get_header_size(self.raw) }
+        unsafe { vdo_sys::vdo_frame_get_header_size(self.raw) }
     }
 
     /// Returns a borrowed file descriptor for the buffer's backing memory.
     pub fn file_descriptor(&self) -> std::result::Result<std::os::fd::BorrowedFd<'_>, Error> {
-        let fd = unsafe { vdo_buffer_get_fd(self.raw) };
+        let fd = unsafe { vdo_sys::vdo_buffer_get_fd(self.raw) };
         if fd < 0 {
             return Err(Error::NullPointer);
         }
@@ -508,7 +509,7 @@ impl StreamBuffer<'_> {
     }
 
     pub fn is_last_buffer(&self) -> bool {
-        unsafe { vdo_frame_get_is_last_buffer(self.raw) != 0 }
+        unsafe { vdo_sys::vdo_frame_get_is_last_buffer(self.raw) != 0 }
     }
 
     /// Explicitly unreferences this buffer, returning an error if the operation fails.
@@ -520,7 +521,7 @@ impl StreamBuffer<'_> {
         mem::forget(self);
 
         let (success, maybe_error) =
-            unsafe { try_func!(vdo_stream_buffer_unref, stream_raw, &mut raw) };
+            unsafe { try_func!(vdo_sys::vdo_stream_buffer_unref, stream_raw, &mut raw) };
         if success != glib_sys::GTRUE {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
@@ -531,7 +532,7 @@ impl StreamBuffer<'_> {
 impl Drop for StreamBuffer<'_> {
     fn drop(&mut self) {
         let (_, maybe_error) =
-            unsafe { try_func!(vdo_stream_buffer_unref, self.stream.raw, &mut self.raw) };
+            unsafe { try_func!(vdo_sys::vdo_stream_buffer_unref, self.stream.raw, &mut self.raw) };
         if let Some(err) = maybe_error {
             log::error!("Failed to unref buffer: {}", err);
         }
@@ -541,37 +542,36 @@ impl Drop for StreamBuffer<'_> {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+    use expect_test::expect;
 
     #[test]
     fn error_code_names() {
         let err = VdoError {
-            code: VDO_ERROR_NOT_FOUND.0 as i32,
+            code: vdo_sys::VDO_ERROR_NOT_FOUND.0 as i32,
             message: "test".to_string(),
         };
-        assert_eq!(err.code_name(), "VDO_ERROR_NOT_FOUND");
+        expect!["VDO_ERROR_NOT_FOUND"].assert_eq(err.code_name());
 
         let err = VdoError {
-            code: VDO_ERROR_NOT_SUPPORTED.0 as i32,
+            code: vdo_sys::VDO_ERROR_NOT_SUPPORTED.0 as i32,
             message: "test".to_string(),
         };
-        assert_eq!(err.code_name(), "VDO_ERROR_NOT_SUPPORTED");
+        expect!["VDO_ERROR_NOT_SUPPORTED"].assert_eq(err.code_name());
 
         let err = VdoError {
             code: 9999,
             message: "test".to_string(),
         };
-        assert_eq!(err.code_name(), "VDO_ERROR_UNKNOWN");
+        expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
     }
 
     #[test]
     fn error_display() {
         let err = VdoError {
-            code: VDO_ERROR_BUSY.0 as i32,
+            code: vdo_sys::VDO_ERROR_BUSY.0 as i32,
             message: "Resource is busy".to_string(),
         };
-        let display = format!("{}", err);
-        assert!(display.contains("VDO_ERROR_BUSY"));
-        assert!(display.contains("Resource is busy"));
+        expect!["VDO_ERROR_BUSY (7): Resource is busy"].assert_eq(&format!("{err}"));
     }
 
     #[test]
@@ -646,19 +646,15 @@ mod unit_tests {
 
     #[test]
     fn all_error_variants_display() {
-        assert_eq!(
-            format!("{}", Error::NullPointer),
-            "VDO returned an unexpected null pointer"
-        );
-        assert_eq!(
-            format!("{}", Error::MissingVdoError),
-            "Missing error data from VDO library"
-        );
+        expect!["VDO returned an unexpected null pointer"]
+            .assert_eq(&format!("{}", Error::NullPointer));
+        expect!["Missing error data from VDO library"]
+            .assert_eq(&format!("{}", Error::MissingVdoError));
         let vdo = Error::Vdo(VdoError {
             code: 1,
             message: "test".to_string(),
         });
-        assert!(!format!("{}", vdo).is_empty());
+        expect!["VDO_ERROR_NOT_FOUND (1): test"].assert_eq(&format!("{vdo}"));
     }
 }
 

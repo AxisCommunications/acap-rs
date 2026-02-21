@@ -18,6 +18,7 @@ device-tests = []
 [dev-dependencies]
 anyhow = { workspace = true }
 env_logger = { workspace = true }
+expect-test = { workspace = true }
 
 [[example]]
 name = "basic"
