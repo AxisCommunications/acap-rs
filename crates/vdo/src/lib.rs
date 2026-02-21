@@ -88,6 +88,8 @@ pub enum Error {
     Vdo(#[from] VdoError),
     #[error("VDO returned an unexpected null pointer")]
     NullPointer,
+    #[error("VDO returned an invalid file descriptor")]
+    InvalidFd,
     #[error("Missing error data from VDO library")]
     MissingVdoError,
 }
@@ -105,8 +107,9 @@ impl VdoError {
             return VdoError::default();
         }
 
-        // SAFETY: gerror is non-null. We copy the struct and read the message pointer
-        // before calling g_error_free, which would invalidate both.
+        // SAFETY: gerror is non-null. We dereference the struct to copy its fields
+        // (code, message pointer), then read the message string, all before calling
+        // g_error_free which invalidates the GError and its contents.
         let g_error = unsafe { *gerror };
         let message = if g_error.message.is_null() {
             String::from("Unknown error")
@@ -418,8 +421,8 @@ impl RunningStream {
 
     /// Stops the stream, consuming this handle.
     pub fn stop(self) {
-        unsafe { vdo_sys::vdo_stream_stop(self.stream.raw) };
-        // self.stream dropped here -> Stream::drop calls g_object_unref
+        // Dropping self triggers Stream::drop which calls vdo_stream_stop + g_object_unref.
+        drop(self);
     }
 }
 
@@ -466,7 +469,8 @@ impl StreamBuffer<'_> {
         if data.is_null() {
             return Err(Error::NullPointer);
         }
-        let size = self.size();
+        // Clamp size to capacity to avoid reading beyond the mapped region.
+        let size = self.size().min(self.capacity());
         let slice = unsafe { std::slice::from_raw_parts(data as *const u8, size) };
         Ok(slice.to_vec())
     }
@@ -494,15 +498,21 @@ impl StreamBuffer<'_> {
         unsafe { vdo_sys::vdo_frame_get_size(self.raw) }
     }
 
-    pub fn header_size(&self) -> isize {
-        unsafe { vdo_sys::vdo_frame_get_header_size(self.raw) }
+    /// Returns the header size in bytes, or `None` if the frame has no header.
+    pub fn header_size(&self) -> Option<usize> {
+        let size = unsafe { vdo_sys::vdo_frame_get_header_size(self.raw) };
+        if size < 0 { None } else { Some(size as usize) }
     }
 
     /// Returns a borrowed file descriptor for the buffer's backing memory.
+    ///
+    /// The fd is only valid for the lifetime of this buffer. Do not convert it to
+    /// an `OwnedFd` (e.g. via `try_clone_to_owned`), as the underlying fd is closed
+    /// when the buffer is unreferenced.
     pub fn file_descriptor(&self) -> std::result::Result<std::os::fd::BorrowedFd<'_>, Error> {
         let fd = unsafe { vdo_sys::vdo_buffer_get_fd(self.raw) };
         if fd < 0 {
-            return Err(Error::NullPointer);
+            return Err(Error::InvalidFd);
         }
         // SAFETY: fd is non-negative and valid for the lifetime of this buffer.
         Ok(unsafe { std::os::fd::BorrowedFd::borrow_raw(fd) })
@@ -648,6 +658,8 @@ mod unit_tests {
     fn all_error_variants_display() {
         expect!["VDO returned an unexpected null pointer"]
             .assert_eq(&format!("{}", Error::NullPointer));
+        expect!["VDO returned an invalid file descriptor"]
+            .assert_eq(&format!("{}", Error::InvalidFd));
         expect!["Missing error data from VDO library"]
             .assert_eq(&format!("{}", Error::MissingVdoError));
         let vdo = Error::Vdo(VdoError {

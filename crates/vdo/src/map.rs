@@ -2,6 +2,8 @@
 
 use gobject_sys::{g_object_unref, GObject};
 use std::ffi::{c_char, c_void, CStr};
+use std::fmt;
+use std::ops::Deref;
 use std::ptr::{self, NonNull};
 use vdo_sys::VdoMap;
 
@@ -18,7 +20,7 @@ impl CStringPtr {
     /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
     /// users of this memory.
     pub(crate) unsafe fn from_ptr(ptr: *mut c_char) -> Self {
-        debug_assert!(!ptr.is_null());
+        assert!(!ptr.is_null(), "CStringPtr::from_ptr called with null");
         Self(NonNull::new_unchecked(ptr))
     }
 
@@ -26,6 +28,20 @@ impl CStringPtr {
         // SAFETY: The preconditions for instantiating this type include all preconditions
         // for `CStr::from_ptr`.
         unsafe { CStr::from_ptr(self.0.as_ptr() as *const c_char) }
+    }
+}
+
+impl Deref for CStringPtr {
+    type Target = CStr;
+
+    fn deref(&self) -> &CStr {
+        self.as_c_str()
+    }
+}
+
+impl fmt::Debug for CStringPtr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.as_c_str())
     }
 }
 
@@ -62,7 +78,7 @@ impl Map {
     /// `ptr` must be a non-null, valid `VdoMap` pointer with ownership
     /// transferred to this `Map` (it will be unreferenced on drop).
     pub(crate) unsafe fn from_raw(ptr: *mut VdoMap) -> Self {
-        debug_assert!(!ptr.is_null());
+        assert!(!ptr.is_null(), "Map::from_raw called with null");
         Self { raw: ptr }
     }
 
@@ -81,7 +97,7 @@ impl Map {
     /// Returns `None` if the key doesn't exist or the value is null.
     pub fn get_string(&self, key: &CStr) -> Option<CStringPtr> {
         // Passing null as default so missing keys yield null -> None.
-        let ptr = unsafe { vdo_sys::vdo_map_dup_string(self.raw, key.as_ptr(), ptr::null()) };
+        let ptr = unsafe { vdo_sys::vdo_map_dup_string(self.raw, key.as_ptr(), ptr::null::<c_char>()) };
         if ptr.is_null() {
             return None;
         }
@@ -112,8 +128,15 @@ impl Map {
         unsafe { vdo_sys::vdo_map_dump(self.raw) }
     }
 
+    // Returns *mut because GLib's C API takes *mut even for read-only operations.
     pub(crate) fn as_ptr(&self) -> *mut VdoMap {
         self.raw
+    }
+}
+
+impl fmt::Debug for Map {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Map").field("raw", &self.raw).finish()
     }
 }
 
