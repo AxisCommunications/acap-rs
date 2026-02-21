@@ -292,7 +292,8 @@ impl StreamBuilder {
             VdoBufferStrategy::VDO_BUFFER_STRATEGY_INFINITE.0,
         );
 
-        let (stream_raw, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_new, map.as_ptr(), None) };
+        let (stream_raw, maybe_error) =
+            unsafe { try_func!(vdo_sys::vdo_stream_new, map.as_ptr(), None) };
 
         if stream_raw.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
@@ -362,7 +363,8 @@ impl Stream {
 
     /// Returns stream settings as a map.
     pub fn settings(&self) -> std::result::Result<Map, Error> {
-        let (map_raw, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_get_settings, self.raw) };
+        let (map_raw, maybe_error) =
+            unsafe { try_func!(vdo_sys::vdo_stream_get_settings, self.raw) };
         if map_raw.is_null() {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
@@ -501,7 +503,11 @@ impl StreamBuffer<'_> {
     /// Returns the header size in bytes, or `None` if the frame has no header.
     pub fn header_size(&self) -> Option<usize> {
         let size = unsafe { vdo_sys::vdo_frame_get_header_size(self.raw) };
-        if size < 0 { None } else { Some(size as usize) }
+        if size < 0 {
+            None
+        } else {
+            Some(size as usize)
+        }
     }
 
     /// Returns a borrowed file descriptor for the buffer's backing memory.
@@ -541,8 +547,13 @@ impl StreamBuffer<'_> {
 
 impl Drop for StreamBuffer<'_> {
     fn drop(&mut self) {
-        let (_, maybe_error) =
-            unsafe { try_func!(vdo_sys::vdo_stream_buffer_unref, self.stream.raw, &mut self.raw) };
+        let (_, maybe_error) = unsafe {
+            try_func!(
+                vdo_sys::vdo_stream_buffer_unref,
+                self.stream.raw,
+                &mut self.raw
+            )
+        };
         if let Some(err) = maybe_error {
             log::error!("Failed to unref buffer: {}", err);
         }

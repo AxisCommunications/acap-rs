@@ -97,7 +97,8 @@ impl Map {
     /// Returns `None` if the key doesn't exist or the value is null.
     pub fn get_string(&self, key: &CStr) -> Option<CStringPtr> {
         // Passing null as default so missing keys yield null -> None.
-        let ptr = unsafe { vdo_sys::vdo_map_dup_string(self.raw, key.as_ptr(), ptr::null::<c_char>()) };
+        let ptr =
+            unsafe { vdo_sys::vdo_map_dup_string(self.raw, key.as_ptr(), ptr::null::<c_char>()) };
         if ptr.is_null() {
             return None;
         }
@@ -120,7 +121,9 @@ impl Map {
         } else {
             glib_sys::GFALSE
         };
-        unsafe { vdo_sys::vdo_map_get_boolean(self.raw, key.as_ptr(), gdefault) != glib_sys::GFALSE }
+        unsafe {
+            vdo_sys::vdo_map_get_boolean(self.raw, key.as_ptr(), gdefault) != glib_sys::GFALSE
+        }
     }
 
     /// Dumps the map contents to stdout (for debugging).
