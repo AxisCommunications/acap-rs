@@ -534,15 +534,16 @@ impl StreamBuffer<'_> {
     ///
     /// Normally buffers are unreferenced on drop. Use this if you need error handling.
     pub fn unref(self) -> std::result::Result<(), Error> {
+        // Local copy so self.raw stays valid for Drop if unref fails.
         let mut raw = self.raw;
         let stream_raw = self.stream.raw;
-        mem::forget(self);
 
         let (success, maybe_error) =
             unsafe { try_func!(vdo_sys::vdo_stream_buffer_unref, stream_raw, &mut raw) };
         if success == glib_sys::GFALSE {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
+        mem::forget(self); // buffer already unreferenced, suppress Drop
         Ok(())
     }
 }
