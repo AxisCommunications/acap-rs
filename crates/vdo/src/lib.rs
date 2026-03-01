@@ -510,18 +510,18 @@ impl StreamBuffer<'_> {
         }
     }
 
-    /// Returns a borrowed file descriptor for the buffer's backing memory.
+    /// Returns the raw file descriptor for the buffer's backing memory.
     ///
-    /// The fd is only valid for the lifetime of this buffer. Do not convert it to
-    /// an `OwnedFd` (e.g. via `try_clone_to_owned`), as the underlying fd is closed
-    /// when the buffer is unreferenced.
-    pub fn file_descriptor(&self) -> std::result::Result<std::os::fd::BorrowedFd<'_>, Error> {
-        let fd = unsafe { vdo_sys::vdo_buffer_get_fd(self.raw) };
+    /// # Safety
+    ///
+    /// The returned fd is owned by VDO and will be closed when this buffer is
+    /// unreferenced. The caller must not close or duplicate (`dup`) the fd.
+    pub unsafe fn file_descriptor(&self) -> std::result::Result<std::os::fd::RawFd, Error> {
+        let fd = vdo_sys::vdo_buffer_get_fd(self.raw);
         if fd < 0 {
             return Err(Error::InvalidFd);
         }
-        // SAFETY: fd is non-negative and valid for the lifetime of this buffer.
-        Ok(unsafe { std::os::fd::BorrowedFd::borrow_raw(fd) })
+        Ok(fd)
     }
 
     pub fn is_last_buffer(&self) -> bool {
@@ -1032,12 +1032,9 @@ mod device_tests {
         let running = stream.start()?;
         let buffer = running.next_buffer()?;
 
-        use std::os::fd::AsRawFd;
-        let fd = buffer.file_descriptor()?;
-        assert!(
-            fd.as_raw_fd() >= 0,
-            "File descriptor should be non-negative"
-        );
+        // SAFETY: We only read the fd value for the assertion; we do not close or dup it.
+        let fd = unsafe { buffer.file_descriptor()? };
+        assert!(fd >= 0, "File descriptor should be non-negative");
 
         drop(buffer);
         running.stop();
