@@ -24,8 +24,7 @@ impl CStringPtr {
     ///
     /// Panics if `ptr` is null.
     pub(crate) unsafe fn from_ptr(ptr: *mut c_char) -> Self {
-        assert!(!ptr.is_null(), "CStringPtr::from_ptr called with null");
-        Self(NonNull::new_unchecked(ptr))
+        Self(NonNull::new(ptr).expect("CStringPtr::from_ptr called with null"))
     }
 
     pub fn as_c_str(&self) -> &CStr {
