@@ -38,7 +38,7 @@
 //!     println!("Frame size: {} bytes", buffer.size());
 //! }
 //!
-//! running.stop();
+//! drop(running);
 //! ```
 //!
 //! # Known Issues
@@ -329,7 +329,7 @@ impl StreamBuilder {
 ///     let buffer = running.next_buffer()?;
 ///     println!("Got frame: {} bytes", buffer.size());
 /// }
-/// running.stop();
+/// drop(running);
 /// # Ok::<(), vdo::Error>(())
 /// ```
 #[derive(Debug)]
@@ -395,8 +395,7 @@ impl Drop for Stream {
 /// A running video stream that yields frame buffers.
 ///
 /// Created by calling [`Stream::start()`]. Use [`next_buffer()`](RunningStream::next_buffer)
-/// to retrieve frame buffers. Call [`stop()`](RunningStream::stop) or simply drop
-/// this value for cleanup.
+/// to retrieve frame buffers. Drop this value to stop the stream.
 pub struct RunningStream {
     stream: Stream,
 }
@@ -421,11 +420,6 @@ impl RunningStream {
         })
     }
 
-    /// Stops the stream, consuming this handle.
-    pub fn stop(self) {
-        // Dropping self triggers Stream::drop which calls vdo_stream_stop + g_object_unref.
-        drop(self);
-    }
 }
 
 /// A buffer containing a video frame from a running stream.
@@ -704,7 +698,7 @@ mod device_tests {
             .build()?;
 
         let running = stream.start()?;
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -727,7 +721,7 @@ mod device_tests {
         let buffer = running.next_buffer()?;
         assert!(buffer.size() > 0);
         drop(buffer);
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -802,7 +796,7 @@ mod device_tests {
             );
         }
 
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -832,7 +826,7 @@ mod device_tests {
             log::info!("JPEG frame {}: {} bytes", i, buffer.size());
         }
 
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -873,7 +867,7 @@ mod device_tests {
 
         assert!(got_i_frame, "Should have captured at least one I-frame");
 
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -901,7 +895,7 @@ mod device_tests {
                     log::info!("H.265 frame: {} bytes", buffer.size());
                 }
 
-                running.stop();
+                drop(running);
             }
             Err(Error::Vdo(e)) if e.code_name() == "VDO_ERROR_NOT_SUPPORTED" => {
                 log::info!("H.265 not supported on this platform, skipping");
@@ -953,7 +947,7 @@ mod device_tests {
             prev_seq = seq;
         }
 
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -986,7 +980,7 @@ mod device_tests {
             std::hint::black_box(data[buffer.size().saturating_sub(1)]);
         }
 
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -1013,7 +1007,7 @@ mod device_tests {
         assert_eq!(&copy[..], &slice[..copy.len()]);
 
         drop(buffer);
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -1037,7 +1031,7 @@ mod device_tests {
         assert!(fd >= 0, "File descriptor should be non-negative");
 
         drop(buffer);
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -1057,7 +1051,7 @@ mod device_tests {
         let buffer = running.next_buffer()?;
         buffer.unref()?;
 
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -1087,7 +1081,7 @@ mod device_tests {
         std::hint::black_box(buffer.is_last_buffer());
 
         drop(buffer);
-        running.stop();
+        drop(running);
         Ok(())
     }
 
@@ -1108,7 +1102,7 @@ mod device_tests {
             for _ in 0..3 {
                 let _buf = running.next_buffer()?;
             }
-            running.stop();
+            drop(running);
         }
 
         {
@@ -1124,7 +1118,7 @@ mod device_tests {
             for _ in 0..3 {
                 let _buf = running.next_buffer()?;
             }
-            running.stop();
+            drop(running);
         }
 
         Ok(())
@@ -1162,8 +1156,8 @@ mod device_tests {
             let _buf2 = running2.next_buffer()?;
         }
 
-        running1.stop();
-        running2.stop();
+        drop(running1);
+        drop(running2);
 
         Ok(())
     }
@@ -1231,7 +1225,7 @@ mod device_tests {
         }
     }
 
-    /// Tests that dropping a RunningStream without calling stop() doesn't crash.
+    /// Tests that dropping a RunningStream without explicit drop doesn't crash.
     #[test]
     fn stream_dropped_without_stop() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
@@ -1250,7 +1244,7 @@ mod device_tests {
             for _ in 0..2 {
                 let _buf = running.next_buffer()?;
             }
-            // Intentionally NOT calling running.stop()
+            // Intentionally NOT calling drop(running)
         }
 
         log::info!("Stream dropped without explicit stop - cleanup successful");
@@ -1294,7 +1288,7 @@ mod device_tests {
 
             let running = stream.start()?;
             drop(running.next_buffer()?);
-            running.stop();
+            drop(running);
 
             log::info!("Rapid cycle {} complete", i);
         }

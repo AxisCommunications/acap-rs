@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("Stopping stream...");
-    running.stop();
+    drop(running);
 
     println!("Done!");
     Ok(())

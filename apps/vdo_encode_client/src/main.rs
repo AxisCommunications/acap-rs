@@ -60,7 +60,7 @@ fn capture_format(name: &str, format: VdoFormat, num_frames: usize) -> Result<()
         }
     }
 
-    running.stop();
+    drop(running);
     info!("{}: Stream stopped successfully", name);
     info!("");
 
