@@ -306,7 +306,10 @@ impl StreamBuilder {
             "vdo_stream_new returned a stream pointer AND an error"
         );
 
-        Ok(Stream { raw: stream_raw })
+        Ok(Stream {
+            raw: stream_raw,
+            started: false,
+        })
     }
 }
 
@@ -337,6 +340,7 @@ impl StreamBuilder {
 #[derive(Debug)]
 pub struct Stream {
     raw: *mut VdoStream,
+    started: bool,
 }
 
 // SAFETY: We hold exclusive ownership of the raw pointer. Since `Sync` is not
@@ -375,20 +379,23 @@ impl Stream {
 
     /// Starts the stream, consuming `self` and returning a [`RunningStream`].
     ///
-    /// On failure, the underlying stream is automatically cleaned up.
-    pub fn start(self) -> std::result::Result<RunningStream, Error> {
+    /// On failure, the stream is consumed and cannot be reused; create a new
+    /// stream via [`Stream::builder()`] to retry.
+    pub fn start(mut self) -> std::result::Result<RunningStream, Error> {
         let (success, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_start, self.raw) };
         if success == glib_sys::GFALSE {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
+        self.started = true;
         Ok(RunningStream { stream: self })
     }
 }
 
 impl Drop for Stream {
     fn drop(&mut self) {
-        // vdo_stream_stop is idempotent (returns void), safe to call even if never started.
-        unsafe { vdo_sys::vdo_stream_stop(self.raw) };
+        if self.started {
+            unsafe { vdo_sys::vdo_stream_stop(self.raw) };
+        }
         // Release our GObject reference to avoid leaking.
         unsafe { g_object_unref(self.raw as *mut GObject) };
     }
