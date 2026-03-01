@@ -337,8 +337,8 @@ pub struct Stream {
     raw: *mut VdoStream,
 }
 
-// SAFETY: We hold exclusive ownership of this GObject reference.
-// Sync is NOT implemented because GLib objects are not safe for concurrent access.
+// SAFETY: We hold exclusive ownership of the raw pointer. Since `Sync` is not
+// implemented, only one thread can access the object at a time.
 unsafe impl Send for Stream {}
 
 impl Stream {
@@ -401,8 +401,8 @@ pub struct RunningStream {
     stream: Stream,
 }
 
-// SAFETY: Owns a Stream (which is Send).
-// Sync is NOT implemented; this ensures next_buffer(&self) cannot be called concurrently.
+// SAFETY: Owns a Stream (which is Send) and does not implement Sync,
+// so only one thread can access the object at a time.
 unsafe impl Send for RunningStream {}
 
 impl RunningStream {

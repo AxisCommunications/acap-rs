@@ -151,8 +151,8 @@ impl fmt::Debug for Map {
     }
 }
 
-// SAFETY: We hold exclusive ownership of the GObject reference.
-// Sync is NOT implemented because GLib objects are not safe for concurrent access.
+// SAFETY: We hold exclusive ownership of the raw pointer. Since `Sync` is not
+// implemented, only one thread can access the object at a time.
 unsafe impl Send for Map {}
 
 impl Drop for Map {
