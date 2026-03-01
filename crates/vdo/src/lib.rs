@@ -130,29 +130,31 @@ impl VdoError {
 
     /// Returns a human-readable name for the VDO error code.
     pub fn code_name(&self) -> &'static str {
-        let code = self.code as u32;
-        match code {
-            x if x == vdo_sys::VDO_ERROR_NOT_FOUND.0 => "VDO_ERROR_NOT_FOUND",
-            x if x == vdo_sys::VDO_ERROR_EXISTS.0 => "VDO_ERROR_EXISTS",
-            x if x == vdo_sys::VDO_ERROR_INVALID_ARGUMENT.0 => "VDO_ERROR_INVALID_ARGUMENT",
-            x if x == vdo_sys::VDO_ERROR_PERMISSION_DENIED.0 => "VDO_ERROR_PERMISSION_DENIED",
-            x if x == vdo_sys::VDO_ERROR_NOT_SUPPORTED.0 => "VDO_ERROR_NOT_SUPPORTED",
-            x if x == vdo_sys::VDO_ERROR_CLOSED.0 => "VDO_ERROR_CLOSED",
-            x if x == vdo_sys::VDO_ERROR_BUSY.0 => "VDO_ERROR_BUSY",
-            x if x == vdo_sys::VDO_ERROR_IO.0 => "VDO_ERROR_IO",
-            x if x == vdo_sys::VDO_ERROR_HAL.0 => "VDO_ERROR_HAL",
-            x if x == vdo_sys::VDO_ERROR_DBUS.0 => "VDO_ERROR_DBUS",
-            x if x == vdo_sys::VDO_ERROR_OOM.0 => "VDO_ERROR_OOM",
-            x if x == vdo_sys::VDO_ERROR_IDLE.0 => "VDO_ERROR_IDLE",
-            x if x == vdo_sys::VDO_ERROR_NO_DATA.0 => "VDO_ERROR_NO_DATA",
-            x if x == vdo_sys::VDO_ERROR_NO_BUFFER_SPACE.0 => "VDO_ERROR_NO_BUFFER_SPACE",
-            x if x == vdo_sys::VDO_ERROR_BUFFER_FAILURE.0 => "VDO_ERROR_BUFFER_FAILURE",
-            x if x == vdo_sys::VDO_ERROR_INTERFACE_DOWN.0 => "VDO_ERROR_INTERFACE_DOWN",
-            x if x == vdo_sys::VDO_ERROR_FAILED.0 => "VDO_ERROR_FAILED",
-            x if x == vdo_sys::VDO_ERROR_FATAL.0 => "VDO_ERROR_FATAL",
-            x if x == vdo_sys::VDO_ERROR_NOT_CONTROLLED.0 => "VDO_ERROR_NOT_CONTROLLED",
-            x if x == vdo_sys::VDO_ERROR_NO_EVENT.0 => "VDO_ERROR_NO_EVENT",
-            x if x == vdo_sys::VDO_ERROR_NO_VIDEO.0 => "VDO_ERROR_NO_VIDEO",
+        // Compare as i32 to avoid wrapping negative GError codes from non-VDO domains.
+        match self.code {
+            x if x == vdo_sys::VDO_ERROR_NOT_FOUND.0 as i32 => "VDO_ERROR_NOT_FOUND",
+            x if x == vdo_sys::VDO_ERROR_EXISTS.0 as i32 => "VDO_ERROR_EXISTS",
+            x if x == vdo_sys::VDO_ERROR_INVALID_ARGUMENT.0 as i32 => "VDO_ERROR_INVALID_ARGUMENT",
+            x if x == vdo_sys::VDO_ERROR_PERMISSION_DENIED.0 as i32 => {
+                "VDO_ERROR_PERMISSION_DENIED"
+            }
+            x if x == vdo_sys::VDO_ERROR_NOT_SUPPORTED.0 as i32 => "VDO_ERROR_NOT_SUPPORTED",
+            x if x == vdo_sys::VDO_ERROR_CLOSED.0 as i32 => "VDO_ERROR_CLOSED",
+            x if x == vdo_sys::VDO_ERROR_BUSY.0 as i32 => "VDO_ERROR_BUSY",
+            x if x == vdo_sys::VDO_ERROR_IO.0 as i32 => "VDO_ERROR_IO",
+            x if x == vdo_sys::VDO_ERROR_HAL.0 as i32 => "VDO_ERROR_HAL",
+            x if x == vdo_sys::VDO_ERROR_DBUS.0 as i32 => "VDO_ERROR_DBUS",
+            x if x == vdo_sys::VDO_ERROR_OOM.0 as i32 => "VDO_ERROR_OOM",
+            x if x == vdo_sys::VDO_ERROR_IDLE.0 as i32 => "VDO_ERROR_IDLE",
+            x if x == vdo_sys::VDO_ERROR_NO_DATA.0 as i32 => "VDO_ERROR_NO_DATA",
+            x if x == vdo_sys::VDO_ERROR_NO_BUFFER_SPACE.0 as i32 => "VDO_ERROR_NO_BUFFER_SPACE",
+            x if x == vdo_sys::VDO_ERROR_BUFFER_FAILURE.0 as i32 => "VDO_ERROR_BUFFER_FAILURE",
+            x if x == vdo_sys::VDO_ERROR_INTERFACE_DOWN.0 as i32 => "VDO_ERROR_INTERFACE_DOWN",
+            x if x == vdo_sys::VDO_ERROR_FAILED.0 as i32 => "VDO_ERROR_FAILED",
+            x if x == vdo_sys::VDO_ERROR_FATAL.0 as i32 => "VDO_ERROR_FATAL",
+            x if x == vdo_sys::VDO_ERROR_NOT_CONTROLLED.0 as i32 => "VDO_ERROR_NOT_CONTROLLED",
+            x if x == vdo_sys::VDO_ERROR_NO_EVENT.0 as i32 => "VDO_ERROR_NO_EVENT",
+            x if x == vdo_sys::VDO_ERROR_NO_VIDEO.0 as i32 => "VDO_ERROR_NO_VIDEO",
             _ => "VDO_ERROR_UNKNOWN",
         }
     }
@@ -419,7 +421,6 @@ impl RunningStream {
             stream: &self.stream,
         })
     }
-
 }
 
 /// A buffer containing a video frame from a running stream.
@@ -575,6 +576,14 @@ mod unit_tests {
 
         let err = VdoError {
             code: 9999,
+            message: "test".to_string(),
+        };
+        expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
+
+        // Negative codes (from non-VDO GError domains) should map to UNKNOWN,
+        // not wrap to a matching VDO constant.
+        let err = VdoError {
+            code: -1,
             message: "test".to_string(),
         };
         expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
