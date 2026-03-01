@@ -378,7 +378,7 @@ impl Stream {
     /// On failure, the underlying stream is automatically cleaned up.
     pub fn start(self) -> std::result::Result<RunningStream, Error> {
         let (success, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_start, self.raw) };
-        if success != glib_sys::GTRUE {
+        if success == glib_sys::GFALSE {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
         Ok(RunningStream { stream: self })
@@ -533,7 +533,7 @@ impl StreamBuffer<'_> {
 
         let (success, maybe_error) =
             unsafe { try_func!(vdo_sys::vdo_stream_buffer_unref, stream_raw, &mut raw) };
-        if success != glib_sys::GTRUE {
+        if success == glib_sys::GFALSE {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
         Ok(())
