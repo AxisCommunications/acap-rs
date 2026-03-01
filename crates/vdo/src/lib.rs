@@ -550,15 +550,18 @@ impl StreamBuffer<'_> {
 
 impl Drop for StreamBuffer<'_> {
     fn drop(&mut self) {
-        let (_, maybe_error) = unsafe {
+        let (success, maybe_error) = unsafe {
             try_func!(
                 vdo_sys::vdo_stream_buffer_unref,
                 self.stream.raw,
                 &mut self.raw
             )
         };
-        if let Some(err) = maybe_error {
-            log::error!("Failed to unref buffer: {}", err);
+        if success == glib_sys::GFALSE || maybe_error.is_some() {
+            match maybe_error {
+                Some(err) => log::error!("Failed to unref buffer: {}", err),
+                None => log::error!("Failed to unref buffer (no GError details)"),
+            }
         }
     }
 }
