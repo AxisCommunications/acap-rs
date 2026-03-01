@@ -16,9 +16,13 @@ pub struct CStringPtr(NonNull<c_char>);
 impl CStringPtr {
     /// # Safety
     ///
-    /// In addition to the safety preconditions for [`CStr::from_ptr`] the memory must have been
-    /// allocated in a manner compatible with [`glib_sys::g_free`] and there must be no other
+    /// The memory must satisfy the preconditions for [`CStr::from_ptr`], must have been
+    /// allocated in a manner compatible with [`glib_sys::g_free`], and there must be no other
     /// users of this memory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ptr` is null.
     pub(crate) unsafe fn from_ptr(ptr: *mut c_char) -> Self {
         assert!(!ptr.is_null(), "CStringPtr::from_ptr called with null");
         Self(NonNull::new_unchecked(ptr))
@@ -75,8 +79,12 @@ impl Map {
 
     /// # Safety
     ///
-    /// `ptr` must be a non-null, valid `VdoMap` pointer with ownership
+    /// `ptr` must be a valid `VdoMap` pointer with ownership
     /// transferred to this `Map` (it will be unreferenced on drop).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ptr` is null.
     pub(crate) unsafe fn from_raw(ptr: *mut VdoMap) -> Self {
         assert!(!ptr.is_null(), "Map::from_raw called with null");
         Self { raw: ptr }
