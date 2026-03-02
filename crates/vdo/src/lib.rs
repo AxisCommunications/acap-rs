@@ -271,7 +271,7 @@ impl StreamBuilder {
     pub fn build(self) -> std::result::Result<Stream, Error> {
         let mut map = Map::try_new()?;
         map.set_u32(c"channel", self.channel);
-        map.set_i32(c"format", self.format.0);
+        map.set_u32(c"format", self.format.0 as u32);
         if let Resolution::Exact { width, height } = self.resolution {
             map.set_u32(c"width", width);
             map.set_u32(c"height", height);
