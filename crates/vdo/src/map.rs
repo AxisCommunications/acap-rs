@@ -133,7 +133,8 @@ impl Map {
         }
     }
 
-    /// Dumps the map contents to stdout (for debugging).
+    /// Dumps the map contents to stdout. Intended for debugging only;
+    /// may expose sensitive configuration values in production logs.
     pub fn dump(&self) {
         unsafe { vdo_sys::vdo_map_dump(self.raw) }
     }

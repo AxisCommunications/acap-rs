@@ -61,15 +61,6 @@ pub use vdo_sys::{VdoFormat, VdoFrameType, VdoRateControlMode, VdoRateControlPri
 /// Macro for calling VDO functions that take a GError** parameter.
 /// Returns a tuple of (result, Option<Error>).
 macro_rules! try_func {
-    ($func:path $(,)?) => {{
-        let mut error: *mut GError = ptr::null_mut();
-        let success = $func(&mut error);
-        if error.is_null() {
-            (success, None)
-        } else {
-            (success, Some(Error::Vdo(VdoError::from_gerror(error))))
-        }
-    }};
     ($func:path, $($arg:expr),+ $(,)?) => {{
         let mut error: *mut GError = ptr::null_mut();
         let success = $func($( $arg ),+, &mut error);
@@ -95,7 +86,6 @@ pub enum Error {
 }
 
 /// Error from the VDO library.
-#[derive(Default)]
 pub struct VdoError {
     code: i32,
     message: String,
@@ -104,7 +94,10 @@ pub struct VdoError {
 impl VdoError {
     fn from_gerror(gerror: *mut GError) -> Self {
         if gerror.is_null() {
-            return VdoError::default();
+            return VdoError {
+                code: 0,
+                message: String::new(),
+            };
         }
 
         // SAFETY: gerror is non-null. We dereference the struct to copy its fields
@@ -527,7 +520,7 @@ impl StreamBuffer<'_> {
     }
 
     pub fn is_last_buffer(&self) -> bool {
-        unsafe { vdo_sys::vdo_frame_get_is_last_buffer(self.raw) != 0 }
+        unsafe { vdo_sys::vdo_frame_get_is_last_buffer(self.raw) != glib_sys::GFALSE }
     }
 
     /// Explicitly unreferences this buffer, returning an error if the operation fails.
@@ -647,13 +640,6 @@ mod unit_tests {
     fn error_is_send() {
         fn assert_send<T: Send>() {}
         assert_send::<Error>();
-    }
-
-    #[test]
-    fn vdo_error_default() {
-        let err = VdoError::default();
-        assert_eq!(err.code(), 0);
-        assert!(err.message().is_empty());
     }
 
     #[test]
