@@ -271,7 +271,7 @@ impl StreamBuilder {
     pub fn build(self) -> std::result::Result<Stream, Error> {
         let mut map = Map::try_new()?;
         map.set_u32(c"channel", self.channel);
-        map.set_u32(c"format", self.format.0 as u32);
+        map.set_i32(c"format", self.format.0);
         if let Resolution::Exact { width, height } = self.resolution {
             map.set_u32(c"width", width);
             map.set_u32(c"height", height);
@@ -336,8 +336,8 @@ pub struct Stream {
     started: bool,
 }
 
-// SAFETY: We hold exclusive ownership of the raw pointer. Since `Sync` is not
-// implemented, only one thread can access the object at a time.
+// SAFETY: We hold exclusive ownership of the raw pointer and the VDO SDK
+// does not require streams to be pinned to a specific thread.
 unsafe impl Send for Stream {}
 
 impl Stream {
@@ -402,8 +402,8 @@ pub struct RunningStream {
     stream: Stream,
 }
 
-// SAFETY: Owns a Stream (which is Send) and does not implement Sync,
-// so only one thread can access the object at a time.
+// SAFETY: Owns a Stream (which is Send) and the VDO SDK does not
+// require streams to be pinned to a specific thread.
 unsafe impl Send for RunningStream {}
 
 impl RunningStream {

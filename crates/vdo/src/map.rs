@@ -97,6 +97,14 @@ impl Map {
         unsafe { vdo_sys::vdo_map_get_uint32(self.raw, key.as_ptr(), default) }
     }
 
+    pub fn set_i32(&mut self, key: &CStr, value: i32) {
+        unsafe { vdo_sys::vdo_map_set_int32(self.raw, key.as_ptr(), value) }
+    }
+
+    pub fn get_i32(&self, key: &CStr, default: i32) -> i32 {
+        unsafe { vdo_sys::vdo_map_get_int32(self.raw, key.as_ptr(), default) }
+    }
+
     pub fn set_string(&mut self, key: &CStr, value: &CStr) {
         unsafe { vdo_sys::vdo_map_set_string(self.raw, key.as_ptr(), value.as_ptr()) }
     }
@@ -151,8 +159,8 @@ impl fmt::Debug for Map {
     }
 }
 
-// SAFETY: We hold exclusive ownership of the raw pointer. Since `Sync` is not
-// implemented, only one thread can access the object at a time.
+// SAFETY: We hold exclusive ownership of the raw pointer and VdoMap
+// does not require access from a specific thread.
 unsafe impl Send for Map {}
 
 impl Drop for Map {
