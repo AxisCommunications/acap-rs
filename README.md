@@ -57,14 +57,19 @@ app can be built using
 only `docker`:
 
 ```sh
-docker build --file .devcontainer/Dockerfile --tag acap-rs .
+docker build \
+  --file .devcontainer/Dockerfile \
+  --platform linux/amd64 \
+  --tag acap-rs \
+  .
 docker run \
   --interactive \
   --rm \
   --tty \
+  --platform linux/amd64 \
   --user $(id -u):$(id -g) \
-  --volume $(pwd):$(pwd) \
-  --workdir $(pwd) \
+  --volume $(pwd):/workspaces/acap-rs \
+  --workdir /workspaces/acap-rs \
   acap-rs \
   make build AXIS_PACKAGE=hello_world
 ```
