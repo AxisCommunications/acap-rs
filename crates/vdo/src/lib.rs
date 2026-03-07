@@ -684,7 +684,8 @@ mod unit_tests {
 // These tests require the VDO shared library (libvdo.so) and actual camera hardware.
 // Results depend on the specific camera model and firmware.
 #[cfg(not(any(target_arch = "x86_64", target_os = "macos")))]
-mod device_tests {
+#[cfg(test)]
+mod tests {
     use super::*;
 
     fn init_logger() {
