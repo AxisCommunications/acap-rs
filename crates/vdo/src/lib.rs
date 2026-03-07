@@ -59,7 +59,7 @@ use vdo_sys::{VdoBuffer, VdoBufferStrategy, VdoStream};
 pub use vdo_sys::{VdoFormat, VdoFrameType, VdoRateControlMode, VdoRateControlPriority};
 
 /// Macro for calling VDO functions that take a GError** parameter.
-/// Returns a tuple of (result, Option<Error>).
+/// Returns a tuple of `(result, Option<Error>)`.
 macro_rules! try_func {
     ($func:path, $($arg:expr),+ $(,)?) => {{
         let mut error: *mut GError = ptr::null_mut();
