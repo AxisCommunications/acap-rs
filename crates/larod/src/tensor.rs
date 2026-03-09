@@ -1,0 +1,387 @@
+use std::ffi::CStr;
+use std::marker::PhantomData;
+use std::os::raw::c_int;
+
+use crate::connection::Connection;
+use crate::Error;
+
+pub use larod_sys::{larodTensorDataType, larodTensorDims, larodTensorLayout, larodTensorPitches};
+
+/// An owned array of tensor descriptors.
+///
+/// Tensors in larod are always created and destroyed as arrays. This wrapper
+/// owns the entire C-allocated array and provides indexed access to individual
+/// tensors.
+///
+/// Requires a connection reference because `larodDestroyTensors` needs the
+/// connection to release any server-tracked file descriptors.
+pub struct Tensors<'conn> {
+    raw: *mut *mut larod_sys::larodTensor,
+    len: usize,
+    conn: &'conn Connection,
+}
+
+impl<'conn> Tensors<'conn> {
+    /// # Safety
+    ///
+    /// `raw` must be a valid tensor array pointer returned by larod, with
+    /// `len` elements. `conn` must be the connection that created or will
+    /// manage these tensors.
+    pub(crate) unsafe fn from_raw(
+        raw: *mut *mut larod_sys::larodTensor,
+        len: usize,
+        conn: &'conn Connection,
+    ) -> Self {
+        Self { raw, len, conn }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// Access a single tensor by index.
+    pub fn get(&self, index: usize) -> Option<TensorRef<'_>> {
+        if index >= self.len {
+            return None;
+        }
+        // SAFETY: index is in bounds. The tensor pointer is valid for the
+        // lifetime of this Tensors array.
+        let ptr = unsafe { *self.raw.add(index) };
+        Some(TensorRef { raw: ptr, _tensors: PhantomData })
+    }
+
+    /// Access a single mutable tensor by index.
+    pub fn get_mut(&mut self, index: usize) -> Option<TensorMut<'_>> {
+        if index >= self.len {
+            return None;
+        }
+        let ptr = unsafe { *self.raw.add(index) };
+        Some(TensorMut { raw: ptr, _tensors: PhantomData })
+    }
+
+    /// Returns the raw pointer array for passing to C functions like
+    /// `larodCreateJobRequest`.
+    pub(crate) fn as_ptr(&self) -> *mut *mut larod_sys::larodTensor {
+        self.raw
+    }
+}
+
+impl std::fmt::Debug for Tensors<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tensors")
+            .field("len", &self.len)
+            .field("raw", &self.raw)
+            .finish()
+    }
+}
+
+// SAFETY: We hold exclusive ownership of the tensor array and the larod
+// tensor descriptors do not require access from a specific thread.
+unsafe impl Send for Tensors<'_> {}
+
+impl Drop for Tensors<'_> {
+    fn drop(&mut self) {
+        // larodDestroyTensors takes *mut *mut *mut larodTensor (triple pointer).
+        // We pass &mut self.raw which gives *mut (*mut *mut larodTensor).
+        let mut error: *mut larod_sys::larodError = std::ptr::null_mut();
+        let success = unsafe {
+            larod_sys::larodDestroyTensors(
+                self.conn.raw,
+                &mut self.raw,
+                self.len,
+                &mut error,
+            )
+        };
+        if !success {
+            if !error.is_null() {
+                let err = crate::LarodError::from_raw(error);
+                log::error!("Failed to destroy tensors: {err}");
+            } else {
+                log::error!("Failed to destroy tensors (no error details)");
+            }
+        }
+    }
+}
+
+/// Immutable reference to a single tensor within a [`Tensors`] array.
+pub struct TensorRef<'a> {
+    raw: *mut larod_sys::larodTensor,
+    _tensors: PhantomData<&'a ()>,
+}
+
+impl<'a> TensorRef<'a> {
+
+    pub fn dims(&self) -> Result<&larodTensorDims, Error> {
+        let (ptr, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorDims,
+                self.raw as *const _,
+            )
+        };
+        if ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::NullPointer));
+        }
+        // SAFETY: ptr is non-null and points into the tensor's internal storage.
+        Ok(unsafe { &*ptr })
+    }
+
+    pub fn pitches(&self) -> Result<&larodTensorPitches, Error> {
+        let (ptr, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorPitches,
+                self.raw as *const _,
+            )
+        };
+        if ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::NullPointer));
+        }
+        Ok(unsafe { &*ptr })
+    }
+
+    pub fn data_type(&self) -> Result<larodTensorDataType, Error> {
+        let (dt, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorDataType,
+                self.raw as *const _,
+            )
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(dt)
+    }
+
+    pub fn layout(&self) -> Result<larodTensorLayout, Error> {
+        let (layout, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorLayout,
+                self.raw as *const _,
+            )
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(layout)
+    }
+
+    pub fn fd(&self) -> Result<c_int, Error> {
+        let (fd, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorFd, self.raw as *const _)
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(fd)
+    }
+
+    pub fn fd_size(&self) -> Result<usize, Error> {
+        let mut size: usize = 0;
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorFdSize,
+                self.raw as *const _,
+                &mut size,
+            )
+        };
+        if success {
+            Ok(size)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn fd_offset(&self) -> Result<i64, Error> {
+        let (offset, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorFdOffset,
+                self.raw as *const _,
+            )
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(offset)
+    }
+
+    pub fn name(&self) -> Result<&CStr, Error> {
+        let (ptr, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorName,
+                self.raw as *const _,
+            )
+        };
+        if ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::NullPointer));
+        }
+        Ok(unsafe { CStr::from_ptr(ptr) })
+    }
+
+    pub fn byte_size(&self) -> Result<usize, Error> {
+        let mut size: usize = 0;
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorByteSize,
+                self.raw as *const _,
+                &mut size,
+            )
+        };
+        if success {
+            Ok(size)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+}
+
+/// Mutable reference to a single tensor within a [`Tensors`] array.
+pub struct TensorMut<'a> {
+    raw: *mut larod_sys::larodTensor,
+    _tensors: PhantomData<&'a mut ()>,
+}
+
+impl<'a> TensorMut<'a> {
+
+    pub fn set_dims(&mut self, dims: &larodTensorDims) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorDims, self.raw, dims)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn set_pitches(&mut self, pitches: &larodTensorPitches) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorPitches, self.raw, pitches)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn set_data_type(&mut self, data_type: larodTensorDataType) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorDataType, self.raw, data_type)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn set_layout(&mut self, layout: larodTensorLayout) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorLayout, self.raw, layout)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn set_fd(&mut self, fd: c_int) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorFd, self.raw, fd)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn set_fd_size(&mut self, size: usize) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorFdSize, self.raw, size)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn set_fd_offset(&mut self, offset: i64) -> Result<(), Error> {
+        let (success, maybe_error) = unsafe {
+            try_func!(larod_sys::larodSetTensorFdOffset, self.raw, offset)
+        };
+        if success {
+            Ok(())
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    // Read-only accessors (delegate to the same C functions as TensorRef)
+    pub fn dims(&self) -> Result<&larodTensorDims, Error> {
+        let (ptr, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorDims, self.raw as *const _)
+        };
+        if ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::NullPointer));
+        }
+        Ok(unsafe { &*ptr })
+    }
+
+    pub fn fd(&self) -> Result<c_int, Error> {
+        let (fd, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorFd, self.raw as *const _)
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(fd)
+    }
+
+    pub fn fd_size(&self) -> Result<usize, Error> {
+        let mut size: usize = 0;
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorFdSize,
+                self.raw as *const _,
+                &mut size,
+            )
+        };
+        if success {
+            Ok(size)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn byte_size(&self) -> Result<usize, Error> {
+        let mut size: usize = 0;
+        let (success, maybe_error) = unsafe {
+            try_func!(
+                larod_sys::larodGetTensorByteSize,
+                self.raw as *const _,
+                &mut size,
+            )
+        };
+        if success {
+            Ok(size)
+        } else {
+            Err(maybe_error.unwrap_or(Error::MissingError))
+        }
+    }
+
+    pub fn name(&self) -> Result<&CStr, Error> {
+        let (ptr, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorName, self.raw as *const _)
+        };
+        if ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::NullPointer));
+        }
+        Ok(unsafe { CStr::from_ptr(ptr) })
+    }
+}
