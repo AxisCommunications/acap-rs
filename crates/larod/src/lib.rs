@@ -35,10 +35,10 @@ mod map;
 mod model;
 mod tensor;
 
-pub use connection::Connection;
+pub use connection::{Connection, ModelFuture};
 pub use device::Device;
 pub use error::{Error, LarodError};
-pub use job::JobRequest;
+pub use job::{JobCompletion, JobRequest};
 pub use map::Map;
 pub use model::{Model, OwnedTensorPtrs};
 pub use tensor::{TensorMut, TensorRef, Tensors, TensorsIter, TensorsIterMut};

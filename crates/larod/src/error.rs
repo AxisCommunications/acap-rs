@@ -35,6 +35,8 @@ pub enum Error {
     NullPointer,
     #[error("missing error data from larod library")]
     MissingError,
+    #[error("async callback was never invoked (daemon may have crashed)")]
+    CallbackNeverInvoked,
 }
 
 /// Error from the larod library.
@@ -74,6 +76,34 @@ impl LarodError {
         unsafe { larod_sys::larodClearError(&mut raw) };
 
         LarodError { code, message }
+    }
+
+    /// Copies data from a raw `larodError` pointer without freeing it.
+    ///
+    /// Used in async callbacks where the error is owned by the larod daemon,
+    /// not the callback. The daemon frees the error after the callback returns.
+    ///
+    /// # Safety
+    ///
+    /// `raw` must be a valid, non-null `larodError` pointer. The caller must
+    /// NOT call `larodClearError` on this pointer.
+    pub(crate) fn from_raw_borrowed(raw: *mut larod_sys::larodError) -> Self {
+        assert!(!raw.is_null());
+
+        let larod_err = unsafe { *raw };
+        let message = if larod_err.msg.is_null() {
+            String::from("Unknown error")
+        } else {
+            unsafe { CStr::from_ptr(larod_err.msg) }
+                .to_str()
+                .unwrap_or("Invalid UTF-8 in error message")
+                .to_string()
+        };
+
+        LarodError {
+            code: larod_err.code,
+            message,
+        }
     }
 
     #[cfg(test)]
