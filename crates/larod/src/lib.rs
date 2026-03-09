@@ -41,7 +41,7 @@ pub use error::{Error, LarodError};
 pub use job::JobRequest;
 pub use map::Map;
 pub use model::{Model, OwnedTensorPtrs};
-pub use tensor::{TensorMut, TensorRef, Tensors};
+pub use tensor::{TensorMut, TensorRef, Tensors, TensorsIter, TensorsIterMut};
 
 // Re-export commonly used larod-sys types.
 pub use larod_sys::{
@@ -85,11 +85,109 @@ mod tests {
                 larodErrorCode::LAROD_ERROR_CONNECTION,
                 "LAROD_ERROR_CONNECTION",
             ),
+            (
+                larodErrorCode::LAROD_ERROR_CREATE_SESSION,
+                "LAROD_ERROR_CREATE_SESSION",
+            ),
+            (
+                larodErrorCode::LAROD_ERROR_KILL_SESSION,
+                "LAROD_ERROR_KILL_SESSION",
+            ),
+            (
+                larodErrorCode::LAROD_ERROR_INVALID_CHIP_ID,
+                "LAROD_ERROR_INVALID_CHIP_ID",
+            ),
+            (
+                larodErrorCode::LAROD_ERROR_INVALID_ACCESS,
+                "LAROD_ERROR_INVALID_ACCESS",
+            ),
+            (
+                larodErrorCode::LAROD_ERROR_DELETE_MODEL,
+                "LAROD_ERROR_DELETE_MODEL",
+            ),
+            (
+                larodErrorCode::LAROD_ERROR_TENSOR_MISMATCH,
+                "LAROD_ERROR_TENSOR_MISMATCH",
+            ),
+            (
+                larodErrorCode::LAROD_ERROR_VERSION_MISMATCH,
+                "LAROD_ERROR_VERSION_MISMATCH",
+            ),
+            (larodErrorCode::LAROD_ERROR_ALLOC, "LAROD_ERROR_ALLOC"),
+            (
+                larodErrorCode::LAROD_ERROR_POWER_NOT_AVAILABLE,
+                "LAROD_ERROR_POWER_NOT_AVAILABLE",
+            ),
             (larodErrorCode(999), "LAROD_ERROR_UNKNOWN"),
         ];
         for (code, expected_name) in cases {
             let err = LarodError::new_for_test(code, String::new());
             assert_eq!(err.code_name(), expected_name, "for code {:?}", code);
         }
+    }
+}
+
+/// Tests that require the larod daemon and at least one inference device.
+/// Run with: `cargo test --features device-tests` on Axis camera hardware.
+#[cfg(feature = "device-tests")]
+#[cfg(test)]
+mod device_tests {
+    use super::*;
+
+    #[test]
+    fn connect_and_list_sessions() {
+        let conn = Connection::new().expect("connect");
+        let sessions = conn.num_sessions().expect("num_sessions");
+        assert!(sessions >= 1, "at least our own session should be counted");
+    }
+
+    #[test]
+    fn list_devices() {
+        let conn = Connection::new().expect("connect");
+        let devices = conn.devices().expect("devices");
+        assert!(!devices.is_empty(), "should have at least one device");
+
+        for dev in &devices {
+            let name = dev.name().expect("device name");
+            assert!(!name.is_empty(), "device name should not be empty");
+            let _instance = dev.instance().expect("device instance");
+        }
+    }
+
+    #[test]
+    fn get_device_by_name() {
+        let conn = Connection::new().expect("connect");
+        let devices = conn.devices().expect("devices");
+        assert!(!devices.is_empty());
+
+        // Look up the first device by its name and instance.
+        let first = &devices[0];
+        let name = first.name().expect("name");
+        let instance = first.instance().expect("instance");
+
+        let looked_up = conn.device(name, instance).expect("get device");
+        assert_eq!(
+            looked_up.name().expect("name"),
+            name,
+            "looked-up device name should match"
+        );
+    }
+
+    #[test]
+    fn map_round_trip() {
+        let mut map = Map::new().expect("create map");
+
+        map.set_str(c"key1", c"value1").expect("set_str");
+        let v = map.get_str(c"key1").expect("get_str");
+        assert_eq!(v.unwrap(), c"value1");
+
+        map.set_int(c"num", 42).expect("set_int");
+        assert_eq!(map.get_int(c"num").expect("get_int"), 42);
+
+        map.set_int_arr2(c"pair", 10, 20).expect("set_int_arr2");
+        assert_eq!(map.get_int_arr2(c"pair").expect("get_int_arr2"), [10, 20]);
+
+        map.set_int_arr4(c"quad", 1, 2, 3, 4).expect("set_int_arr4");
+        assert_eq!(map.get_int_arr4(c"quad").expect("get_int_arr4"), [1, 2, 3, 4]);
     }
 }

@@ -68,7 +68,104 @@ impl<'conn> Tensors<'conn> {
     pub(crate) fn as_ptr(&self) -> *mut *mut larod_sys::larodTensor {
         self.raw
     }
+
+    /// Returns an iterator over immutable tensor references.
+    pub fn iter(&self) -> TensorsIter<'_> {
+        TensorsIter { raw: self.raw, len: self.len, index: 0, _marker: PhantomData }
+    }
+
+    /// Returns an iterator over mutable tensor references.
+    pub fn iter_mut(&mut self) -> TensorsIterMut<'_> {
+        TensorsIterMut { raw: self.raw, len: self.len, index: 0, _marker: PhantomData }
+    }
 }
+
+impl<'a, 'conn> IntoIterator for &'a Tensors<'conn> {
+    type Item = TensorRef<'a>;
+    type IntoIter = TensorsIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, 'conn> IntoIterator for &'a mut Tensors<'conn> {
+    type Item = TensorMut<'a>;
+    type IntoIter = TensorsIterMut<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+/// Iterator over immutable tensor references.
+pub struct TensorsIter<'a> {
+    raw: *mut *mut larod_sys::larodTensor,
+    len: usize,
+    index: usize,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<'a> Iterator for TensorsIter<'a> {
+    type Item = TensorRef<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            return None;
+        }
+        // SAFETY: index is in-bounds (checked above). The pointer is valid for
+        // the lifetime of this iterator which borrows from Tensors.
+        let ptr = unsafe { *self.raw.add(self.index) };
+        self.index += 1;
+        Some(TensorRef { raw: ptr, _tensors: PhantomData })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.len - self.index;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for TensorsIter<'_> {}
+impl std::iter::FusedIterator for TensorsIter<'_> {}
+
+// SAFETY: TensorsIter is derived from &Tensors which is Send.
+unsafe impl Send for TensorsIter<'_> {}
+
+/// Iterator over mutable tensor references.
+pub struct TensorsIterMut<'a> {
+    raw: *mut *mut larod_sys::larodTensor,
+    len: usize,
+    index: usize,
+    _marker: PhantomData<&'a mut ()>,
+}
+
+impl<'a> Iterator for TensorsIterMut<'a> {
+    type Item = TensorMut<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            return None;
+        }
+        // SAFETY: Each index is yielded exactly once, so we don't create
+        // overlapping mutable references. The exclusive &mut Tensors borrow
+        // from iter_mut() prevents any concurrent access through the original.
+        let ptr = unsafe { *self.raw.add(self.index) };
+        self.index += 1;
+        Some(TensorMut { raw: ptr, _tensors: PhantomData })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.len - self.index;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for TensorsIterMut<'_> {}
+impl std::iter::FusedIterator for TensorsIterMut<'_> {}
+
+// SAFETY: TensorsIterMut is derived from &mut Tensors which is Send.
+unsafe impl Send for TensorsIterMut<'_> {}
 
 impl std::fmt::Debug for Tensors<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -322,7 +419,7 @@ impl<'a> TensorMut<'a> {
         }
     }
 
-    // Read-only accessors (delegate to the same C functions as TensorRef)
+    // Read-only accessors (delegate to the same C functions as TensorRef).
     pub fn dims(&self) -> Result<&larodTensorDims, Error> {
         let (ptr, maybe_error) = unsafe {
             try_func!(larod_sys::larodGetTensorDims, self.raw as *const _)
@@ -331,6 +428,36 @@ impl<'a> TensorMut<'a> {
             return Err(maybe_error.unwrap_or(Error::NullPointer));
         }
         Ok(unsafe { &*ptr })
+    }
+
+    pub fn pitches(&self) -> Result<&larodTensorPitches, Error> {
+        let (ptr, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorPitches, self.raw as *const _)
+        };
+        if ptr.is_null() {
+            return Err(maybe_error.unwrap_or(Error::NullPointer));
+        }
+        Ok(unsafe { &*ptr })
+    }
+
+    pub fn data_type(&self) -> Result<larodTensorDataType, Error> {
+        let (dt, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorDataType, self.raw as *const _)
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(dt)
+    }
+
+    pub fn layout(&self) -> Result<larodTensorLayout, Error> {
+        let (layout, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorLayout, self.raw as *const _)
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(layout)
     }
 
     pub fn fd(&self) -> Result<c_int, Error> {
@@ -357,6 +484,16 @@ impl<'a> TensorMut<'a> {
         } else {
             Err(maybe_error.unwrap_or(Error::MissingError))
         }
+    }
+
+    pub fn fd_offset(&self) -> Result<i64, Error> {
+        let (offset, maybe_error) = unsafe {
+            try_func!(larod_sys::larodGetTensorFdOffset, self.raw as *const _)
+        };
+        if let Some(err) = maybe_error {
+            return Err(err);
+        }
+        Ok(offset)
     }
 
     pub fn byte_size(&self) -> Result<usize, Error> {
