@@ -11,7 +11,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new() -> Result<Self, Error> {
+    pub fn try_new() -> Result<Self, Error> {
         let (map, maybe_error) = unsafe { try_func!(larod_sys::larodCreateMap) };
         if map.is_null() {
             Err(maybe_error.unwrap_or(Error::NullPointer))
@@ -164,6 +164,7 @@ impl Map {
         Ok(unsafe { [*ptr, *ptr.add(1), *ptr.add(2), *ptr.add(3)] })
     }
 
+    // *mut because the C API takes *mut even for read-only operations.
     pub(crate) fn as_ptr(&self) -> *mut larod_sys::larodMap {
         self.raw
     }

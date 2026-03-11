@@ -35,10 +35,10 @@ mod map;
 mod model;
 mod tensor;
 
-pub use connection::{Connection, ModelFuture};
+pub use connection::Connection;
 pub use device::Device;
 pub use error::{Error, LarodError};
-pub use job::{JobCompletion, JobRequest};
+pub use job::JobRequest;
 pub use map::Map;
 pub use model::{Model, OwnedTensorPtrs};
 pub use tensor::{TensorMut, TensorRef, Tensors, TensorsIter, TensorsIterMut};
@@ -175,7 +175,7 @@ mod device_tests {
 
     #[test]
     fn map_round_trip() {
-        let mut map = Map::new().expect("create map");
+        let mut map = Map::try_new().expect("create map");
 
         map.set_str(c"key1", c"value1").expect("set_str");
         let v = map.get_str(c"key1").expect("get_str");

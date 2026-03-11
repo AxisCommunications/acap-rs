@@ -209,9 +209,13 @@ impl Drop for Model {
 
 /// Intermediate tensor pointer array returned by `Model::create_inputs/outputs`.
 ///
-/// These tensor descriptors have no backing memory yet. Pass them to
-/// a `Tensors` via `Tensors::from_untracked` along with a connection
-/// for proper cleanup, or use `Connection::alloc_model_inputs/outputs` instead.
+/// These tensor descriptors have no backing memory yet. Call
+/// [`into_tensors`](Self::into_tensors) to wrap them for proper cleanup,
+/// or use `Connection::alloc_model_inputs/outputs` instead.
+///
+/// Dropping without calling `into_tensors()` leaks the tensor descriptors
+/// (the C API requires a connection for cleanup, which this type doesn't hold).
+#[must_use = "call .into_tensors() to avoid leaking tensor descriptors"]
 pub struct OwnedTensorPtrs {
     pub(crate) raw: *mut *mut larod_sys::larodTensor,
     pub(crate) len: usize,
@@ -229,6 +233,8 @@ impl OwnedTensorPtrs {
     /// Convert into a `Tensors` wrapper that will use `larodDestroyTensors`
     /// for cleanup (requires a connection).
     pub fn into_tensors(self, conn: &Connection) -> Tensors<'_> {
+        // SAFETY: self.raw is a valid tensor array with self.len elements,
+        // originally returned by larodCreateModelInputs/Outputs.
         let tensors = unsafe { Tensors::from_raw(self.raw, self.len, conn) };
         // Prevent the OwnedTensorPtrs destructor from running since
         // ownership has been transferred to Tensors.

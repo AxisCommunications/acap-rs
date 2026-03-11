@@ -5,6 +5,12 @@ pub use larod_sys::larodErrorCode;
 
 /// Calls a larod C function that takes `*mut *mut larodError` as its last argument.
 /// Returns `(result, Option<Error>)`.
+///
+/// # Safety
+///
+/// The caller must ensure the function pointer and all arguments are valid.
+/// The macro initializes the error pointer to null before the call, as required
+/// by the larod API.
 macro_rules! try_func {
     ($func:path $(,)?) => {{
         let mut error: *mut larod_sys::larodError = ::std::ptr::null_mut();
@@ -35,8 +41,6 @@ pub enum Error {
     NullPointer,
     #[error("missing error data from larod library")]
     MissingError,
-    #[error("async callback was never invoked (daemon may have crashed)")]
-    CallbackNeverInvoked,
 }
 
 /// Error from the larod library.
@@ -57,53 +61,21 @@ impl LarodError {
     pub(crate) fn from_raw(raw: *mut larod_sys::larodError) -> Self {
         assert!(!raw.is_null());
 
-        // SAFETY: raw is non-null. We dereference to copy code and message pointer,
-        // then read the message string, all before calling larodClearError which
-        // invalidates the larodError and its contents.
+        // SAFETY: raw is non-null. We copy all fields before larodClearError
+        // frees the struct and its contents (including the msg string).
         let larod_err = unsafe { *raw };
         let message = if larod_err.msg.is_null() {
-            String::from("Unknown error")
+            String::from("(no message from library)")
         } else {
-            unsafe { CStr::from_ptr(larod_err.msg) }
-                .to_str()
-                .unwrap_or("Invalid UTF-8 in error message")
-                .to_string()
+            let cstr = unsafe { CStr::from_ptr(larod_err.msg) };
+            String::from_utf8_lossy(cstr.to_bytes()).into_owned()
         };
         let code = larod_err.code;
 
-        // Free the C-side error struct.
         let mut raw = raw;
         unsafe { larod_sys::larodClearError(&mut raw) };
 
         LarodError { code, message }
-    }
-
-    /// Copies data from a raw `larodError` pointer without freeing it.
-    ///
-    /// Used in async callbacks where the error is owned by the larod daemon,
-    /// not the callback. The daemon frees the error after the callback returns.
-    ///
-    /// # Safety
-    ///
-    /// `raw` must be a valid, non-null `larodError` pointer. The caller must
-    /// NOT call `larodClearError` on this pointer.
-    pub(crate) fn from_raw_borrowed(raw: *mut larod_sys::larodError) -> Self {
-        assert!(!raw.is_null());
-
-        let larod_err = unsafe { *raw };
-        let message = if larod_err.msg.is_null() {
-            String::from("Unknown error")
-        } else {
-            unsafe { CStr::from_ptr(larod_err.msg) }
-                .to_str()
-                .unwrap_or("Invalid UTF-8 in error message")
-                .to_string()
-        };
-
-        LarodError {
-            code: larod_err.code,
-            message,
-        }
     }
 
     #[cfg(test)]
@@ -158,4 +130,5 @@ impl Debug for LarodError {
     }
 }
 
+// Required: thiserror's #[from] on Error::Larod needs LarodError: std::error::Error.
 impl std::error::Error for LarodError {}
