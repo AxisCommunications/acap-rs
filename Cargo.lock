@@ -830,6 +830,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dissimilar"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8975ffdaa0ef3661bfe02dbdcc06c9f829dfafe6a3c474de366a8d5e44276921"
+
+[[package]]
 name = "either"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -918,6 +924,16 @@ dependencies = [
  "futures-lite",
  "glib",
  "log",
+]
+
+[[package]]
+name = "expect-test"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63af43ff4431e848fb47472a920f14fa71c24de13255a5692e93d4e90302acb0"
+dependencies = [
+ "dissimilar",
+ "once_cell",
 ]
 
 [[package]]
@@ -1602,6 +1618,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "larod"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "expect-test",
+ "larod-sys",
+ "libc",
+ "log",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "larod-sys"
 version = "0.0.0"
 dependencies = [
@@ -1634,7 +1663,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -3158,6 +3187,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
+name = "vdo"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "expect-test",
+ "glib-sys",
+ "gobject-sys",
+ "log",
+ "thiserror 1.0.69",
+ "vdo-sys",
+]
+
+[[package]]
 name = "vdo-sys"
 version = "0.0.0"
 dependencies = [
@@ -3173,7 +3216,7 @@ version = "0.0.0"
 dependencies = [
  "acap-logging",
  "log",
- "vdo-sys",
+ "vdo",
 ]
 
 [[package]]
