@@ -175,7 +175,10 @@ check_docs:
 
 ## Check that the code is formatted correctly
 check_format:
-	cargo fmt --check
+	cargo fmt \
+		--check \
+		-- \
+		--config imports_granularity=Crate,group_imports=StdExternalCrate
 .PHONY: check_format
 
 ## Check that generated files are up to date
@@ -241,7 +244,9 @@ check_tests:
 
 ## Attempt to fix formatting automatically
 fix_format:
-	cargo fmt
+	cargo fmt \
+		-- \
+		--config imports_granularity=Crate,group_imports=StdExternalCrate
 .PHONY: fix_format
 
 ## Attempt to fix lints automatically

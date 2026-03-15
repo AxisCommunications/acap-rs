@@ -2,12 +2,13 @@
 //! An example of how to subscribe to manual trigger events using `axevent::nonblock`
 
 use anyhow::Context;
-use axevent::flex::{Handler, KeyValueSet};
-use axevent::nonblock::Subscription;
+use axevent::{
+    flex::{Handler, KeyValueSet},
+    nonblock::Subscription,
+};
+use futures_lite::StreamExt;
 use glib::MainContext;
 use log::{error, info};
-
-use futures_lite::StreamExt;
 
 async fn app() -> anyhow::Result<()> {
     let mut subscription_template = KeyValueSet::new();

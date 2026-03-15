@@ -3,8 +3,7 @@
 //! installed and running as it relies on those events to receive and log data.
 
 use axevent::flex::{Handler, KeyValueSet, Subscription};
-use log::error;
-use log::info;
+use log::{error, info};
 
 fn onviftrigger_subscription(handler: &Handler, token: u32) -> anyhow::Result<Subscription> {
     let mut key_value_set = KeyValueSet::new();
