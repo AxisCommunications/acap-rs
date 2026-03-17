@@ -1,3 +1,12 @@
+use std::{
+    ffi::{c_char, c_void, CStr, OsStr},
+    mem,
+    mem::ManuallyDrop,
+    path::Path,
+    ptr,
+    ptr::NonNull,
+};
+
 use axstorage_sys::{
     ax_storage_error_quark, ax_storage_get_path, ax_storage_get_status, ax_storage_get_storage_id,
     ax_storage_get_type, ax_storage_list, ax_storage_release_async, ax_storage_setup_async,
@@ -19,15 +28,6 @@ use glib::{
     GStringPtr, List, Quark,
 };
 use glib_sys::{g_free, g_strdup, gpointer, GTRUE};
-use std::ffi::OsStr;
-use std::path::Path;
-use std::{
-    ffi::{c_char, c_void, CStr},
-    mem,
-    mem::ManuallyDrop,
-    ptr,
-    ptr::NonNull,
-};
 // The documentation states that we are responsible for freeing the callbacks, but it does state
 // when it is safe to do so making it impossible to create a Rust abstraction that both:
 // - does not leak memory and
