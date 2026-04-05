@@ -20,6 +20,7 @@ pub struct AppBuilder {
     targets: Vec<Architecture>,
     args: Vec<String>,
     artifact_dir: Option<PathBuf>,
+    manifest_path: Option<PathBuf>,
 }
 
 impl AppBuilder {
@@ -32,6 +33,7 @@ impl AppBuilder {
             targets: targets.into_iter().map(|t| t.into()).collect(),
             args: Vec::new(),
             artifact_dir: None,
+            manifest_path: None,
         }
     }
 
@@ -41,6 +43,7 @@ impl AppBuilder {
     ///
     /// This function will panic if it detects one of the disallowed options:
     /// - `--artifact-dir`
+    /// - `--manifest-path`
     /// - `--target`
     ///
     /// <div class="warning">
@@ -55,6 +58,7 @@ impl AppBuilder {
             let arg: String = arg.to_string();
             let name = arg.split('=').next().unwrap();
             assert_ne!(name, "--artifact-dir");
+            assert_ne!(name, "--manifest-path");
             assert_ne!(name, "--target");
             arg
         }));
@@ -74,11 +78,25 @@ impl AppBuilder {
         self
     }
 
+    /// Path to Cargo.toml.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the manifest path has already been set.
+    pub fn manifest_path<T>(&mut self, manifest_path: T) -> &mut Self
+    where
+        T: Into<PathBuf>,
+    {
+        assert!(mem::replace(&mut self.manifest_path, Some(manifest_path.into())).is_none());
+        self
+    }
+
     pub fn execute(&mut self) -> anyhow::Result<Vec<Artifact>> {
         let args: Vec<_> = self.args.iter().map(String::as_str).collect();
+        let manifest_path = self.manifest_path.as_deref();
         let mut artifacts = Vec::new();
         for target in &self.targets {
-            artifacts.extend(cargo_acap::build_and_pack(*target, &args)?);
+            artifacts.extend(cargo_acap::build_and_pack(*target, &args, manifest_path)?);
         }
         if let Some(artifact_dir) = self.artifact_dir.as_deref() {
             copy_final_artifacts(&artifacts, artifact_dir)?;

@@ -44,7 +44,7 @@ impl ControlCommand {
 /// not work from the workspace root if it is not also the root of the binary crate whereas this
 /// will.
 fn infer_name_from_metadata() -> anyhow::Result<String> {
-    let metadata = get_cargo_metadata()?;
+    let metadata = get_cargo_metadata(None)?;
 
     let find_binary_targets = |id: &String| {
         metadata
