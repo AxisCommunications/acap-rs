@@ -67,7 +67,7 @@ fn build_and_copy(cli: Cli) -> anyhow::Result<()> {
 
     AppBuilder::from_targets(cli.targets())
         .args(args)
-        .artifact_dir(get_cargo_metadata()?.target_directory.join("acap"))
+        .artifact_dir(get_cargo_metadata(None)?.target_directory.join("acap"))
         .execute()?;
     Ok(())
 }

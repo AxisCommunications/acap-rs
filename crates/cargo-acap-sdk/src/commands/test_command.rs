@@ -20,6 +20,7 @@ impl TestCommand {
 
         let ResolvedBuildOptions {
             target,
+            manifest_path,
             args: mut build_args,
         } = build_options.resolve(&deploy_options).await?;
 
@@ -35,9 +36,12 @@ impl TestCommand {
 
         build_args.push("--tests".to_string());
 
-        let artifacts = AppBuilder::from_targets([Architecture::from(target)])
-            .args(build_args)
-            .execute()?;
+        let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
+        builder.args(build_args);
+        if let Some(ref path) = manifest_path {
+            builder.manifest_path(path);
+        }
+        let artifacts = builder.execute()?;
 
         for artifact in artifacts {
             debug!("Running {:?}", artifact);

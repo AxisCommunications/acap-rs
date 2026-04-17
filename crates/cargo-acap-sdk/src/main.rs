@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-use std::{ffi::OsString, fs::File, str::FromStr};
+use std::{ffi::OsString, fs::File, path::PathBuf, str::FromStr};
 
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
 use cargo_acap_build::Architecture;
@@ -72,6 +72,9 @@ enum Commands {
 // TODO: Include package selection for better completions and help messages.
 #[derive(clap::Args, Debug, Clone)]
 struct BuildOptions {
+    /// Path to Cargo.toml.
+    #[arg(long)]
+    manifest_path: Option<PathBuf>,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
@@ -80,7 +83,10 @@ struct BuildOptions {
 
 impl BuildOptions {
     async fn resolve(self, deploy_options: &DeployOptions) -> anyhow::Result<ResolvedBuildOptions> {
-        let Self { args } = self;
+        let Self {
+            manifest_path,
+            args,
+        } = self;
         // TODO: Consider using `get_properties` instead.
         let target = basic_device_info::Client::new(&deploy_options.http_client().await?)
             .get_all_properties()
@@ -90,7 +96,11 @@ impl BuildOptions {
             .restricted
             .architecture
             .parse()?;
-        Ok(ResolvedBuildOptions { target, args })
+        Ok(ResolvedBuildOptions {
+            target,
+            manifest_path,
+            args,
+        })
     }
 }
 
@@ -99,6 +109,9 @@ pub struct ResolvedBuildOptions {
     /// Architecture of the device to build for.
     #[arg(long, env = "AXIS_DEVICE_ARCH")]
     target: ArchAbi,
+    /// Path to Cargo.toml.
+    #[arg(long)]
+    manifest_path: Option<PathBuf>,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
