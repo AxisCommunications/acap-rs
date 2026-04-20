@@ -113,9 +113,6 @@ The focus of these tools are to make less common things possible.
 - `device-manager`: Utilities for manipulating a single Axis device.
   - Status: ⚠️ Alpha
   - Documentation: [README](crates/device-manager/README.md)
-- `fleet-manager`: Utilities for manipulating multiple Axis devices.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/fleet-manager/README.md)
 
 These can be installed independently and are provided as library crates too for developers who want
 to write their own,
