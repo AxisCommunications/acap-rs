@@ -41,8 +41,6 @@ tempfile = "3.10.1"
 thiserror = "1.0.61"
 tokio = "1.38.1"
 tower-http = "0.5.2"
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
 url = "2.5.2"
 
 acap-build = { path = "crates/acap-build" }
@@ -61,7 +59,6 @@ bbox = { path = "crates/bbox" }
 bbox-sys = { path = "crates/bbox-sys" }
 cargo-acap-build = { path = "crates/cargo-acap-build" }
 cli-version = { path = "crates/cli-version" }
-device-manager = { path = "crates/device-manager" }
 larod-sys = { path = "crates/larod-sys" }
 licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }

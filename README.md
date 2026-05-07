@@ -110,9 +110,6 @@ The focus of these tools are to make less common things possible.
 - `cargo-acap-build`: Build utilities for ACAP apps and other executables deployed to Axis devices.
   - Status: ⚠️ Alpha
   - Documentation: [README](crates/cargo-acap-build/README.md)
-- `device-manager`: Utilities for manipulating a single Axis device.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/device-manager/README.md)
 
 These can be installed independently and are provided as library crates too for developers who want
 to write their own,

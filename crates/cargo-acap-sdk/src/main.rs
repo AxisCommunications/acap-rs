@@ -159,8 +159,7 @@ impl DeployOptions {
         // This takes about 200ms on my setup. It's not terrible since successful requests to
         // applications control take on the order of seconds, but it is a bit annoying on failing
         // requests that take 200-500ms. But since `from_host` tries more secure configurations
-        // first this will probably improve as https and digest support are added and
-        // `device-manager` is changed to set up the devices accordingly.
+        // first this will probably improve as https and digest support are added.
         // TODO: Consider allowing the resolved settings to be cached or configured
         let Self {
             host,
