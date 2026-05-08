@@ -50,10 +50,6 @@ FORCE:;
 help:
 	@mkhelp $(firstword $(MAKEFILE_LIST))
 
-## Reset <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> to a clean state suitable for development and testing.
-reinit:
-	RUST_LOG=info device-manager reinit
-
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
