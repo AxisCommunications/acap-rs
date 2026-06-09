@@ -1,10 +1,14 @@
 //! Key-value map for VDO settings and a GLib-allocated C string type.
 
+use std::{
+    ffi::{c_char, c_void, CStr},
+    fmt,
+    ops::Deref,
+    ptr::{self, NonNull},
+};
+
+use glib::translate::{from_glib, IntoGlib};
 use gobject_sys::{g_object_unref, GObject};
-use std::ffi::{c_char, c_void, CStr};
-use std::fmt;
-use std::ops::Deref;
-use std::ptr::{self, NonNull};
 use vdo_sys::VdoMap;
 
 /// An owned pointer to a C string allocated by GLib.
@@ -67,13 +71,11 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn try_new() -> std::result::Result<Self, super::Error> {
+    pub fn new() -> Self {
+        // `vdo_map_new` is a thin wrapper around `g_object_new`, which aborts
+        // the program if allocation fails, so the returned pointer is never null.
         let map = unsafe { vdo_sys::vdo_map_new() };
-        if map.is_null() {
-            Err(super::Error::NullPointer)
-        } else {
-            Ok(Self { raw: map })
-        }
+        Self { raw: map }
     }
 
     /// # Safety
@@ -122,22 +124,16 @@ impl Map {
     }
 
     pub fn set_bool(&mut self, key: &CStr, value: bool) {
-        let gvalue = if value {
-            glib_sys::GTRUE
-        } else {
-            glib_sys::GFALSE
-        };
-        unsafe { vdo_sys::vdo_map_set_boolean(self.raw, key.as_ptr(), gvalue) }
+        unsafe { vdo_sys::vdo_map_set_boolean(self.raw, key.as_ptr(), value.into_glib()) }
     }
 
     pub fn get_bool(&self, key: &CStr, default: bool) -> bool {
-        let gdefault = if default {
-            glib_sys::GTRUE
-        } else {
-            glib_sys::GFALSE
-        };
         unsafe {
-            vdo_sys::vdo_map_get_boolean(self.raw, key.as_ptr(), gdefault) != glib_sys::GFALSE
+            from_glib(vdo_sys::vdo_map_get_boolean(
+                self.raw,
+                key.as_ptr(),
+                default.into_glib(),
+            ))
         }
     }
 
@@ -150,6 +146,12 @@ impl Map {
     // Returns *mut because GLib's C API takes *mut even for read-only operations.
     pub(crate) fn as_ptr(&self) -> *mut VdoMap {
         self.raw
+    }
+}
+
+impl Default for Map {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -22,9 +22,9 @@
 //! # Example
 //!
 //! ```no_run
-//! use vdo::{Resolution, Stream, VdoFormat};
+//! use vdo::{Resolution, StreamBuilder, VdoFormat};
 //!
-//! let stream = Stream::builder()
+//! let stream = StreamBuilder::new()
 //!     .channel(0)
 //!     .format(VdoFormat::VDO_FORMAT_YUV)
 //!     .resolution(Resolution::Exact { width: 1920, height: 1080 })
@@ -47,15 +47,16 @@
 //! - Some formats (RGB, PLANAR_RGB) may produce upside-down images on certain platforms.
 
 mod map;
-pub use map::{CStringPtr, Map};
+use std::{
+    fmt::{Debug, Display},
+    os::fd::BorrowedFd,
+    ptr,
+};
 
 use glib_sys::GError;
 use gobject_sys::{g_object_unref, GObject};
-use std::fmt::{Debug, Display};
-use std::mem;
-use std::ptr;
+pub use map::{CStringPtr, Map};
 use vdo_sys::{VdoBuffer, VdoBufferStrategy, VdoStream};
-
 pub use vdo_sys::{VdoFormat, VdoFrameType, VdoRateControlMode, VdoRateControlPriority};
 
 /// Macro for calling VDO functions that take a GError** parameter.
@@ -190,14 +191,14 @@ pub enum Resolution {
 
 /// Builder for creating a video stream.
 ///
-/// Use [`Stream::builder()`] to create a new builder.
+/// Use [`StreamBuilder::new()`] to create a new builder.
 ///
 /// # Example
 ///
 /// ```no_run
-/// use vdo::{Resolution, Stream, VdoFormat};
+/// use vdo::{Resolution, StreamBuilder, VdoFormat};
 ///
-/// let stream = Stream::builder()
+/// let stream = StreamBuilder::new()
 ///     .channel(0)
 ///     .format(VdoFormat::VDO_FORMAT_H264)
 ///     .resolution(Resolution::Exact { width: 1920, height: 1080 })
@@ -269,7 +270,7 @@ impl StreamBuilder {
     /// Returns an error if the stream could not be created (e.g., invalid format
     /// for the platform, or camera not available).
     pub fn build(self) -> std::result::Result<Stream, Error> {
-        let mut map = Map::try_new()?;
+        let mut map = Map::new();
         map.set_u32(c"channel", self.channel);
         map.set_u32(c"format", self.format.0 as u32);
         if let Resolution::Exact { width, height } = self.resolution {
@@ -308,16 +309,16 @@ impl StreamBuilder {
 
 /// A video stream from a camera channel.
 ///
-/// Use [`Stream::builder()`] to create a stream, then call [`Stream::start()`]
+/// Use [`StreamBuilder`] to create a stream, then call [`Stream::start()`]
 /// to begin capturing frames. Starting consumes the `Stream` and returns a
 /// [`RunningStream`].
 ///
 /// # Example
 ///
 /// ```no_run
-/// use vdo::{Resolution, Stream, VdoFormat};
+/// use vdo::{Resolution, StreamBuilder, VdoFormat};
 ///
-/// let stream = Stream::builder()
+/// let stream = StreamBuilder::new()
 ///     .format(VdoFormat::VDO_FORMAT_JPEG)
 ///     .resolution(Resolution::Exact { width: 640, height: 480 })
 ///     .build()?;
@@ -341,11 +342,7 @@ pub struct Stream {
 unsafe impl Send for Stream {}
 
 impl Stream {
-    pub fn builder() -> StreamBuilder {
-        StreamBuilder::new()
-    }
-
-    /// Equivalent to `Stream::builder().build()` (H.264 format, native resolution).
+    /// Equivalent to `StreamBuilder::new().build()` (H.264 format, native resolution).
     pub fn new() -> std::result::Result<Self, Error> {
         StreamBuilder::new().build()
     }
@@ -373,7 +370,7 @@ impl Stream {
     /// Starts the stream, consuming `self` and returning a [`RunningStream`].
     ///
     /// On failure, the stream is consumed and cannot be reused; create a new
-    /// stream via [`Stream::builder()`] to retry.
+    /// stream via [`StreamBuilder`] to retry.
     pub fn start(mut self) -> std::result::Result<RunningStream, Error> {
         let (success, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_start, self.raw) };
         if success == glib_sys::GFALSE {
@@ -429,13 +426,12 @@ impl RunningStream {
 /// metadata (size, timestamp, frame type, etc.) is accessed directly on this type.
 ///
 /// The buffer borrows from the [`RunningStream`] that produced it and is
-/// automatically unreferenced when dropped. Use [`unref()`](StreamBuffer::unref)
-/// to handle unref errors explicitly.
+/// automatically unreferenced when dropped.
 ///
 /// # Buffer Validity
 ///
 /// The buffer data pointer and frame metadata remain valid until the buffer is
-/// unreferenced (on drop or via [`unref()`](StreamBuffer::unref)).
+/// unreferenced on drop.
 pub struct StreamBuffer<'a> {
     raw: *mut VdoBuffer,
     stream: &'a Stream,
@@ -460,15 +456,25 @@ impl StreamBuffer<'_> {
         Ok(slice)
     }
 
-    /// Returns a copy of exactly [`size()`](StreamBuffer::size) bytes of frame data.
+    /// Returns a copy of the frame data, excluding the header if one is present.
+    ///
+    /// Use [`as_slice()`](StreamBuffer::as_slice) for a raw view of the whole buffer.
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
         }
-        // Clamp size to capacity to avoid reading beyond the mapped region.
-        let size = self.size().min(self.capacity());
-        let slice = unsafe { std::slice::from_raw_parts(data as *const u8, size) };
+        let offset = self.header_size().unwrap_or(0);
+        let size = self.size();
+        assert!(offset <= size, "expect header to fit within frame size");
+        assert!(
+            size <= self.capacity(),
+            "expect frame size to fit within buffer capacity"
+        );
+        // SAFETY: offset..size lies within the mapped region of capacity bytes,
+        // which is fully initialized at allocation time.
+        let slice =
+            unsafe { std::slice::from_raw_parts((data as *const u8).add(offset), size - offset) };
         Ok(slice.to_vec())
     }
 
@@ -505,39 +511,22 @@ impl StreamBuffer<'_> {
         }
     }
 
-    /// Returns the raw file descriptor for the buffer's backing memory.
+    /// Returns the file descriptor for the buffer's backing memory.
     ///
-    /// # Safety
-    ///
-    /// The returned fd is owned by VDO and will be closed when this buffer is
-    /// unreferenced. The caller must not close or duplicate (`dup`) the fd.
-    pub unsafe fn file_descriptor(&self) -> std::result::Result<std::os::fd::RawFd, Error> {
-        let fd = vdo_sys::vdo_buffer_get_fd(self.raw);
+    /// The fd is owned by VDO; the returned [`BorrowedFd`] is tied to the
+    /// lifetime of this buffer and cannot be closed through it.
+    pub fn file_descriptor(&self) -> std::result::Result<BorrowedFd<'_>, Error> {
+        let fd = unsafe { vdo_sys::vdo_buffer_get_fd(self.raw) };
         if fd < 0 {
             return Err(Error::InvalidFd);
         }
-        Ok(fd)
+        // SAFETY: fd is a valid descriptor owned by VDO and remains open at
+        // least for the lifetime of this buffer, to which the BorrowedFd is tied.
+        Ok(unsafe { BorrowedFd::borrow_raw(fd) })
     }
 
     pub fn is_last_buffer(&self) -> bool {
         unsafe { vdo_sys::vdo_frame_get_is_last_buffer(self.raw) != glib_sys::GFALSE }
-    }
-
-    /// Explicitly unreferences this buffer, returning an error if the operation fails.
-    ///
-    /// Normally buffers are unreferenced on drop. Use this if you need error handling.
-    pub fn unref(self) -> std::result::Result<(), Error> {
-        // Local copy so self.raw stays valid for Drop if unref fails.
-        let mut raw = self.raw;
-        let stream_raw = self.stream.raw;
-
-        let (success, maybe_error) =
-            unsafe { try_func!(vdo_sys::vdo_stream_buffer_unref, stream_raw, &mut raw) };
-        if success == glib_sys::GFALSE {
-            return Err(maybe_error.unwrap_or(Error::MissingVdoError));
-        }
-        mem::forget(self); // buffer already unreferenced, suppress Drop
-        Ok(())
     }
 }
 
@@ -561,8 +550,9 @@ impl Drop for StreamBuffer<'_> {
 
 #[cfg(test)]
 mod unit_tests {
-    use super::*;
     use expect_test::expect;
+
+    use super::*;
 
     #[test]
     fn error_code_names() {
@@ -695,7 +685,7 @@ mod tests {
     #[test]
     fn stream_starts_and_stops() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -720,7 +710,7 @@ mod tests {
     #[test]
     fn native_resolution() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .format(VdoFormat::VDO_FORMAT_YUV)
             .build()?;
 
@@ -735,7 +725,7 @@ mod tests {
     #[test]
     fn stream_info_available() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -752,7 +742,7 @@ mod tests {
     #[test]
     fn stream_settings_available() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -769,7 +759,7 @@ mod tests {
     #[test]
     fn capture_yuv_frames() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -810,7 +800,7 @@ mod tests {
     #[test]
     fn capture_jpeg_frames() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_JPEG)
             .resolution(Resolution::Exact {
@@ -840,7 +830,7 @@ mod tests {
     #[test]
     fn capture_h264_frames() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_H264)
             .resolution(Resolution::Exact {
@@ -883,7 +873,7 @@ mod tests {
     fn capture_h265_frames() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
 
-        let stream_result = Stream::builder()
+        let stream_result = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_H265)
             .resolution(Resolution::Exact {
@@ -916,7 +906,7 @@ mod tests {
     #[test]
     fn frame_timestamps_increase() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -961,7 +951,7 @@ mod tests {
     #[test]
     fn buffer_data_accessible() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -994,7 +984,7 @@ mod tests {
     #[test]
     fn data_copy_returns_frame_data() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -1007,11 +997,12 @@ mod tests {
         let buffer = running.next_buffer()?;
 
         let copy = buffer.data_copy()?;
-        assert_eq!(copy.len(), buffer.size());
+        let offset = buffer.header_size().unwrap_or(0);
+        assert_eq!(copy.len(), buffer.size() - offset);
 
-        // Verify copy matches the original slice
+        // Verify copy matches the original slice, past the header if any
         let slice = buffer.as_slice()?;
-        assert_eq!(&copy[..], &slice[..copy.len()]);
+        assert_eq!(&copy[..], &slice[offset..offset + copy.len()]);
 
         drop(buffer);
         drop(running);
@@ -1021,7 +1012,7 @@ mod tests {
     #[test]
     fn file_descriptor_is_valid() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -1033,9 +1024,11 @@ mod tests {
         let running = stream.start()?;
         let buffer = running.next_buffer()?;
 
-        // SAFETY: We only read the fd value for the assertion; we do not close or dup it.
-        let fd = unsafe { buffer.file_descriptor()? };
-        assert!(fd >= 0, "File descriptor should be non-negative");
+        let fd = buffer.file_descriptor()?;
+        assert!(
+            std::os::fd::AsRawFd::as_raw_fd(&fd) >= 0,
+            "File descriptor should be non-negative"
+        );
 
         drop(buffer);
         drop(running);
@@ -1043,29 +1036,9 @@ mod tests {
     }
 
     #[test]
-    fn explicit_unref() -> std::result::Result<(), Box<dyn std::error::Error>> {
-        init_logger();
-        let stream = Stream::builder()
-            .channel(0)
-            .format(VdoFormat::VDO_FORMAT_YUV)
-            .resolution(Resolution::Exact {
-                width: 320,
-                height: 240,
-            })
-            .build()?;
-
-        let running = stream.start()?;
-        let buffer = running.next_buffer()?;
-        buffer.unref()?;
-
-        drop(running);
-        Ok(())
-    }
-
-    #[test]
     fn all_buffer_metadata_accessible() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let stream = Stream::builder()
+        let stream = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -1097,7 +1070,7 @@ mod tests {
         init_logger();
 
         {
-            let stream = Stream::builder()
+            let stream = StreamBuilder::new()
                 .format(VdoFormat::VDO_FORMAT_YUV)
                 .resolution(Resolution::Exact {
                     width: 320,
@@ -1113,7 +1086,7 @@ mod tests {
         }
 
         {
-            let stream = Stream::builder()
+            let stream = StreamBuilder::new()
                 .format(VdoFormat::VDO_FORMAT_JPEG)
                 .resolution(Resolution::Exact {
                     width: 320,
@@ -1137,7 +1110,7 @@ mod tests {
     fn interleaved_streams() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
 
-        let stream1 = Stream::builder()
+        let stream1 = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -1146,7 +1119,7 @@ mod tests {
             })
             .build()?;
 
-        let stream2 = Stream::builder()
+        let stream2 = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_JPEG)
             .resolution(Resolution::Exact {
@@ -1172,7 +1145,7 @@ mod tests {
     #[test]
     fn invalid_channel_returns_error() {
         init_logger();
-        let result = Stream::builder()
+        let result = StreamBuilder::new()
             .channel(999)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -1191,7 +1164,7 @@ mod tests {
     #[test]
     fn unsupported_format_logged() {
         init_logger();
-        let result = Stream::builder()
+        let result = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_BAYER)
             .resolution(Resolution::Exact {
@@ -1210,7 +1183,7 @@ mod tests {
     #[test]
     fn invalid_resolution_logged() {
         init_logger();
-        let result = Stream::builder()
+        let result = StreamBuilder::new()
             .channel(0)
             .format(VdoFormat::VDO_FORMAT_YUV)
             .resolution(Resolution::Exact {
@@ -1238,7 +1211,7 @@ mod tests {
         init_logger();
 
         {
-            let stream = Stream::builder()
+            let stream = StreamBuilder::new()
                 .channel(0)
                 .format(VdoFormat::VDO_FORMAT_YUV)
                 .resolution(Resolution::Exact {
@@ -1262,7 +1235,7 @@ mod tests {
     fn error_message_is_descriptive() {
         init_logger();
 
-        let err = Stream::builder()
+        let err = StreamBuilder::new()
             .channel(999)
             .build()
             .expect_err("Channel 999 should fail");
@@ -1284,7 +1257,7 @@ mod tests {
         init_logger();
 
         for i in 0..5 {
-            let stream = Stream::builder()
+            let stream = StreamBuilder::new()
                 .channel(0)
                 .format(VdoFormat::VDO_FORMAT_YUV)
                 .resolution(Resolution::Exact {
@@ -1309,7 +1282,7 @@ mod tests {
     fn map_get_set_operations() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
 
-        let mut map = Map::try_new()?;
+        let mut map = Map::new();
 
         map.set_u32(c"test_u32", 42);
         assert_eq!(map.get_u32(c"test_u32", 0), 42);

@@ -8,6 +8,7 @@ description = "Safe Rust bindings for the VDO (Video Capture) API"
 [dependencies]
 vdo-sys = { workspace = true }
 log = { workspace = true }
+glib = { workspace = true }
 glib-sys = { workspace = true }
 gobject-sys = { workspace = true }
 thiserror = { workspace = true }

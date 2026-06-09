@@ -3072,6 +3072,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "expect-test",
+ "glib",
  "glib-sys",
  "gobject-sys",
  "log",

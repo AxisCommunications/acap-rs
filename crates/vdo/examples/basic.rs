@@ -3,7 +3,7 @@
 //! This example creates a video stream, captures a few frames, and prints
 //! information about each frame.
 
-use vdo::{Resolution, Stream, VdoFormat};
+use vdo::{Resolution, StreamBuilder, VdoFormat};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging (optional)
@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating video stream...");
 
     // Create a stream with YUV format (most portable across platforms)
-    let stream = Stream::builder()
+    let stream = StreamBuilder::new()
         .channel(0)
         .format(VdoFormat::VDO_FORMAT_YUV)
         .resolution(Resolution::Exact {

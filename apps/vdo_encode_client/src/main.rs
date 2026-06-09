@@ -12,12 +12,12 @@
 // unit tests because they require access to actual camera hardware via the VDO API.
 
 use log::{error, info};
-use vdo::{Error, Resolution, Stream, VdoFormat};
+use vdo::{Error, Resolution, StreamBuilder, VdoFormat};
 
 fn capture_format(name: &str, format: VdoFormat, num_frames: usize) -> Result<(), Error> {
     info!("=== Testing {} format ===", name);
 
-    let stream = Stream::builder()
+    let stream = StreamBuilder::new()
         .channel(0)
         .format(format)
         .resolution(Resolution::Exact {
