@@ -50,10 +50,6 @@ FORCE:;
 help:
 	@mkhelp $(firstword $(MAKEFILE_LIST))
 
-## Reset <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> to a clean state suitable for development and testing.
-reinit:
-	RUST_LOG=info device-manager reinit
-
 ## Build <AXIS_PACKAGE> for <AXIS_DEVICE_ARCH>
 build:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
@@ -175,7 +171,10 @@ check_docs:
 
 ## Check that the code is formatted correctly
 check_format:
-	cargo fmt --check
+	cargo fmt \
+		--check \
+		-- \
+		--config imports_granularity=Crate,group_imports=StdExternalCrate
 .PHONY: check_format
 
 ## Check that generated files are up to date
@@ -242,7 +241,9 @@ check_tests:
 
 ## Attempt to fix formatting automatically
 fix_format:
-	cargo fmt
+	cargo fmt \
+		-- \
+		--config imports_granularity=Crate,group_imports=StdExternalCrate
 .PHONY: fix_format
 
 ## Attempt to fix lints automatically

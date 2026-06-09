@@ -57,14 +57,19 @@ app can be built using
 only `docker`:
 
 ```sh
-docker build --file .devcontainer/Dockerfile --tag acap-rs .
+docker build \
+  --file .devcontainer/Dockerfile \
+  --platform linux/amd64 \
+  --tag acap-rs \
+  .
 docker run \
   --interactive \
   --rm \
   --tty \
+  --platform linux/amd64 \
   --user $(id -u):$(id -g) \
-  --volume $(pwd):$(pwd) \
-  --workdir $(pwd) \
+  --volume $(pwd):/workspaces/acap-rs \
+  --workdir /workspaces/acap-rs \
   acap-rs \
   make build AXIS_PACKAGE=hello_world
 ```
@@ -105,12 +110,6 @@ The focus of these tools are to make less common things possible.
 - `cargo-acap-build`: Build utilities for ACAP apps and other executables deployed to Axis devices.
   - Status: ⚠️ Alpha
   - Documentation: [README](crates/cargo-acap-build/README.md)
-- `device-manager`: Utilities for manipulating a single Axis device.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/device-manager/README.md)
-- `fleet-manager`: Utilities for manipulating multiple Axis devices.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/fleet-manager/README.md)
 
 These can be installed independently and are provided as library crates too for developers who want
 to write their own,

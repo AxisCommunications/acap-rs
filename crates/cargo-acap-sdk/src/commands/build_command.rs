@@ -12,7 +12,12 @@ pub struct BuildCommand {
 impl BuildCommand {
     pub fn exec(self) -> anyhow::Result<()> {
         let Self {
-            build_options: ResolvedBuildOptions { target, mut args },
+            build_options:
+                ResolvedBuildOptions {
+                    target,
+                    manifest_path,
+                    mut args,
+                },
         } = self;
 
         if !args.iter().any(|arg| {
@@ -25,9 +30,17 @@ impl BuildCommand {
             args.push("--profile=release".to_string());
         }
 
-        AppBuilder::from_targets([Architecture::from(target)])
-            .args(args)
-            .artifact_dir(get_cargo_metadata()?.target_directory.join("acap"))
+        let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
+        builder.args(args);
+        if let Some(ref path) = manifest_path {
+            builder.manifest_path(path);
+        }
+        builder
+            .artifact_dir(
+                get_cargo_metadata(manifest_path.as_deref())?
+                    .target_directory
+                    .join("acap"),
+            )
             .execute()?;
         Ok(())
     }

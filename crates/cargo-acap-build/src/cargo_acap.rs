@@ -10,7 +10,7 @@ use anyhow::{bail, Context};
 use log::{debug, error, warn};
 
 use crate::{
-    cargo::{get_cargo_metadata, json_message::JsonMessage},
+    cargo::{cargo_command, get_cargo_metadata, json_message::JsonMessage},
     command_utils::RunWith,
     files::license,
     Architecture,
@@ -21,11 +21,15 @@ pub enum Artifact {
     Eap { path: PathBuf, name: String },
     Exe { path: PathBuf },
 }
-pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<Artifact>> {
+pub fn build_and_pack(
+    arch: Architecture,
+    args: &[&str],
+    manifest_path: Option<&Path>,
+) -> anyhow::Result<Vec<Artifact>> {
     // If user supplies a target we lose track of which target is currently being built
     assert!(!args.contains(&"--target"));
 
-    let mut cargo = std::process::Command::new("cargo");
+    let mut cargo = cargo_command(manifest_path);
     cargo.arg("build");
     cargo.args(["--target", arch.triple()]);
 
@@ -49,7 +53,7 @@ pub fn build_and_pack(arch: Architecture, args: &[&str]) -> anyhow::Result<Vec<A
         Ok(())
     })?;
 
-    let cargo_target_directory = get_cargo_metadata()?.target_directory;
+    let cargo_target_directory = get_cargo_metadata(manifest_path)?.target_directory;
     let mut out_dirs = HashMap::new();
     let mut artifacts = Vec::new();
     for m in messages {

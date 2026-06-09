@@ -18,7 +18,11 @@ impl RunCommand {
             deploy_options,
         } = self;
 
-        let ResolvedBuildOptions { target, args } = build_options.resolve(&deploy_options).await?;
+        let ResolvedBuildOptions {
+            target,
+            manifest_path,
+            args,
+        } = build_options.resolve(&deploy_options).await?;
 
         let DeployOptions {
             host: address,
@@ -30,9 +34,12 @@ impl RunCommand {
             pass: password,
         } = deploy_options;
 
-        let artifacts = AppBuilder::from_targets([Architecture::from(target)])
-            .args(args)
-            .execute()?;
+        let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
+        builder.args(args);
+        if let Some(ref path) = manifest_path {
+            builder.manifest_path(path);
+        }
+        let artifacts = builder.execute()?;
         for artifact in artifacts {
             let envs = vec![("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")]
                 .into_iter()

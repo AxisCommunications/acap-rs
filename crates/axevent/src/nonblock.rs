@@ -5,10 +5,11 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::flex::{Event, Handler, KeyValueSet};
 use async_channel::Receiver;
 use futures_lite::Stream;
 use log::{error, warn};
+
+use crate::flex::{Event, Handler, KeyValueSet};
 
 /// Represents an event subscription that can be iterated asynchronously
 ///
