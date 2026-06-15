@@ -513,15 +513,22 @@ impl StreamBuffer<'_> {
 
     /// Returns the file descriptor for the buffer's backing memory.
     ///
-    /// The fd is owned by VDO; the returned [`BorrowedFd`] is tied to the
-    /// lifetime of this buffer and cannot be closed through it.
+    /// The fd is owned by VDO and backs the same memory as
+    /// [`as_slice()`](StreamBuffer::as_slice). The [VDO documentation] states
+    /// that this memory "is only valid for as long as the VdoBuffer itself is
+    /// valid", so the returned [`BorrowedFd`] is tied to this buffer's lifetime
+    /// and cannot be closed through it.
+    ///
+    /// [VDO documentation]: https://developer.axis.com/acap/api/src/api/vdostream/html/vdo-buffer_8h.html
     pub fn file_descriptor(&self) -> std::result::Result<BorrowedFd<'_>, Error> {
         let fd = unsafe { vdo_sys::vdo_buffer_get_fd(self.raw) };
         if fd < 0 {
             return Err(Error::InvalidFd);
         }
-        // SAFETY: fd is a valid descriptor owned by VDO and remains open at
-        // least for the lifetime of this buffer, to which the BorrowedFd is tied.
+        // SAFETY: fd is owned by VDO and backs this buffer's memory, which VDO
+        // documents as valid for as long as the buffer is valid. The returned
+        // BorrowedFd borrows from `self`, so it cannot outlive the buffer, and
+        // it cannot be used to close the descriptor.
         Ok(unsafe { BorrowedFd::borrow_raw(fd) })
     }
 
