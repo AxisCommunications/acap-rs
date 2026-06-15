@@ -49,7 +49,6 @@
 mod map;
 use std::{
     fmt::{Debug, Display},
-    os::fd::BorrowedFd,
     ptr,
 };
 
@@ -80,8 +79,6 @@ pub enum Error {
     Vdo(#[from] VdoError),
     #[error("VDO returned an unexpected null pointer")]
     NullPointer,
-    #[error("VDO returned an invalid file descriptor")]
-    InvalidFd,
     #[error("Missing error data from VDO library")]
     MissingVdoError,
 }
@@ -511,27 +508,6 @@ impl StreamBuffer<'_> {
         }
     }
 
-    /// Returns the file descriptor for the buffer's backing memory.
-    ///
-    /// The fd is owned by VDO and backs the same memory as
-    /// [`as_slice()`](StreamBuffer::as_slice). The [VDO documentation] states
-    /// that this memory "is only valid for as long as the VdoBuffer itself is
-    /// valid", so the returned [`BorrowedFd`] is tied to this buffer's lifetime
-    /// and cannot be closed through it.
-    ///
-    /// [VDO documentation]: https://developer.axis.com/acap/api/src/api/vdostream/html/vdo-buffer_8h.html
-    pub fn file_descriptor(&self) -> std::result::Result<BorrowedFd<'_>, Error> {
-        let fd = unsafe { vdo_sys::vdo_buffer_get_fd(self.raw) };
-        if fd < 0 {
-            return Err(Error::InvalidFd);
-        }
-        // SAFETY: fd is owned by VDO and backs this buffer's memory, which VDO
-        // documents as valid for as long as the buffer is valid. The returned
-        // BorrowedFd borrows from `self`, so it cannot outlive the buffer, and
-        // it cannot be used to close the descriptor.
-        Ok(unsafe { BorrowedFd::borrow_raw(fd) })
-    }
-
     pub fn is_last_buffer(&self) -> bool {
         unsafe { vdo_sys::vdo_frame_get_is_last_buffer(self.raw) != glib_sys::GFALSE }
     }
@@ -666,8 +642,6 @@ mod unit_tests {
     fn all_error_variants_display() {
         expect!["VDO returned an unexpected null pointer"]
             .assert_eq(&format!("{}", Error::NullPointer));
-        expect!["VDO returned an invalid file descriptor"]
-            .assert_eq(&format!("{}", Error::InvalidFd));
         expect!["Missing error data from VDO library"]
             .assert_eq(&format!("{}", Error::MissingVdoError));
         let vdo = Error::Vdo(VdoError {
@@ -1010,32 +984,6 @@ mod tests {
         // Verify copy matches the original slice, past the header if any
         let slice = buffer.as_slice()?;
         assert_eq!(&copy[..], &slice[offset..offset + copy.len()]);
-
-        drop(buffer);
-        drop(running);
-        Ok(())
-    }
-
-    #[test]
-    fn file_descriptor_is_valid() -> std::result::Result<(), Box<dyn std::error::Error>> {
-        init_logger();
-        let stream = StreamBuilder::new()
-            .channel(0)
-            .format(VdoFormat::VDO_FORMAT_YUV)
-            .resolution(Resolution::Exact {
-                width: 320,
-                height: 240,
-            })
-            .build()?;
-
-        let running = stream.start()?;
-        let buffer = running.next_buffer()?;
-
-        let fd = buffer.file_descriptor()?;
-        assert!(
-            std::os::fd::AsRawFd::as_raw_fd(&fd) >= 0,
-            "File descriptor should be non-negative"
-        );
 
         drop(buffer);
         drop(running);
