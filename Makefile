@@ -231,6 +231,7 @@ check_tests:
 		--exclude bbox \
 		--exclude licensekey \
 		--exclude mdb \
+		--exclude vdo \
 		--locked \
 		--workspace
 .PHONY: check_tests
