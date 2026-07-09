@@ -16,6 +16,7 @@ impl BuildCommand {
                 ResolvedBuildOptions {
                     target,
                     manifest_path,
+                    source_date_epoch,
                     mut args,
                 },
         } = self;
@@ -41,7 +42,7 @@ impl BuildCommand {
                     .target_directory
                     .join("acap"),
             )
-            .execute()?;
+            .execute(source_date_epoch.unwrap_or_default())?;
         Ok(())
     }
 }

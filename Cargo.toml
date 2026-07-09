@@ -44,7 +44,6 @@ tokio = "1.38.1"
 tower-http = "0.5.2"
 url = "2.5.2"
 
-acap-build = { path = "crates/acap-build" }
 acap-logging = { path = "crates/acap-logging", default-features = false }
 acap-ssh-utils = { path = "crates/acap-ssh-utils" }
 acap-vapix = { path = "crates/acap-vapix" }
@@ -65,6 +64,7 @@ licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
 mdb = { path = "crates/mdb" }
 mdb-sys = { path = "crates/mdb-sys" }
+rs4a-eap = { git = "https://github.com/apljungquist/rs4acap.git", rev = "694c2066cca141b2b064ce988d4f5bb887a892b0" }
 vdo = { path = "crates/vdo" }
 vdo-sys = { path = "crates/vdo-sys" }
 

@@ -21,6 +21,7 @@ impl TestCommand {
         let ResolvedBuildOptions {
             target,
             manifest_path,
+            source_date_epoch,
             args: mut build_args,
         } = build_options.resolve(&deploy_options).await?;
 
@@ -41,7 +42,7 @@ impl TestCommand {
         if let Some(ref path) = manifest_path {
             builder.manifest_path(path);
         }
-        let artifacts = builder.execute()?;
+        let artifacts = builder.execute(source_date_epoch.unwrap_or_default())?;
 
         for artifact in artifacts {
             debug!("Running {:?}", artifact);

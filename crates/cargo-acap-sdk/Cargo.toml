@@ -11,6 +11,7 @@ dirs = { workspace = true }
 env_logger = { workspace = true, default-features = true }
 log = { workspace = true }
 reqwest = { workspace = true, default-features = true, features = ["default-tls"] }
+rs4a-eap = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 url = { workspace = true }
 

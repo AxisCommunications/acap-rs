@@ -5,6 +5,7 @@ use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
 use cli_version::version_with_commit_id;
 use log::debug;
+use rs4a_eap::Mtime;
 
 // TODO: Figure out what to call this.
 // This is sometimes called just "architecture" but in other contexts arch refers to the first
@@ -24,6 +25,10 @@ impl From<ArchAbi> for Architecture {
     }
 }
 
+fn parse_mtime(s: &str) -> anyhow::Result<Mtime> {
+    s.trim().parse::<u64>()?.try_into()
+}
+
 /// Build app using cargo
 ///
 /// Some defaults deviate from Cargo:
@@ -37,6 +42,11 @@ struct Cli {
     /// Can be used multiple times.
     #[arg(long)]
     target: Vec<ArchAbi>,
+    /// Time to stamp on every archive member, in seconds after the Unix epoch.
+    ///
+    /// Defaults to the current time.
+    #[clap(long, env = "SOURCE_DATE_EPOCH", value_parser = parse_mtime)]
+    source_date_epoch: Option<Mtime>,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
@@ -68,7 +78,7 @@ fn build_and_copy(cli: Cli) -> anyhow::Result<()> {
     AppBuilder::from_targets(cli.targets())
         .args(args)
         .artifact_dir(get_cargo_metadata(None)?.target_directory.join("acap"))
-        .execute()?;
+        .execute(cli.source_date_epoch.unwrap_or_default())?;
     Ok(())
 }
 

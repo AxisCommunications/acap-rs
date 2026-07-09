@@ -7,10 +7,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use acap_build::Architecture;
 pub use cargo::get_cargo_metadata;
 pub use cargo_acap::Artifact;
 use log::debug;
+pub use rs4a_eap::Architecture;
+use rs4a_eap::Mtime;
+
 mod cargo;
 mod cargo_acap;
 mod command_utils;
@@ -91,12 +93,17 @@ impl AppBuilder {
         self
     }
 
-    pub fn execute(&mut self) -> anyhow::Result<Vec<Artifact>> {
+    pub fn execute(&mut self, mtime: Mtime) -> anyhow::Result<Vec<Artifact>> {
         let args: Vec<_> = self.args.iter().map(String::as_str).collect();
         let manifest_path = self.manifest_path.as_deref();
         let mut artifacts = Vec::new();
         for target in &self.targets {
-            artifacts.extend(cargo_acap::build_and_pack(*target, &args, manifest_path)?);
+            artifacts.extend(cargo_acap::build_and_pack(
+                *target,
+                &args,
+                manifest_path,
+                mtime,
+            )?);
         }
         if let Some(artifact_dir) = self.artifact_dir.as_deref() {
             copy_final_artifacts(&artifacts, artifact_dir)?;

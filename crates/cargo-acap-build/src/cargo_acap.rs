@@ -1,13 +1,13 @@
-/// This module bridges the gap between `cargo` and `acap-build` using the application structure
+/// This module bridges the gap between `cargo` and `rs4a-eap` using the application structure
 /// conventions detailed in [`crate`].
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
 
-use acap_build::AppBuilder;
 use anyhow::{bail, Context};
 use log::{debug, error, warn};
+use rs4a_eap::{AppBuilder, Mtime};
 
 use crate::{
     cargo::{cargo_command, get_cargo_metadata, json_message::JsonMessage},
@@ -21,10 +21,12 @@ pub enum Artifact {
     Eap { path: PathBuf, name: String },
     Exe { path: PathBuf },
 }
+
 pub fn build_and_pack(
     arch: Architecture,
     args: &[&str],
     manifest_path: Option<&Path>,
+    mtime: Mtime,
 ) -> anyhow::Result<Vec<Artifact>> {
     // If user supplies a target we lose track of which target is currently being built
     assert!(!args.contains(&"--target"));
@@ -78,6 +80,7 @@ pub fn build_and_pack(
                             manifest_path,
                             executable,
                             out_dir,
+                            mtime,
                         )?,
                         name: target.name,
                     });
@@ -114,6 +117,7 @@ fn pack(
     manifest_path: PathBuf,
     executable: PathBuf,
     out_dir: Option<PathBuf>,
+    mtime: Mtime,
 ) -> anyhow::Result<PathBuf> {
     let mut staging_dir = cargo_target_dir.join(arch.nickname());
     if !staging_dir.is_dir() {
@@ -138,6 +142,7 @@ fn pack(
 
     debug!("Creating app builder");
     let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
+    app_builder.mtime(mtime);
     app_builder.add_exe(&executable)?;
 
     // TODO: Consider providing defaults for more files.
