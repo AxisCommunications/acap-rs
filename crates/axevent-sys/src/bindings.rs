@@ -265,6 +265,9 @@ pub type AXSubscriptionCallback = ::std::option::Option<
 >;
 pub type AXDeclarationCompleteCallback =
     ::std::option::Option<unsafe extern "C" fn(declaration: guint, user_data: gpointer)>;
+pub type AXUnsubscribeCompleteCallback = ::std::option::Option<
+    unsafe extern "C" fn(declaration: guint, user_data: gpointer, error: *mut GError),
+>;
 extern "C" {
     pub fn ax_event_handler_new() -> *mut AXEventHandler;
 }
@@ -334,6 +337,15 @@ extern "C" {
     pub fn ax_event_handler_unsubscribe(
         event_handler: *mut AXEventHandler,
         subscription: guint,
+        error: *mut *mut GError,
+    ) -> gboolean;
+}
+extern "C" {
+    pub fn ax_event_handler_unsubscribe_and_notify(
+        event_handler: *mut AXEventHandler,
+        subscription: guint,
+        callback: AXUnsubscribeCompleteCallback,
+        user_data: gpointer,
         error: *mut *mut GError,
     ) -> gboolean;
 }

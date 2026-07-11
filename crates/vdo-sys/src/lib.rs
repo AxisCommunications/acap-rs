@@ -17,6 +17,7 @@ type gdouble = core::ffi::c_double;
 
 type gint = core::ffi::c_int;
 type guint = core::ffi::c_uint;
+type guint8 = u8;
 type gint16 = i16;
 type guint16 = u16;
 type gint32 = i32;
