@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "apps/*",
-    "crates/*",
+	"apps/*",
+	"crates/*",
 ]
 resolver = "2"
 
@@ -60,6 +60,8 @@ bbox = { path = "crates/bbox" }
 bbox-sys = { path = "crates/bbox-sys" }
 cargo-acap-build = { path = "crates/cargo-acap-build" }
 cli-version = { path = "crates/cli-version" }
+datahub-sys = { path = "crates/datahub-sys" }
+device-manager = { path = "crates/device-manager" }
 larod-sys = { path = "crates/larod-sys" }
 licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
