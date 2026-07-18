@@ -453,9 +453,17 @@ impl StreamBuffer<'_> {
         Ok(slice)
     }
 
-    /// Returns a copy of the frame data, excluding the header if one is present.
+    /// Returns a copy of the frame data, excluding the header if one is present
+    /// (the `[0, header_size())` prefix — see [`header_bytes()`](StreamBuffer::header_bytes)).
     ///
-    /// Use [`as_slice()`](StreamBuffer::as_slice) for a raw view of the whole buffer.
+    /// **On H.264/H.265 key frames this excludes the codec parameter sets.**
+    /// VDO carries the SPS/PPS (and VPS for H.265) in that stripped header, so
+    /// `data_copy()` on a key frame returns only the coded slice — the
+    /// parameter sets are *not* in the result. To recover them (e.g. to build
+    /// an `avcC`/`hvcC`, an MP4 init segment, or an SDP `fmtp`), read
+    /// [`header_bytes()`](StreamBuffer::header_bytes), or use
+    /// [`as_slice()`](StreamBuffer::as_slice) for the full `[header][data]`
+    /// buffer.
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
@@ -473,6 +481,32 @@ impl StreamBuffer<'_> {
         let slice =
             unsafe { std::slice::from_raw_parts((data as *const u8).add(offset), size - offset) };
         Ok(slice.to_vec())
+    }
+
+    /// Returns the frame's header bytes — the `[0, header_size())` prefix that
+    /// [`data_copy()`](StreamBuffer::data_copy) excludes — or an empty slice
+    /// when the frame has no header.
+    ///
+    /// On H.264/H.265 **key frames** this header carries the codec parameter
+    /// sets (SPS/PPS, and VPS for H.265) in Annex B, so this is where to read
+    /// them to build an `avcC`/`hvcC`, an MP4 init segment, or an SDP `fmtp`.
+    /// The full access unit is `header_bytes()` followed by `data_copy()`
+    /// (equivalently, [`as_slice()`](StreamBuffer::as_slice) up to
+    /// [`size()`](StreamBuffer::size)).
+    pub fn header_bytes(&self) -> std::result::Result<&[u8], Error> {
+        let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
+        if data.is_null() {
+            return Err(Error::NullPointer);
+        }
+        let header = self.header_size().unwrap_or(0);
+        assert!(
+            header <= self.capacity(),
+            "expect header to fit within buffer capacity"
+        );
+        // SAFETY: 0..header lies within the mapped region of capacity bytes,
+        // which is fully initialized at allocation time.
+        let slice = unsafe { std::slice::from_raw_parts(data as *const u8, header) };
+        Ok(slice)
     }
 
     pub fn frame_type(&self) -> VdoFrameType {
@@ -499,6 +533,9 @@ impl StreamBuffer<'_> {
     }
 
     /// Returns the header size in bytes, or `None` if the frame has no header.
+    ///
+    /// For H.264/H.265 key frames the header holds the codec parameter sets;
+    /// see [`header_bytes()`](StreamBuffer::header_bytes).
     pub fn header_size(&self) -> Option<usize> {
         let size = unsafe { vdo_sys::vdo_frame_get_header_size(self.raw) };
         if size < 0 {
