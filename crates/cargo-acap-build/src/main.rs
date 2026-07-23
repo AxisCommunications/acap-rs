@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 use std::fs::File;
 
-use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
+use cargo_acap_build::{get_cargo_metadata, AcapBuildImpl, AppBuilder, Architecture};
 use clap::{Parser, ValueEnum};
 use cli_version::version_with_commit_id;
 use log::debug;
@@ -47,6 +47,9 @@ struct Cli {
     /// Defaults to the current time.
     #[clap(long, env = "SOURCE_DATE_EPOCH", value_parser = parse_mtime)]
     source_date_epoch: Option<Mtime>,
+    /// Implementation used to package the EAP.
+    #[clap(long, env = "ACAP_BUILD_IMPL", default_value_t = AcapBuildImpl::Compatible)]
+    acap_build_impl: AcapBuildImpl,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
@@ -77,6 +80,7 @@ fn build_and_copy(cli: Cli) -> anyhow::Result<()> {
 
     AppBuilder::from_targets(cli.targets())
         .args(args)
+        .implementation(cli.acap_build_impl)
         .artifact_dir(get_cargo_metadata(None)?.target_directory.join("acap"))
         .execute(cli.source_date_epoch.unwrap_or_default())?;
     Ok(())

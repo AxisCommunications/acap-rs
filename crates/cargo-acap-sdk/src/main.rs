@@ -2,7 +2,7 @@
 use std::{ffi::OsString, fs::File, path::PathBuf, str::FromStr};
 
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
-use cargo_acap_build::Architecture;
+use cargo_acap_build::{AcapBuildImpl, Architecture};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use cli_version::version_with_commit_id;
 use log::debug;
@@ -85,6 +85,9 @@ struct BuildOptions {
     /// Defaults to the current time.
     #[clap(long, env = "SOURCE_DATE_EPOCH", value_parser = parse_mtime)]
     source_date_epoch: Option<Mtime>,
+    /// Implementation used to package the EAP.
+    #[clap(long, env = "ACAP_BUILD_IMPL", default_value_t = AcapBuildImpl::Compatible)]
+    acap_build_impl: AcapBuildImpl,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
@@ -96,6 +99,7 @@ impl BuildOptions {
         let Self {
             manifest_path,
             source_date_epoch,
+            acap_build_impl,
             args,
         } = self;
         // TODO: Consider using `get_properties` instead.
@@ -111,6 +115,7 @@ impl BuildOptions {
             target,
             manifest_path,
             source_date_epoch,
+            acap_build_impl,
             args,
         })
     }
@@ -129,6 +134,9 @@ pub struct ResolvedBuildOptions {
     /// Defaults to the current time.
     #[clap(long, env = "SOURCE_DATE_EPOCH", value_parser = parse_mtime)]
     source_date_epoch: Option<Mtime>,
+    /// Implementation used to package the EAP.
+    #[clap(long, env = "ACAP_BUILD_IMPL", default_value_t = AcapBuildImpl::Compatible)]
+    acap_build_impl: AcapBuildImpl,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.

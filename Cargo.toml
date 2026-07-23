@@ -64,7 +64,7 @@ licensekey = { path = "crates/licensekey" }
 licensekey-sys = { path = "crates/licensekey-sys" }
 mdb = { path = "crates/mdb" }
 mdb-sys = { path = "crates/mdb-sys" }
-rs4a-eap = { git = "https://github.com/apljungquist/rs4acap.git", rev = "694c2066cca141b2b064ce988d4f5bb887a892b0" }
+rs4a-eap = { git = "https://github.com/apljungquist/rs4acap.git", rev = "5a8b7d5627e29608e94da0280c6b25fa1d8aefe5", features = ["clap"] }
 vdo = { path = "crates/vdo" }
 vdo-sys = { path = "crates/vdo-sys" }
 

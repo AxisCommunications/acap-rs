@@ -10,7 +10,7 @@ use std::{
 pub use cargo::get_cargo_metadata;
 pub use cargo_acap::Artifact;
 use log::debug;
-pub use rs4a_eap::Architecture;
+pub use rs4a_eap::{AcapBuildImpl, Architecture};
 use rs4a_eap::Mtime;
 
 mod cargo;
@@ -23,6 +23,7 @@ pub struct AppBuilder {
     args: Vec<String>,
     artifact_dir: Option<PathBuf>,
     manifest_path: Option<PathBuf>,
+    acap_build_impl: AcapBuildImpl,
 }
 
 impl AppBuilder {
@@ -36,7 +37,16 @@ impl AppBuilder {
             args: Vec::new(),
             artifact_dir: None,
             manifest_path: None,
+            acap_build_impl: AcapBuildImpl::Compatible,
         }
+    }
+
+    /// Select the implementation used to package the EAP.
+    ///
+    /// Defaults to [`AcapBuildImpl::Compatible`].
+    pub fn implementation(&mut self, acap_build_impl: AcapBuildImpl) -> &mut Self {
+        self.acap_build_impl = acap_build_impl;
+        self
     }
 
     /// Add arguments that will be passed through to cargo.
@@ -100,6 +110,7 @@ impl AppBuilder {
         for target in &self.targets {
             artifacts.extend(cargo_acap::build_and_pack(
                 *target,
+                self.acap_build_impl,
                 &args,
                 manifest_path,
                 mtime,

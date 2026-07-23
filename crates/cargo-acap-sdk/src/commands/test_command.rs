@@ -22,6 +22,7 @@ impl TestCommand {
             target,
             manifest_path,
             source_date_epoch,
+            acap_build_impl,
             args: mut build_args,
         } = build_options.resolve(&deploy_options).await?;
 
@@ -39,6 +40,7 @@ impl TestCommand {
 
         let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
         builder.args(build_args);
+        builder.implementation(acap_build_impl);
         if let Some(ref path) = manifest_path {
             builder.manifest_path(path);
         }
