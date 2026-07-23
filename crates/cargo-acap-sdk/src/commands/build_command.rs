@@ -16,6 +16,8 @@ impl BuildCommand {
                 ResolvedBuildOptions {
                     target,
                     manifest_path,
+                    source_date_epoch,
+                    acap_build_impl,
                     mut args,
                 },
         } = self;
@@ -32,6 +34,7 @@ impl BuildCommand {
 
         let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
         builder.args(args);
+        builder.implementation(acap_build_impl);
         if let Some(ref path) = manifest_path {
             builder.manifest_path(path);
         }
@@ -41,7 +44,7 @@ impl BuildCommand {
                     .target_directory
                     .join("acap"),
             )
-            .execute()?;
+            .execute(source_date_epoch.unwrap_or_default())?;
         Ok(())
     }
 }

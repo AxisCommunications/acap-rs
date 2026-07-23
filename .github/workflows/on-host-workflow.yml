@@ -49,16 +49,14 @@ jobs:
       - name: Shell setup
         # This step typically needs to be done once per shell session.
         # To verify that the procedure has worked, some checks are run as well.
-        # TODO: Simplify shell session setup; exporting two variables seems excessive
         run: |
           export ACAP_SDK_LOCATION=$HOME/axis/
           source ./init_env.sh
-          export ACAP_BUILD_IMPL=equivalent
           make check_generated_files
   debian_and_ubuntu_no_sdk:
     runs-on: ubuntu-24.04
-    # If the sysroots from the ACAP Native SDK are not needed, then the Rust implementation of
-    # `acap-build` can be used for an easier setup:
+    # If the sysroots from the ACAP Native SDK are not needed, then the native EAP builder
+    # (`rs4a-eap`, used by `cargo-acap-build`) can be used for an easier setup:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,6 +74,5 @@ jobs:
         run: |
           cargo-acap-build -- --package hello_world
         env:
-          ACAP_BUILD_IMPL: equivalent
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc

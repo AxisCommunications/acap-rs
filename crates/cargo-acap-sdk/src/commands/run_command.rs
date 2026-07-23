@@ -21,6 +21,8 @@ impl RunCommand {
         let ResolvedBuildOptions {
             target,
             manifest_path,
+            source_date_epoch,
+            acap_build_impl,
             args,
         } = build_options.resolve(&deploy_options).await?;
 
@@ -36,10 +38,11 @@ impl RunCommand {
 
         let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
         builder.args(args);
+        builder.implementation(acap_build_impl);
         if let Some(ref path) = manifest_path {
             builder.manifest_path(path);
         }
-        let artifacts = builder.execute()?;
+        let artifacts = builder.execute(source_date_epoch.unwrap_or_default())?;
         for artifact in artifacts {
             let envs = vec![("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")]
                 .into_iter()
