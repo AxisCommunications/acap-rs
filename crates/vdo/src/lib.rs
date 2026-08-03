@@ -210,6 +210,7 @@ pub struct StreamBuilder {
     channel: u32,
     resolution: Resolution,
     framerate: u32,
+    gop_length: u32,
 }
 
 impl Default for StreamBuilder {
@@ -220,6 +221,7 @@ impl Default for StreamBuilder {
             channel: 0,
             resolution: Resolution::Native,
             framerate: 0,
+            gop_length: 0,
         }
     }
 }
@@ -255,6 +257,17 @@ impl StreamBuilder {
         self
     }
 
+    /// GOP length — the number of frames between key frames. If 0 (default),
+    /// the camera's configured GOP is used, which on cameras with dynamic-GOP
+    /// / Zipstream can make key frames (and the SPS/PPS parameter sets VDO
+    /// emits ahead of each key frame) very sparse. Set a small fixed value to
+    /// force key frames to recur at a predictable interval. Passed to
+    /// `vdo_stream_new` as the `gop_length` setting.
+    pub fn gop_length(mut self, gop_length: u32) -> Self {
+        self.gop_length = gop_length;
+        self
+    }
+
     /// Default: 3. For YUV/RGB formats, controls frame buffer count.
     /// For compressed formats (H.264, H.265, JPEG), typically ignored.
     pub fn buffers(mut self, count: u32) -> Self {
@@ -276,6 +289,9 @@ impl StreamBuilder {
         }
         if self.framerate > 0 {
             map.set_u32(c"framerate", self.framerate);
+        }
+        if self.gop_length > 0 {
+            map.set_u32(c"gop_length", self.gop_length);
         }
         map.set_u32(c"buffer.count", self.buffer_count);
         // Always use INFINITE strategy; EXPLICIT is not exposed because it
