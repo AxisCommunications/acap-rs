@@ -4,6 +4,9 @@
 //! Unlike the C example, which relies on globals and `atexit`, resources are owned by `main` and
 //! released explicitly on every exit path.
 //!
+//! Note that this example does not do anything on its own, and
+//! its counterpart (`object_detector`) has yet to be ported.
+//!
 //! [C example for consuming Device Data Hub data]: https://github.com/AxisCommunications/acap-native-sdk-examples/tree/main/device-data-hub/acap-communication/object-consumer
 
 use std::{

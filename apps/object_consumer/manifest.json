@@ -4,8 +4,14 @@
     "setup": {
       "appName": "object_consumer",
       "vendor": "Axis Communications",
+      "vendorId": "0123456789",
       "runMode": "never",
-      "version": "0.0.0"
+      "version": "0.0.0",
+      "compatibleOsVersions": [
+        {
+          "max": "13"
+        }
+      ]
     }
   },
   "resources": {
