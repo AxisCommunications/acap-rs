@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "2.2.0",
+  "acapPackageConf": {
+    "setup": {
+      "appName": "object_consumer",
+      "vendor": "Axis Communications",
+      "runMode": "never",
+      "version": "0.0.0"
+    }
+  },
+  "resources": {
+    "deviceDataHub": {
+      "enabled": true
+    }
+  }
+}

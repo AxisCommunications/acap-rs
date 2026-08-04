@@ -1843,6 +1843,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "object_consumer"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "datahub-sys",
+ "libc",
+ "log",
+]
+
+[[package]]
 name = "object_detection"
 version = "0.0.0"
 dependencies = [
