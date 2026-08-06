@@ -1,19 +1,19 @@
-/// This module bridges the gap between `cargo` and `acap-build` using the application structure
+/// This module bridges the gap between `cargo` and `rs4a-eap` using the application structure
 /// conventions detailed in [`crate`].
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
 
-use acap_build::AppBuilder;
 use anyhow::{bail, Context};
 use log::{debug, error, warn};
+use rs4a_eap::{AppBuilder, Mtime};
 
 use crate::{
     cargo::{cargo_command, get_cargo_metadata, json_message::JsonMessage},
     command_utils::RunWith,
     files::license,
-    Architecture,
+    AcapBuildImpl, Architecture,
 };
 
 #[derive(Debug)]
@@ -21,17 +21,28 @@ pub enum Artifact {
     Eap { path: PathBuf, name: String },
     Exe { path: PathBuf },
 }
+
+/// The Rust target triple used to build for the given architecture.
+fn target_triple(arch: Architecture) -> &'static str {
+    match arch {
+        Architecture::Aarch64 => "aarch64-unknown-linux-gnu",
+        Architecture::Armv7hf => "thumbv7neon-unknown-linux-gnueabihf",
+    }
+}
+
 pub fn build_and_pack(
     arch: Architecture,
+    acap_build_impl: AcapBuildImpl,
     args: &[&str],
     manifest_path: Option<&Path>,
+    mtime: Mtime,
 ) -> anyhow::Result<Vec<Artifact>> {
     // If user supplies a target we lose track of which target is currently being built
     assert!(!args.contains(&"--target"));
 
     let mut cargo = cargo_command(manifest_path);
     cargo.arg("build");
-    cargo.args(["--target", arch.triple()]);
+    cargo.args(["--target", target_triple(arch)]);
 
     cargo.args(["--message-format", "json-render-diagnostics"]);
 
@@ -75,9 +86,11 @@ pub fn build_and_pack(
                         path: pack(
                             &cargo_target_directory,
                             arch,
+                            acap_build_impl,
                             manifest_path,
                             executable,
                             out_dir,
+                            mtime,
                         )?,
                         name: target.name,
                     });
@@ -111,11 +124,13 @@ pub fn build_and_pack(
 fn pack(
     cargo_target_dir: &Path,
     arch: Architecture,
+    acap_build_impl: AcapBuildImpl,
     manifest_path: PathBuf,
     executable: PathBuf,
     out_dir: Option<PathBuf>,
+    mtime: Mtime,
 ) -> anyhow::Result<PathBuf> {
-    let mut staging_dir = cargo_target_dir.join(arch.nickname());
+    let mut staging_dir = cargo_target_dir.join(arch.as_str());
     if !staging_dir.is_dir() {
         std::fs::create_dir(&staging_dir)?;
     }
@@ -138,6 +153,8 @@ fn pack(
 
     debug!("Creating app builder");
     let mut app_builder = AppBuilder::new(false, &staging_dir, &manifest, arch)?;
+    app_builder.implementation(acap_build_impl);
+    app_builder.mtime(mtime);
     app_builder.add_exe(&executable)?;
 
     // TODO: Consider providing defaults for more files.

@@ -2,10 +2,11 @@
 use std::{ffi::OsString, fs::File, path::PathBuf, str::FromStr};
 
 use acap_vapix::{applications_control, basic_device_info, HttpClient};
-use cargo_acap_build::Architecture;
+use cargo_acap_build::{AcapBuildImpl, Architecture};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use cli_version::version_with_commit_id;
 use log::debug;
+use rs4a_eap::Mtime;
 use url::Host;
 
 use crate::commands::{
@@ -69,12 +70,24 @@ enum Commands {
     Completions(CompletionsCommand),
 }
 
+fn parse_mtime(s: &str) -> anyhow::Result<Mtime> {
+    s.trim().parse::<u64>()?.try_into()
+}
+
 // TODO: Include package selection for better completions and help messages.
 #[derive(clap::Args, Debug, Clone)]
 struct BuildOptions {
     /// Path to Cargo.toml.
     #[arg(long)]
     manifest_path: Option<PathBuf>,
+    /// Time to stamp on every archive member, in seconds after the Unix epoch.
+    ///
+    /// Defaults to the current time.
+    #[clap(long, env = "SOURCE_DATE_EPOCH", value_parser = parse_mtime)]
+    source_date_epoch: Option<Mtime>,
+    /// Implementation used to package the EAP.
+    #[clap(long, env = "ACAP_BUILD_IMPL", default_value_t = AcapBuildImpl::Compatible)]
+    acap_build_impl: AcapBuildImpl,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
@@ -85,6 +98,8 @@ impl BuildOptions {
     async fn resolve(self, deploy_options: &DeployOptions) -> anyhow::Result<ResolvedBuildOptions> {
         let Self {
             manifest_path,
+            source_date_epoch,
+            acap_build_impl,
             args,
         } = self;
         // TODO: Consider using `get_properties` instead.
@@ -99,6 +114,8 @@ impl BuildOptions {
         Ok(ResolvedBuildOptions {
             target,
             manifest_path,
+            source_date_epoch,
+            acap_build_impl,
             args,
         })
     }
@@ -112,6 +129,14 @@ pub struct ResolvedBuildOptions {
     /// Path to Cargo.toml.
     #[arg(long)]
     manifest_path: Option<PathBuf>,
+    /// Time to stamp on every archive member, in seconds after the Unix epoch.
+    ///
+    /// Defaults to the current time.
+    #[clap(long, env = "SOURCE_DATE_EPOCH", value_parser = parse_mtime)]
+    source_date_epoch: Option<Mtime>,
+    /// Implementation used to package the EAP.
+    #[clap(long, env = "ACAP_BUILD_IMPL", default_value_t = AcapBuildImpl::Compatible)]
+    acap_build_impl: AcapBuildImpl,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.

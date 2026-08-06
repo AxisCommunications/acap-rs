@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
 env_logger = { workspace = true, default-features = true }
 log = { workspace = true }
@@ -13,5 +13,5 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 
-acap-build = { workspace = true }
+rs4a-eap = { workspace = true }
 cli-version = { workspace = true }
