@@ -5,15 +5,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use acap_build::AppBuilder;
+use acap_build::{AppBuilder, Architecture, Target};
 use anyhow::{bail, Context};
 use log::{debug, error, warn};
 
 use crate::{
-    cargo::{cargo_command, get_cargo_metadata, json_message::JsonMessage},
+    cargo::{cargo_command, get_cargo_metadata, json_message, json_message::JsonMessage},
     command_utils::RunWith,
     files::license,
-    Architecture,
 };
 
 #[derive(Debug)]
@@ -22,7 +21,7 @@ pub enum Artifact {
     Exe { path: PathBuf },
 }
 pub fn build_and_pack(
-    arch: Architecture,
+    target: Target,
     args: &[&str],
     manifest_path: Option<&Path>,
 ) -> anyhow::Result<Vec<Artifact>> {
@@ -31,7 +30,7 @@ pub fn build_and_pack(
 
     let mut cargo = cargo_command(manifest_path);
     cargo.arg("build");
-    cargo.args(["--target", arch.triple()]);
+    cargo.args(["--target", target.as_str()]);
 
     cargo.args(["--message-format", "json-render-diagnostics"]);
 
@@ -62,7 +61,7 @@ pub fn build_and_pack(
                 package_id,
                 manifest_path,
                 executable,
-                target,
+                target: json_message::Target { name },
             } => {
                 let Some(executable) = executable else {
                     debug!("Artifact is not an executable, skipping {package_id}");
@@ -74,12 +73,12 @@ pub fn build_and_pack(
                     artifacts.push(Artifact::Eap {
                         path: pack(
                             &cargo_target_directory,
-                            arch,
+                            Architecture::from(target),
                             manifest_path,
                             executable,
                             out_dir,
                         )?,
-                        name: target.name,
+                        name,
                     });
                 } else {
                     // If the executable should not be an ACAP app, leave it as is.
