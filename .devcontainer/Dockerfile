@@ -32,9 +32,7 @@ ENV \
     CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_LINKER="arm-linux-gnueabihf-gcc" \
     CARGO_TARGET_THUMBV7NEON_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_ARMV7HF}" \
     CC_thumbv7neon_unknown_linux_gnueabihf="arm-linux-gnueabihf-gcc" \
-    CFLAGS_thumbv7neon_unknown_linux_gnueabihf="-mfpu=neon" \
     CXX_thumbv7neon_unknown_linux_gnueabihf="arm-linux-gnueabihf-g++" \
-    CXXFLAGS_thumbv7neon_unknown_linux_gnueabihf="-mfpu=neon" \
     PKG_CONFIG_LIBDIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
     PKG_CONFIG_PATH_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
     PKG_CONFIG_SYSROOT_DIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}"
