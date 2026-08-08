@@ -41,7 +41,7 @@ impl AppBuilder {
 
         let mut by_architecture: HashMap<Architecture, Target> = HashMap::new();
         for &target in &targets {
-            let architecture = Architecture::from(target);
+            let architecture = target.into();
             if let Some(previous) = by_architecture.insert(architecture, target) {
                 bail!(
                     "Targets {previous} and {target} both build for the {} architecture, \

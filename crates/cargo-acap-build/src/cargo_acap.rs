@@ -73,7 +73,7 @@ pub fn build_and_pack(
                     artifacts.push(Artifact::Eap {
                         path: pack(
                             &cargo_target_directory,
-                            Architecture::from(target),
+                            target.into(),
                             manifest_path,
                             executable,
                             out_dir,
