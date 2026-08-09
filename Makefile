@@ -219,6 +219,7 @@ check_miri:
 	cargo +nightly-2025-04-18 miri test \
 		--package ffi_patterns \
 		--target aarch64-unknown-linux-gnu \
+		--target armv7-unknown-linux-gnueabihf \
 		--target thumbv7neon-unknown-linux-gnueabihf
 
 ## _
