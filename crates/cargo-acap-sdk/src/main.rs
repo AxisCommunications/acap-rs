@@ -97,7 +97,7 @@ impl BuildOptions {
             .architecture
             .parse()?;
         Ok(ResolvedBuildOptions {
-            target,
+            arch: target,
             manifest_path,
             args,
         })
@@ -108,7 +108,7 @@ impl BuildOptions {
 pub struct ResolvedBuildOptions {
     /// Architecture of the device to build for.
     #[arg(long, env = "AXIS_DEVICE_ARCH")]
-    target: ArchAbi,
+    arch: ArchAbi,
     /// Path to Cargo.toml.
     #[arg(long)]
     manifest_path: Option<PathBuf>,
