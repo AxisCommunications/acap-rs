@@ -54,7 +54,7 @@ help:
 build:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
-		--target $(AXIS_DEVICE_ARCH) \
+		--arch $(AXIS_DEVICE_ARCH) \
 		-- \
 		--package $(AXIS_PACKAGE) \
 		--profile app
@@ -93,7 +93,7 @@ stop:
 ## * The device has SSH enabled the ssh user root configured.
 run:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev
+	cargo-acap-build --arch $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
@@ -112,7 +112,7 @@ test:
 	# The `scp` command below needs the wildcard to match exactly one file.
 	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
-	cargo-acap-build --target $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev --tests
+	cargo-acap-build --arch $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev --tests
 	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
@@ -219,6 +219,7 @@ check_miri:
 	cargo +nightly-2025-04-18 miri test \
 		--package ffi_patterns \
 		--target aarch64-unknown-linux-gnu \
+		--target armv7-unknown-linux-gnueabihf \
 		--target thumbv7neon-unknown-linux-gnueabihf
 
 ## _
@@ -279,7 +280,7 @@ crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 target-$(AXIS_DEVICE_ARCH)/acap/_envoy:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build \
-		--target $(AXIS_DEVICE_ARCH) \
+		--arch $(AXIS_DEVICE_ARCH) \
 		-- \
 		--package '*_*' \
 		--profile dev \
