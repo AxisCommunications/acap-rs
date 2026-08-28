@@ -36,12 +36,13 @@ The recommended setup is using the [dev container](#dev-container) and the most 
 ### Dev container
 
 The quickest way to build the `hello_world` example is to launch the dev container and
-run `make build AXIS_PACKAGE=hello_world`.
-Once it completes there should be an `.eap` file in `target/acap`:
+run `cargo-acap-build -- -p hello_world`.
+Once it completes there should be `.eap` files in `target/acap`:
 
 ```console
 $ ls -1 target/acap
-hello_world_1_0_0_aarch64.eap
+hello_world_0_0_0_aarch64.eap
+hello_world_0_0_0_armv7hf.eap
 ```
 
 This works with any of the [example applications](#example-applications).
@@ -56,14 +57,19 @@ app can be built using
 only `docker`:
 
 ```sh
-docker build --file .devcontainer/Dockerfile --tag acap-rs .
+docker build \
+  --file .devcontainer/Dockerfile \
+  --platform linux/amd64 \
+  --tag acap-rs \
+  .
 docker run \
   --interactive \
   --rm \
   --tty \
+  --platform linux/amd64 \
   --user $(id -u):$(id -g) \
-  --volume $(pwd):$(pwd) \
-  --workdir $(pwd) \
+  --volume $(pwd):/workspaces/acap-rs \
+  --workdir /workspaces/acap-rs \
   acap-rs \
   make build AXIS_PACKAGE=hello_world
 ```
@@ -104,12 +110,6 @@ The focus of these tools are to make less common things possible.
 - `cargo-acap-build`: Build utilities for ACAP apps and other executables deployed to Axis devices.
   - Status: ⚠️ Alpha
   - Documentation: [README](crates/cargo-acap-build/README.md)
-- `device-manager`: Utilities for manipulating a single Axis device.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/device-manager/README.md)
-- `fleet-manager`: Utilities for manipulating multiple Axis devices.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/fleet-manager/README.md)
 
 These can be installed independently and are provided as library crates too for developers who want
 to write their own,
@@ -219,6 +219,9 @@ by this project.
 - `send_event`: Sends events using `axevent`.
   - Status: ⚠️ Alpha
   - [Source code](apps/send_event/src/main.rs)
+- `subscribe_to_event`: Subscribe to an event using `axevent`.
+  - Status: ⚠️ Alpha
+  - [Source code](apps/subscribe_to_event/src/main.rs)
 - `using_a_build_script`: Generates html, lib and app manifest files using a build script.
   - Status: ⚠️ Alpha
   - [Source code](apps/using_a_build_script/src/main.rs)
@@ -230,6 +233,7 @@ by this project.
 
 ### Articles
 
+- [awesome-acap](https://github.com/apljungquist/awesome-acap) - a list of free resources related to ACAP development.
 - [Related projects](docs/related-projects.md)
 - [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
 - [Managing the size of Rust binaries](https://github.com/apljungquist/managing-the-size-of-rust-binaries)

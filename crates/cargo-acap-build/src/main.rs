@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 use std::fs::File;
 
-use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture};
+use cargo_acap_build::{get_cargo_metadata, AppBuilder, Architecture, Target};
 use clap::{Parser, ValueEnum};
 use cli_version::version_with_commit_id;
 use log::debug;
@@ -32,11 +32,17 @@ impl From<ArchAbi> for Architecture {
 #[derive(Parser)]
 #[clap(verbatim_doc_comment, version = version_with_commit_id!())]
 struct Cli {
+    /// If given, build only for the given target(s).
+    ///
+    /// Accepts cargo target triples. Can be used multiple times, and combined with `--arch`.
+    #[arg(long)]
+    target: Vec<Target>,
     /// If given, build only for the given architecture(s).
     ///
-    /// Can be used multiple times.
+    /// Accepts Axis architecture names, each mapped to its default target.
+    /// Can be used multiple times, and combined with `--target`.
     #[arg(long)]
-    target: Vec<ArchAbi>,
+    arch: Vec<ArchAbi>,
     /// Pass additional arguments to `cargo build`.
     ///
     /// Beware that not all incompatible arguments have been documented.
@@ -44,11 +50,18 @@ struct Cli {
 }
 
 impl Cli {
-    pub fn targets(&self) -> Vec<Architecture> {
-        if self.target.is_empty() {
-            vec![Architecture::Aarch64, Architecture::Armv7hf]
+    pub fn targets(&self) -> Vec<Target> {
+        if self.target.is_empty() && self.arch.is_empty() {
+            Architecture::ALL
+                .iter()
+                .map(|&a| a.default_target())
+                .collect()
         } else {
-            self.target.iter().map(|&t| t.into()).collect()
+            self.arch
+                .iter()
+                .map(|&a| Architecture::from(a).default_target())
+                .chain(self.target.iter().copied())
+                .collect()
         }
     }
 }
@@ -65,9 +78,9 @@ fn build_and_copy(cli: Cli) -> anyhow::Result<()> {
         args.push("--profile=release".to_string());
     }
 
-    AppBuilder::from_targets(cli.targets())
+    AppBuilder::try_from_targets(cli.targets())?
         .args(args)
-        .artifact_dir(get_cargo_metadata()?.target_directory.join("acap"))
+        .artifact_dir(get_cargo_metadata(None)?.target_directory.join("acap"))
         .execute()?;
     Ok(())
 }

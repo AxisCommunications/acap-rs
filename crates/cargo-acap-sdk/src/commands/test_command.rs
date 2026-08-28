@@ -19,21 +19,30 @@ impl TestCommand {
         } = self;
 
         let ResolvedBuildOptions {
-            target,
+            arch: target,
+            manifest_path,
             args: mut build_args,
         } = build_options.resolve(&deploy_options).await?;
 
         let DeployOptions {
             host: address,
-            user: username,
+            http_port: _,
+            https_port: _,
+            ssh_port,
+            user: _,
+            ssh_user: username,
             pass: password,
         } = deploy_options;
 
         build_args.push("--tests".to_string());
 
-        let artifacts = AppBuilder::from_targets([Architecture::from(target)])
-            .args(build_args)
-            .execute()?;
+        let mut builder =
+            AppBuilder::try_from_targets([Architecture::from(target).default_target()])?;
+        builder.args(build_args);
+        if let Some(ref path) = manifest_path {
+            builder.manifest_path(path);
+        }
+        let artifacts = builder.execute()?;
 
         for artifact in artifacts {
             debug!("Running {:?}", artifact);
@@ -43,12 +52,13 @@ impl TestCommand {
             let test_args = ["--test-threads=1"];
             match artifact {
                 Artifact::Eap { path, name } => {
+                    let username = DeployOptions::username_for_eap(&username, &name);
                     // TODO: Install instead of patch when needed
                     debug!("Patching app {name}");
-                    acap_ssh_utils::patch_package(&path, &username, &password, &address)?;
+                    acap_ssh_utils::patch_package(&path, &username, &password, &address, ssh_port)?;
                     debug!("Running app {name}");
                     acap_ssh_utils::run_package(
-                        &username, &password, &address, &name, envs, &test_args,
+                        &username, &password, &address, ssh_port, &name, envs, &test_args,
                     )?
                 }
                 Artifact::Exe { path } => {
@@ -57,7 +67,13 @@ impl TestCommand {
                         path.file_name().unwrap().to_string_lossy()
                     );
                     acap_ssh_utils::run_other(
-                        &path, &username, &password, &address, envs, &test_args,
+                        &path,
+                        DeployOptions::username_for_exe(),
+                        &password,
+                        &address,
+                        ssh_port,
+                        envs,
+                        &test_args,
                     )?;
                 }
             }

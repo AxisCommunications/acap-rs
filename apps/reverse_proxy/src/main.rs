@@ -97,7 +97,7 @@ fn new_app() -> Router {
     // does not depend on the C APIs and could be built without the SDK. If that is done one a
     // host other than x86_64 this will be erroneously excluded.
     // TODO: Find a more robust configuration
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", target_os = "macos"))]
     let app = {
         use tower_http::services::ServeDir;
         app.nest_service(

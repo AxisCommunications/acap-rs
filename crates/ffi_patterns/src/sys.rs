@@ -1,5 +1,7 @@
-use std::collections::HashMap;
-use std::ffi::{c_int, c_void};
+use std::{
+    collections::HashMap,
+    ffi::{c_int, c_void},
+};
 
 type Callback = unsafe extern "C" fn(*mut c_void);
 

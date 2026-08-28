@@ -18,35 +18,64 @@ impl RunCommand {
             deploy_options,
         } = self;
 
-        let ResolvedBuildOptions { target, args } = build_options.resolve(&deploy_options).await?;
+        let ResolvedBuildOptions {
+            arch: target,
+            manifest_path,
+            args,
+        } = build_options.resolve(&deploy_options).await?;
 
         let DeployOptions {
             host: address,
-            user: username,
+            http_port: _,
+            https_port: _,
+            ssh_port,
+            user: _,
+            ssh_user: username,
             pass: password,
         } = deploy_options;
 
-        let artifacts = AppBuilder::from_targets([Architecture::from(target)])
-            .args(args)
-            .execute()?;
+        let mut builder =
+            AppBuilder::try_from_targets([Architecture::from(target).default_target()])?;
+        builder.args(args);
+        if let Some(ref path) = manifest_path {
+            builder.manifest_path(path);
+        }
+        let artifacts = builder.execute()?;
         for artifact in artifacts {
             let envs = vec![("RUST_LOG", "debug"), ("RUST_LOG_STYLE", "always")]
                 .into_iter()
                 .collect();
             match artifact {
                 Artifact::Eap { path, name } => {
+                    let username = DeployOptions::username_for_eap(&username, &name);
                     // TODO: Install instead of patch when needed
                     debug!("Patching app {name}");
-                    acap_ssh_utils::patch_package(&path, &username, &password, &address)?;
+                    acap_ssh_utils::patch_package(&path, &username, &password, &address, ssh_port)?;
                     debug!("Running app {name}");
-                    acap_ssh_utils::run_package(&username, &password, &address, &name, envs, &[])?
+                    acap_ssh_utils::run_package(
+                        &username,
+                        &password,
+                        &address,
+                        ssh_port,
+                        &name,
+                        envs,
+                        &[],
+                    )?
                 }
                 Artifact::Exe { path } => {
                     debug!(
                         "Running exe {}",
                         path.file_name().unwrap().to_string_lossy()
                     );
-                    acap_ssh_utils::run_other(&path, &username, &password, &address, envs, &[])?;
+                    acap_ssh_utils::run_other(
+                        &path,
+                        DeployOptions::username_for_exe(),
+                        &password,
+                        &address,
+                        ssh_port,
+                        envs,
+                        &[],
+                    )?;
                 }
             }
         }

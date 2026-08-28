@@ -1,4 +1,7 @@
-use acap_vapix::applications_upload;
+use acap_vapix::{
+    applications_upload,
+    applications_upload::{HttpRpcError, UploadApplicationError},
+};
 use cargo_acap_build::{AppBuilder, Architecture, Artifact};
 use log::debug;
 
@@ -19,8 +22,11 @@ impl InstallCommand {
             deploy_options,
         } = self;
 
-        let ResolvedBuildOptions { target, mut args } =
-            build_options.resolve(&deploy_options).await?;
+        let ResolvedBuildOptions {
+            arch: target,
+            manifest_path,
+            mut args,
+        } = build_options.resolve(&deploy_options).await?;
 
         if !args.iter().any(|arg| {
             arg.split('=')
@@ -32,9 +38,13 @@ impl InstallCommand {
             args.push("--profile=release".to_string());
         }
 
-        let artifacts = AppBuilder::from_targets([Architecture::from(target)])
-            .args(args)
-            .execute()?;
+        let mut builder =
+            AppBuilder::try_from_targets([Architecture::from(target).default_target()])?;
+        builder.args(args);
+        if let Some(ref path) = manifest_path {
+            builder.manifest_path(path);
+        }
+        let artifacts = builder.execute()?;
 
         // TODO: Handle the case where multiple artifacts of the same kind have the same name.
         for artifact in artifacts {
@@ -44,7 +54,18 @@ impl InstallCommand {
                     applications_upload::Client::new(&deploy_options.http_client().await?)
                         .upload(path)?
                         .send()
-                        .await?;
+                        .await
+                        .map_err(|e| {
+                            let context = if matches!(
+                                e,
+                                HttpRpcError::Remote(UploadApplicationError::Verification)
+                            ) {
+                                "Could not upload app, are unsigned apps allowed on the device?"
+                            } else {
+                                "Could not upload app"
+                            };
+                            anyhow::Error::new(e).context(context)
+                        })?;
                     debug!("Installed app {name}");
                 }
                 Artifact::Exe { path } => {

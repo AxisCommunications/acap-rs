@@ -47,6 +47,9 @@ struct Netloc {
     /// Hostname or IP address of the device.
     #[arg(long, value_parser = url::Host::parse, env="AXIS_DEVICE_IP")]
     host: Host,
+    /// Override the default port.
+    #[clap(long, env = "AXIS_DEVICE_SSH_PORT")]
+    port: Option<u16>,
     /// The username to use for the ssh connection.
     #[clap(short, long, env = "AXIS_DEVICE_USER", default_value = "root")]
     user: String,
@@ -73,7 +76,13 @@ struct Patch {
 
 impl Patch {
     fn exec(self, netloc: Netloc) -> anyhow::Result<()> {
-        patch_package(&self.package, &netloc.user, &netloc.pass, &netloc.host)
+        patch_package(
+            &self.package,
+            &netloc.user,
+            &netloc.pass,
+            &netloc.host,
+            netloc.port,
+        )
     }
 }
 
@@ -97,6 +106,7 @@ impl RunApp {
             &netloc.user,
             &netloc.pass,
             &netloc.host,
+            netloc.port,
             &self.package,
             self.environment
                 .iter()
@@ -128,6 +138,7 @@ impl RunOther {
             &netloc.user,
             &netloc.pass,
             &netloc.host,
+            netloc.port,
             self.environment
                 .iter()
                 .map(|(k, v)| (k.as_str(), v.as_str()))

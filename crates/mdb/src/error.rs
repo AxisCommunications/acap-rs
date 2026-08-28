@@ -1,6 +1,8 @@
-use std::ffi::{c_char, CStr};
-use std::fmt::{Debug, Display, Formatter};
-use std::marker::PhantomData;
+use std::{
+    ffi::{c_char, CStr},
+    fmt::{Debug, Display, Formatter},
+    marker::PhantomData,
+};
 
 unsafe fn pchar_to_string(p_value: *const c_char) -> String {
     assert!(!p_value.is_null());

@@ -2,12 +2,14 @@
 #![doc=include_str!("../README.md")]
 
 use std::{
+    collections::HashMap,
     fmt::Display,
     fs, mem,
     path::{Path, PathBuf},
 };
 
-pub use acap_build::Architecture;
+pub use acap_build::{Architecture, Target};
+use anyhow::bail;
 pub use cargo::get_cargo_metadata;
 pub use cargo_acap::Artifact;
 use log::debug;
@@ -17,22 +19,44 @@ mod command_utils;
 mod files;
 
 pub struct AppBuilder {
-    targets: Vec<Architecture>,
+    targets: Vec<Target>,
     args: Vec<String>,
     artifact_dir: Option<PathBuf>,
+    manifest_path: Option<PathBuf>,
 }
 
 impl AppBuilder {
-    pub fn from_targets<T, U>(targets: T) -> Self
+    /// Build for these cargo targets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if two targets build for the same [`Architecture`], since their artifacts
+    /// would be indistinguishable in the output.
+    pub fn try_from_targets<T, U>(targets: T) -> anyhow::Result<Self>
     where
         T: IntoIterator<Item = U>,
-        U: Into<Architecture>,
+        U: Into<Target>,
     {
-        Self {
-            targets: targets.into_iter().map(|t| t.into()).collect(),
+        let targets: Vec<Target> = targets.into_iter().map(|t| t.into()).collect();
+
+        let mut by_architecture: HashMap<Architecture, Target> = HashMap::new();
+        for &target in &targets {
+            let architecture = target.into();
+            if let Some(previous) = by_architecture.insert(architecture, target) {
+                bail!(
+                    "Targets {previous} and {target} both build for the {} architecture, \
+                     which would make the output ambiguous",
+                    architecture.nickname(),
+                );
+            }
+        }
+
+        Ok(Self {
+            targets,
             args: Vec::new(),
             artifact_dir: None,
-        }
+            manifest_path: None,
+        })
     }
 
     /// Add arguments that will be passed through to cargo.
@@ -41,6 +65,7 @@ impl AppBuilder {
     ///
     /// This function will panic if it detects one of the disallowed options:
     /// - `--artifact-dir`
+    /// - `--manifest-path`
     /// - `--target`
     ///
     /// <div class="warning">
@@ -55,6 +80,7 @@ impl AppBuilder {
             let arg: String = arg.to_string();
             let name = arg.split('=').next().unwrap();
             assert_ne!(name, "--artifact-dir");
+            assert_ne!(name, "--manifest-path");
             assert_ne!(name, "--target");
             arg
         }));
@@ -74,11 +100,25 @@ impl AppBuilder {
         self
     }
 
+    /// Path to Cargo.toml.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the manifest path has already been set.
+    pub fn manifest_path<T>(&mut self, manifest_path: T) -> &mut Self
+    where
+        T: Into<PathBuf>,
+    {
+        assert!(mem::replace(&mut self.manifest_path, Some(manifest_path.into())).is_none());
+        self
+    }
+
     pub fn execute(&mut self) -> anyhow::Result<Vec<Artifact>> {
         let args: Vec<_> = self.args.iter().map(String::as_str).collect();
+        let manifest_path = self.manifest_path.as_deref();
         let mut artifacts = Vec::new();
         for target in &self.targets {
-            artifacts.extend(cargo_acap::build_and_pack(*target, &args)?);
+            artifacts.extend(cargo_acap::build_and_pack(*target, &args, manifest_path)?);
         }
         if let Some(artifact_dir) = self.artifact_dir.as_deref() {
             copy_final_artifacts(&artifacts, artifact_dir)?;

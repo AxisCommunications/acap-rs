@@ -1,10 +1,15 @@
+use std::{
+    collections::HashMap,
+    ffi::c_void,
+    marker::PhantomData,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Mutex,
+    },
+    thread::{spawn, JoinHandle},
+};
+
 use crate::sys;
-use std::collections::HashMap;
-use std::ffi::c_void;
-use std::marker::PhantomData;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
-use std::thread::{spawn, JoinHandle};
 
 /// A struct that calls a function when dropped.
 /// This is intended to help make sure pointers are cleaned up at an appropriate time.
