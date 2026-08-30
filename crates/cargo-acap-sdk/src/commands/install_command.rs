@@ -23,7 +23,7 @@ impl InstallCommand {
         } = self;
 
         let ResolvedBuildOptions {
-            target,
+            arch: target,
             package,
             manifest_path,
             mut args,
@@ -41,7 +41,8 @@ impl InstallCommand {
             args.push("--profile=release".to_string());
         }
 
-        let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
+        let mut builder =
+            AppBuilder::try_from_targets([Architecture::from(target).default_target()])?;
         builder.args(args);
         if let Some(ref path) = manifest_path {
             builder.manifest_path(path);

@@ -102,7 +102,7 @@ impl BuildOptions {
             .architecture
             .parse()?;
         Ok(ResolvedBuildOptions {
-            target,
+            arch: target,
             package,
             manifest_path,
             args,
@@ -114,7 +114,7 @@ impl BuildOptions {
 pub struct ResolvedBuildOptions {
     /// Architecture of the device to build for.
     #[arg(long, env = "AXIS_DEVICE_ARCH")]
-    target: ArchAbi,
+    arch: ArchAbi,
     /// Name of package(s) to build.
     ///
     /// Can be used multiple times.
