@@ -69,9 +69,13 @@ enum Commands {
     Completions(CompletionsCommand),
 }
 
-// TODO: Include package selection for better completions and help messages.
 #[derive(clap::Args, Debug, Clone)]
 struct BuildOptions {
+    /// Name of package(s) to build.
+    ///
+    /// Can be used multiple times.
+    #[clap(long, short, env = "AXIS_PACKAGE")]
+    package: Vec<String>,
     /// Path to Cargo.toml.
     #[arg(long)]
     manifest_path: Option<PathBuf>,
@@ -84,6 +88,7 @@ struct BuildOptions {
 impl BuildOptions {
     async fn resolve(self, deploy_options: &DeployOptions) -> anyhow::Result<ResolvedBuildOptions> {
         let Self {
+            package,
             manifest_path,
             args,
         } = self;
@@ -98,6 +103,7 @@ impl BuildOptions {
             .parse()?;
         Ok(ResolvedBuildOptions {
             arch: target,
+            package,
             manifest_path,
             args,
         })
@@ -109,6 +115,11 @@ pub struct ResolvedBuildOptions {
     /// Architecture of the device to build for.
     #[arg(long, env = "AXIS_DEVICE_ARCH")]
     arch: ArchAbi,
+    /// Name of package(s) to build.
+    ///
+    /// Can be used multiple times.
+    #[clap(long, short, env = "AXIS_PACKAGE")]
+    package: Vec<String>,
     /// Path to Cargo.toml.
     #[arg(long)]
     manifest_path: Option<PathBuf>,

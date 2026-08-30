@@ -20,9 +20,12 @@ impl TestCommand {
 
         let ResolvedBuildOptions {
             arch: target,
+            package,
             manifest_path,
             args: mut build_args,
         } = build_options.resolve(&deploy_options).await?;
+
+        build_args.extend(package.into_iter().map(|p| format!("--package={p}")));
 
         let DeployOptions {
             host: address,

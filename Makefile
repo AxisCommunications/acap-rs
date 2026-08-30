@@ -127,14 +127,13 @@ test:
 ## Install all apps on <AXIS_DEVICE_IP> using password <AXIS_DEVICE_PASS> and assuming architecture <AXIS_DEVICE_ARCH>
 install_all:
 	cargo-acap-sdk install \
-		-- \
 		--package '*_*' \
+		-- \
 		--profile app
 
 ## Build and execute unit tests for all apps on <AXIS_DEVICE_IP> assuming architecture <AXIS_DEVICE_ARCH>
 test_all:
 	cargo-acap-sdk test \
-		-- \
 		--package licensekey \
 		--package '*_*'
 
