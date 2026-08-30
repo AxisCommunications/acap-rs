@@ -24,9 +24,12 @@ impl InstallCommand {
 
         let ResolvedBuildOptions {
             target,
+            package,
             manifest_path,
             mut args,
         } = build_options.resolve(&deploy_options).await?;
+
+        args.extend(package.into_iter().map(|p| format!("--package={p}")));
 
         if !args.iter().any(|arg| {
             arg.split('=')
