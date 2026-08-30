@@ -1,0 +1,18 @@
+[package]
+name = "axserialport_example"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+glib = { workspace = true }
+log = { workspace = true }
+glib-sys = { workspace = true }
+
+acap-logging = { workspace = true }
+axserialport = { workspace = true }
+libc = "0.2.158"
+
+[features]
+default = ["acap-logging/default"]
