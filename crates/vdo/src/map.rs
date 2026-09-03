@@ -9,7 +9,69 @@ use std::{
 
 use glib::translate::{from_glib, IntoGlib};
 use gobject_sys::{g_object_unref, GObject};
-use vdo_sys::VdoMap;
+use vdo_sys::{VdoMap, VdoQuad32i, VdoQuad32u};
+
+/// Four signed 32-bit integers, stored in a [`Map`] under one key.
+///
+/// VDO uses this for values such as crop rectangles, where the fields are
+/// interpreted as `x`, `y`, `w`, `h`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Quad32i {
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+}
+
+impl Quad32i {
+    fn into_raw(self) -> VdoQuad32i {
+        // The union stores four 32-bit words; `as u32` is bit-preserving.
+        VdoQuad32i {
+            __bindgen_anon_1: Default::default(),
+            val: Default::default(),
+            bindgen_union_field: [self.x as u32, self.y as u32, self.w as u32, self.h as u32],
+        }
+    }
+
+    fn from_raw(raw: VdoQuad32i) -> Self {
+        let [x, y, w, h] = raw.bindgen_union_field;
+        Self {
+            x: x as i32,
+            y: y as i32,
+            w: w as i32,
+            h: h as i32,
+        }
+    }
+}
+
+/// Four unsigned 32-bit integers, stored in a [`Map`] under one key.
+///
+/// VDO interprets the fields either as a rectangle (`x`, `y`, `w`, `h`) or,
+/// for some keys, as a range (`min`, `target`, `max`) occupying the first
+/// three fields.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Quad32u {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+impl Quad32u {
+    fn into_raw(self) -> VdoQuad32u {
+        VdoQuad32u {
+            __bindgen_anon_1: Default::default(),
+            __bindgen_anon_2: Default::default(),
+            val: Default::default(),
+            bindgen_union_field: [self.x, self.y, self.w, self.h],
+        }
+    }
+
+    fn from_raw(raw: VdoQuad32u) -> Self {
+        let [x, y, w, h] = raw.bindgen_union_field;
+        Self { x, y, w, h }
+    }
+}
 
 /// An owned pointer to a C string allocated by GLib.
 ///
@@ -137,6 +199,26 @@ impl Map {
         }
     }
 
+    pub fn set_quad32i(&mut self, key: &CStr, value: Quad32i) {
+        unsafe { vdo_sys::vdo_map_set_quad32i(self.raw, key.as_ptr(), value.into_raw()) }
+    }
+
+    pub fn get_quad32i(&self, key: &CStr, default: Quad32i) -> Quad32i {
+        Quad32i::from_raw(unsafe {
+            vdo_sys::vdo_map_get_quad32i(self.raw, key.as_ptr(), default.into_raw())
+        })
+    }
+
+    pub fn set_quad32u(&mut self, key: &CStr, value: Quad32u) {
+        unsafe { vdo_sys::vdo_map_set_quad32u(self.raw, key.as_ptr(), value.into_raw()) }
+    }
+
+    pub fn get_quad32u(&self, key: &CStr, default: Quad32u) -> Quad32u {
+        Quad32u::from_raw(unsafe {
+            vdo_sys::vdo_map_get_quad32u(self.raw, key.as_ptr(), default.into_raw())
+        })
+    }
+
     /// Dumps the map contents to stdout. Intended for debugging only;
     /// may expose sensitive configuration values in production logs.
     pub fn dump(&self) {
@@ -146,6 +228,18 @@ impl Map {
     // Returns *mut because GLib's C API takes *mut even for read-only operations.
     pub(crate) fn as_ptr(&self) -> *mut VdoMap {
         self.raw
+    }
+}
+
+impl Clone for Map {
+    /// Creates a deep copy of the map.
+    fn clone(&self) -> Self {
+        // `vdo_map_clone` allocates through GObject, which aborts on allocation
+        // failure, so the returned pointer is never null. Ownership is
+        // transferred to the caller.
+        let raw = unsafe { vdo_sys::vdo_map_clone(self.raw) };
+        // SAFETY: raw is a valid, owned VdoMap.
+        unsafe { Self::from_raw(raw) }
     }
 }
 
