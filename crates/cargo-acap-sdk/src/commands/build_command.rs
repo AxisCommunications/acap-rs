@@ -15,10 +15,13 @@ impl BuildCommand {
             build_options:
                 ResolvedBuildOptions {
                     arch: target,
+                    package,
                     manifest_path,
                     mut args,
                 },
         } = self;
+
+        args.extend(package.into_iter().map(|p| format!("--package={p}")));
 
         if !args.iter().any(|arg| {
             arg.split('=')
