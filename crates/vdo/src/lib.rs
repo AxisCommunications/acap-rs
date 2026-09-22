@@ -54,7 +54,7 @@ use std::{
 
 use glib_sys::GError;
 use gobject_sys::{g_object_unref, GObject};
-pub use map::{CStringPtr, Map};
+pub use map::{CStringPtr, Map, Quad32i, Quad32u};
 use vdo_sys::{VdoBuffer, VdoBufferStrategy, VdoStream};
 pub use vdo_sys::{VdoFormat, VdoFrameType, VdoRateControlMode, VdoRateControlPriority};
 
@@ -509,6 +509,15 @@ impl StreamBuffer<'_> {
         unsafe { vdo_sys::vdo_frame_get_custom_timestamp(self.raw) }
     }
 
+    /// Capture time as microseconds since the Unix epoch, from the wall clock.
+    ///
+    /// Unlike [`timestamp()`](StreamBuffer::timestamp) this can jump if the
+    /// system time is adjusted, so use it for correlating frames with external
+    /// events rather than for measuring intervals.
+    pub fn utc_timestamp(&self) -> u64 {
+        unsafe { vdo_sys::vdo_frame_get_utc_timestamp(self.raw) }
+    }
+
     /// Actual frame data size in bytes (may be less than [`capacity()`](StreamBuffer::capacity)).
     pub fn size(&self) -> usize {
         unsafe { vdo_sys::vdo_frame_get_size(self.raw) }
@@ -526,6 +535,16 @@ impl StreamBuffer<'_> {
 
     pub fn is_last_buffer(&self) -> bool {
         unsafe { vdo_sys::vdo_frame_get_is_last_buffer(self.raw) != glib_sys::GFALSE }
+    }
+
+    /// Returns `true` if the frame data is one contiguous region.
+    ///
+    /// Sparse buffers are spread over several chunks with gaps between them,
+    /// and only the contiguous layout is exposed by
+    /// [`as_slice()`](StreamBuffer::as_slice) and
+    /// [`data_copy()`](StreamBuffer::data_copy).
+    pub fn is_contiguous(&self) -> bool {
+        unsafe { vdo_sys::vdo_buffer_is_contiguous(self.raw) != glib_sys::GFALSE }
     }
 }
 
@@ -921,6 +940,11 @@ mod tests {
             let buffer = running.next_buffer()?;
             let ts = buffer.timestamp();
             let seq = buffer.sequence_number();
+            assert!(
+                buffer.utc_timestamp() > 0,
+                "UTC timestamp should be populated"
+            );
+            assert!(buffer.is_contiguous(), "YUV frames should be contiguous");
 
             if i > 0 {
                 assert!(
@@ -1268,6 +1292,37 @@ mod tests {
         assert!(value.is_some());
         assert_eq!(value.unwrap().as_c_str().to_str().unwrap(), "hello");
         assert!(map.get_string(c"missing_str").is_none());
+
+        let quad_i = Quad32i {
+            x: -1,
+            y: 2,
+            w: -3,
+            h: 4,
+        };
+        map.set_quad32i(c"test_quad32i", quad_i);
+        assert_eq!(map.get_quad32i(c"test_quad32i", Quad32i::default()), quad_i);
+        assert_eq!(
+            map.get_quad32i(c"missing_quad32i", quad_i),
+            quad_i,
+            "default should be returned for missing key"
+        );
+
+        let quad_u = Quad32u {
+            x: 1,
+            y: 2,
+            w: 3,
+            h: u32::MAX,
+        };
+        map.set_quad32u(c"test_quad32u", quad_u);
+        assert_eq!(map.get_quad32u(c"test_quad32u", Quad32u::default()), quad_u);
+
+        let copy = map.clone();
+        drop(map);
+        assert_eq!(copy.get_u32(c"test_u32", 0), 42);
+        assert_eq!(
+            copy.get_quad32u(c"test_quad32u", Quad32u::default()),
+            quad_u
+        );
 
         Ok(())
     }
