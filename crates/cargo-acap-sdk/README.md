@@ -12,7 +12,7 @@ Commands:
   start        Start app on device
   stop         Stop app on device
   restart      Restart app on device
-  remove       Remove app form device
+  remove       Remove app from device
   completions  Print shell completion script for this program
   help         Print this message or the help of the given subcommand(s)
 

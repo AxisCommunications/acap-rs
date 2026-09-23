@@ -19,10 +19,13 @@ impl RunCommand {
         } = self;
 
         let ResolvedBuildOptions {
-            target,
+            arch: target,
+            package,
             manifest_path,
-            args,
+            mut args,
         } = build_options.resolve(&deploy_options).await?;
+
+        args.extend(package.into_iter().map(|p| format!("--package={p}")));
 
         let DeployOptions {
             host: address,
@@ -34,7 +37,8 @@ impl RunCommand {
             pass: password,
         } = deploy_options;
 
-        let mut builder = AppBuilder::from_targets([Architecture::from(target)]);
+        let mut builder =
+            AppBuilder::try_from_targets([Architecture::from(target).default_target()])?;
         builder.args(args);
         if let Some(ref path) = manifest_path {
             builder.manifest_path(path);

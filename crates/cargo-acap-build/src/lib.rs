@@ -2,12 +2,14 @@
 #![doc=include_str!("../README.md")]
 
 use std::{
+    collections::HashMap,
     fmt::Display,
     fs, mem,
     path::{Path, PathBuf},
 };
 
-pub use acap_build::Architecture;
+pub use acap_build::{Architecture, Target};
+use anyhow::bail;
 pub use cargo::get_cargo_metadata;
 pub use cargo_acap::Artifact;
 use log::debug;
@@ -17,24 +19,44 @@ mod command_utils;
 mod files;
 
 pub struct AppBuilder {
-    targets: Vec<Architecture>,
+    targets: Vec<Target>,
     args: Vec<String>,
     artifact_dir: Option<PathBuf>,
     manifest_path: Option<PathBuf>,
 }
 
 impl AppBuilder {
-    pub fn from_targets<T, U>(targets: T) -> Self
+    /// Build for these cargo targets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if two targets build for the same [`Architecture`], since their artifacts
+    /// would be indistinguishable in the output.
+    pub fn try_from_targets<T, U>(targets: T) -> anyhow::Result<Self>
     where
         T: IntoIterator<Item = U>,
-        U: Into<Architecture>,
+        U: Into<Target>,
     {
-        Self {
-            targets: targets.into_iter().map(|t| t.into()).collect(),
+        let targets: Vec<Target> = targets.into_iter().map(|t| t.into()).collect();
+
+        let mut by_architecture: HashMap<Architecture, Target> = HashMap::new();
+        for &target in &targets {
+            let architecture = target.into();
+            if let Some(previous) = by_architecture.insert(architecture, target) {
+                bail!(
+                    "Targets {previous} and {target} both build for the {} architecture, \
+                     which would make the output ambiguous",
+                    architecture.nickname(),
+                );
+            }
+        }
+
+        Ok(Self {
+            targets,
             args: Vec::new(),
             artifact_dir: None,
             manifest_path: None,
-        }
+        })
     }
 
     /// Add arguments that will be passed through to cargo.
