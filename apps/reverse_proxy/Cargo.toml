@@ -5,10 +5,11 @@ edition.workspace = true
 publish = false
 
 [dependencies]
+anyhow = { workspace = true }
 axum = { workspace = true, features = ["tokio", "ws"] }
 log = { workspace = true }
 futures = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread"] }
 tower-http = { workspace = true, features = ["fs", "trace"] }
 serde = { workspace = true, features = ["derive"] }
 
