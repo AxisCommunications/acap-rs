@@ -17,22 +17,26 @@
             "reverseProxy": [
                 {
                     "apiPath": "api/admin",
-                    "target": "http://localhost:2001",
+                    "apiType": "http",
+                    "target": "unix:/run/http/reverse_proxy/app.sock",
                     "access": "admin"
                 },
                 {
                     "apiPath": "api/operator",
-                    "target": "http://localhost:2001",
+                    "apiType": "http",
+                    "target": "unix:/run/http/reverse_proxy/app.sock",
                     "access": "operator"
                 },
                 {
                     "apiPath": "api/viewer",
-                    "target": "http://localhost:2001",
+                    "apiType": "http",
+                    "target": "unix:/run/http/reverse_proxy/app.sock",
                     "access": "viewer"
                 },
                 {
                     "apiPath": "api/anonymous",
-                    "target": "http://localhost:2001",
+                    "apiType": "http",
+                    "target": "unix:/run/http/reverse_proxy/app.sock",
                     "access": "anonymous"
                 }
             ],
