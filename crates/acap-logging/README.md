@@ -17,6 +17,5 @@ fn main() {
 
 ## Pitfalls
 
-- Messages logged at the `trace` level will not be shown in the system logs on target.
-- Messages logged at the `warn` level or less severe will not be shown in terminals by default.
+- Messages logged at the `trace` level will not be shown by default.
 - When the `tracing` crate is used in place of the `log` crate, its `log` feature must be enabled.
