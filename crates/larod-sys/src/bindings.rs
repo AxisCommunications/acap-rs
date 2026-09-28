@@ -492,6 +492,16 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    pub fn larodBuildTensorDims(
+        tensor: *mut larodTensor,
+        layout: larodTensorLayout,
+        width: usize,
+        height: usize,
+        num_channels: usize,
+        error: *mut *mut larodError,
+    ) -> bool;
+}
+extern "C" {
     pub fn larodGetTensorDims(
         tensor: *const larodTensor,
         error: *mut *mut larodError,
@@ -501,6 +511,16 @@ extern "C" {
     pub fn larodSetTensorPitches(
         tensor: *mut larodTensor,
         pitches: *const larodTensorPitches,
+        error: *mut *mut larodError,
+    ) -> bool;
+}
+extern "C" {
+    pub fn larodBuildTensorPitches(
+        tensor: *mut larodTensor,
+        layout: larodTensorLayout,
+        pitch: usize,
+        height: usize,
+        num_channels: usize,
         error: *mut *mut larodError,
     ) -> bool;
 }
@@ -579,6 +599,13 @@ extern "C" {
         tensor: *mut larodTensor,
         error: *mut *mut larodError,
     ) -> bool;
+}
+extern "C" {
+    pub fn larodConvertVmemFdToDmabuf(
+        fd: ::std::os::raw::c_int,
+        offset: i64,
+        error: *mut *mut larodError,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn larodSetTensorFdProps(
@@ -742,6 +769,16 @@ extern "C" {
         jobReq: *const larodJobRequest,
         callback: larodRunJobCallback,
         userData: *mut ::std::os::raw::c_void,
+        error: *mut *mut larodError,
+    ) -> bool;
+}
+extern "C" {
+    pub fn larodExportModel(
+        conn: *mut larodConnection,
+        modelFd: ::std::os::raw::c_int,
+        outputFd: ::std::os::raw::c_int,
+        dev: *const larodDevice,
+        params: *const larodMap,
         error: *mut *mut larodError,
     ) -> bool;
 }

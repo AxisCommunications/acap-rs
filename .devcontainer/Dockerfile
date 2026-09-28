@@ -3,7 +3,7 @@ ARG SDK=acap-native-sdk
 # Keep in sync with `install-sdk.sh` and `on-host-workflow.yml`.
 ARG UBUNTU_VERSION=24.04
 # Keep in sync with `install-sdk.sh`.
-ARG VERSION=12.1.0
+ARG VERSION=12.11.0
 ARG BASE_IMAGE=debian:trixie-20260223
 
 FROM ${REPO}/${SDK}:${VERSION}-aarch64-ubuntu${UBUNTU_VERSION} AS sdk-aarch64
@@ -35,7 +35,14 @@ ENV \
     CXX_thumbv7neon_unknown_linux_gnueabihf="arm-linux-gnueabihf-g++" \
     PKG_CONFIG_LIBDIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
     PKG_CONFIG_PATH_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
-    PKG_CONFIG_SYSROOT_DIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}"
+    PKG_CONFIG_SYSROOT_DIR_thumbv7neon_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}" \
+    CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER="arm-linux-gnueabihf-gcc" \
+    CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_ARMV7HF}" \
+    CC_armv7_unknown_linux_gnueabihf="arm-linux-gnueabihf-gcc" \
+    CXX_armv7_unknown_linux_gnueabihf="arm-linux-gnueabihf-g++" \
+    PKG_CONFIG_LIBDIR_armv7_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
+    PKG_CONFIG_PATH_armv7_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}/usr/lib/pkgconfig:${SYSROOT_ARMV7HF}/usr/share/pkgconfig" \
+    PKG_CONFIG_SYSROOT_DIR_armv7_unknown_linux_gnueabihf="${SYSROOT_ARMV7HF}"
 
 COPY .devhost/install-system-packages.sh ./
 RUN ./install-system-packages.sh \

@@ -94,6 +94,9 @@ impl VdoWdrMode {
 impl VdoWdrMode {
     pub const VDO_WDR_MODE_OFF: VdoWdrMode = VdoWdrMode(5);
 }
+impl VdoWdrMode {
+    pub const VDO_WDR_MODE_AUTO: VdoWdrMode = VdoWdrMode(6);
+}
 impl ::std::ops::BitOr<VdoWdrMode> for VdoWdrMode {
     type Output = Self;
     #[inline]
@@ -158,6 +161,9 @@ impl VdoFormat {
 }
 impl VdoFormat {
     pub const VDO_FORMAT_AV1: VdoFormat = VdoFormat(10);
+}
+impl VdoFormat {
+    pub const VDO_FORMAT_AVIF: VdoFormat = VdoFormat(11);
 }
 impl ::std::ops::BitOr<VdoFormat> for VdoFormat {
     type Output = Self;
@@ -467,6 +473,9 @@ impl VdoFrameType {
 impl VdoFrameType {
     pub const VDO_FRAME_TYPE_AV1_BIDI: VdoFrameType = VdoFrameType(24);
 }
+impl VdoFrameType {
+    pub const VDO_FRAME_TYPE_AVIF: VdoFrameType = VdoFrameType(25);
+}
 impl ::std::ops::BitOr<VdoFrameType> for VdoFrameType {
     type Output = Self;
     #[inline]
@@ -537,6 +546,50 @@ impl ::std::ops::BitAndAssign for VdoZipStreamProfile {
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct VdoZipStreamProfile(pub ::std::os::raw::c_int);
+impl VdoZipStreamGdr {
+    pub const VDO_ZIPSTREAM_GDR_NONE: VdoZipStreamGdr = VdoZipStreamGdr(-1);
+}
+impl VdoZipStreamGdr {
+    pub const VDO_ZIPSTREAM_GDR_AUTO: VdoZipStreamGdr = VdoZipStreamGdr(0);
+}
+impl VdoZipStreamGdr {
+    pub const VDO_ZIPSTREAM_GDR_OFF: VdoZipStreamGdr = VdoZipStreamGdr(1);
+}
+impl VdoZipStreamGdr {
+    pub const VDO_ZIPSTREAM_GDR_BALANCED: VdoZipStreamGdr = VdoZipStreamGdr(2);
+}
+impl VdoZipStreamGdr {
+    pub const VDO_ZIPSTREAM_GDR_EXTREME: VdoZipStreamGdr = VdoZipStreamGdr(3);
+}
+impl ::std::ops::BitOr<VdoZipStreamGdr> for VdoZipStreamGdr {
+    type Output = Self;
+    #[inline]
+    fn bitor(self, other: Self) -> Self {
+        VdoZipStreamGdr(self.0 | other.0)
+    }
+}
+impl ::std::ops::BitOrAssign for VdoZipStreamGdr {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: VdoZipStreamGdr) {
+        self.0 |= rhs.0;
+    }
+}
+impl ::std::ops::BitAnd<VdoZipStreamGdr> for VdoZipStreamGdr {
+    type Output = Self;
+    #[inline]
+    fn bitand(self, other: Self) -> Self {
+        VdoZipStreamGdr(self.0 & other.0)
+    }
+}
+impl ::std::ops::BitAndAssign for VdoZipStreamGdr {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: VdoZipStreamGdr) {
+        self.0 &= rhs.0;
+    }
+}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct VdoZipStreamGdr(pub ::std::os::raw::c_int);
 impl VdoChunkType {
     pub const VDO_CHUNK_NONE: VdoChunkType = VdoChunkType(0);
 }
@@ -609,10 +662,17 @@ impl ::std::ops::BitAndAssign for VdoChunkOption {
 pub struct VdoChunkOption(pub ::std::os::raw::c_uint);
 #[repr(C)]
 pub struct VdoChunk {
-    pub data: gpointer,
+    pub __bindgen_anon_1: VdoChunk__bindgen_ty_1,
     pub size: gsize,
     pub type_: VdoChunkType,
     pub offset: gint64,
+}
+#[repr(C)]
+pub struct VdoChunk__bindgen_ty_1 {
+    pub data: __BindgenUnionField<gpointer>,
+    pub chars: __BindgenUnionField<*mut gchar>,
+    pub bytes: __BindgenUnionField<*mut guint8>,
+    pub bindgen_union_field: u64,
 }
 impl VdoOverlayAlign {
     pub const VDO_OVERLAY_ALIGN_NONE: VdoOverlayAlign = VdoOverlayAlign(-1);
@@ -1080,6 +1140,39 @@ pub struct VdoPair32u__bindgen_ty_3 {
     pub num: guint32,
     pub den: guint32,
 }
+#[repr(C)]
+pub struct VdoQuad32i {
+    pub __bindgen_anon_1: __BindgenUnionField<VdoQuad32i__bindgen_ty_1>,
+    pub val: __BindgenUnionField<[gint32; 4usize]>,
+    pub bindgen_union_field: [u32; 4usize],
+}
+#[repr(C)]
+pub struct VdoQuad32i__bindgen_ty_1 {
+    pub x: gint32,
+    pub y: gint32,
+    pub w: gint32,
+    pub h: gint32,
+}
+#[repr(C)]
+pub struct VdoQuad32u {
+    pub __bindgen_anon_1: __BindgenUnionField<VdoQuad32u__bindgen_ty_1>,
+    pub __bindgen_anon_2: __BindgenUnionField<VdoQuad32u__bindgen_ty_2>,
+    pub val: __BindgenUnionField<[guint32; 4usize]>,
+    pub bindgen_union_field: [u32; 4usize],
+}
+#[repr(C)]
+pub struct VdoQuad32u__bindgen_ty_1 {
+    pub x: guint32,
+    pub y: guint32,
+    pub w: guint32,
+    pub h: guint32,
+}
+#[repr(C)]
+pub struct VdoQuad32u__bindgen_ty_2 {
+    pub min: guint32,
+    pub target: guint32,
+    pub max: guint32,
+}
 extern "C" {
     pub fn vdo_wdr_mode_get_type() -> GType;
 }
@@ -1099,6 +1192,9 @@ extern "C" {
     pub fn vdo_zipstream_profile_get_type() -> GType;
 }
 extern "C" {
+    pub fn vdo_zipstream_gdr_get_type() -> GType;
+}
+extern "C" {
     pub fn vdo_rate_control_mode_get_type() -> GType;
 }
 extern "C" {
@@ -1106,9 +1202,6 @@ extern "C" {
 }
 extern "C" {
     pub fn vdo_frame_type_get_type() -> GType;
-}
-extern "C" {
-    pub fn vdo_color_get_type() -> GType;
 }
 extern "C" {
     pub fn vdo_timestamp_get_type() -> GType;
@@ -1148,6 +1241,9 @@ pub type VdoMapClass_slistautoptr = *mut GSList;
 pub type VdoMapClass_queueautoptr = *mut GQueue;
 extern "C" {
     pub fn vdo_map_new() -> *mut VdoMap;
+}
+extern "C" {
+    pub fn vdo_map_clone(other: *const VdoMap) -> *mut VdoMap;
 }
 extern "C" {
     pub fn vdo_map_new_from_variant(dictionary: *mut GVariant) -> *mut VdoMap;
@@ -1316,6 +1412,20 @@ extern "C" {
     ) -> VdoPair32u;
 }
 extern "C" {
+    pub fn vdo_map_get_quad32i(
+        self_: *const VdoMap,
+        name: *const gchar,
+        def: VdoQuad32i,
+    ) -> VdoQuad32i;
+}
+extern "C" {
+    pub fn vdo_map_get_quad32u(
+        self_: *const VdoMap,
+        name: *const gchar,
+        def: VdoQuad32u,
+    ) -> VdoQuad32u;
+}
+extern "C" {
     pub fn vdo_map_set_byte(self_: *mut VdoMap, name: *const gchar, value: guchar);
 }
 extern "C" {
@@ -1359,6 +1469,12 @@ extern "C" {
 }
 extern "C" {
     pub fn vdo_map_set_pair32u(self_: *mut VdoMap, name: *const gchar, value: VdoPair32u);
+}
+extern "C" {
+    pub fn vdo_map_set_quad32i(self_: *mut VdoMap, name: *const gchar, value: VdoQuad32i);
+}
+extern "C" {
+    pub fn vdo_map_set_quad32u(self_: *mut VdoMap, name: *const gchar, value: VdoQuad32u);
 }
 extern "C" {
     pub fn vdo_channel_get_type() -> GType;
@@ -1426,32 +1542,6 @@ extern "C" {
     pub fn vdo_channel_get_id(self_: *mut VdoChannel) -> guint;
 }
 extern "C" {
-    pub fn vdo_channel_set_stream_profile(
-        self_: *mut VdoChannel,
-        profile: *const gchar,
-        format: VdoFormat,
-        settings: *mut VdoMap,
-        error: *mut *mut GError,
-    ) -> gboolean;
-}
-extern "C" {
-    pub fn vdo_channel_set_crop_dptz(
-        self_: *mut VdoChannel,
-        x: guint,
-        y: guint,
-        width: guint,
-        height: guint,
-        error: *mut *mut GError,
-    ) -> gboolean;
-}
-extern "C" {
-    pub fn vdo_channel_apply_alpha_blending(
-        self_: *mut VdoChannel,
-        fd: gint,
-        error: *mut *mut GError,
-    ) -> gboolean;
-}
-extern "C" {
     pub fn vdo_channel_set_framerate(
         self_: *mut VdoChannel,
         framerate: gdouble,
@@ -1494,6 +1584,9 @@ extern "C" {
 }
 extern "C" {
     pub fn vdo_frame_get_timestamp(self_: *mut VdoFrame) -> guint64;
+}
+extern "C" {
+    pub fn vdo_frame_get_utc_timestamp(self_: *mut VdoFrame) -> guint64;
 }
 extern "C" {
     pub fn vdo_frame_get_custom_timestamp(self_: *mut VdoFrame) -> gint64;
@@ -1595,6 +1688,9 @@ extern "C" {
     pub fn vdo_buffer_is_complete(self_: *mut VdoBuffer) -> gboolean;
 }
 extern "C" {
+    pub fn vdo_buffer_is_contiguous(self_: *mut VdoBuffer) -> gboolean;
+}
+extern "C" {
     pub fn vdo_buffer_get_opaque(self_: *mut VdoBuffer) -> gpointer;
 }
 extern "C" {
@@ -1624,6 +1720,30 @@ pub type VdoStreamClass_autoptr = *mut VdoStreamClass;
 pub type VdoStreamClass_listautoptr = *mut GList;
 pub type VdoStreamClass_slistautoptr = *mut GSList;
 pub type VdoStreamClass_queueautoptr = *mut GQueue;
+extern "C" {
+    pub fn vdo_stream_rgb_new(
+        settings: *const VdoMap,
+        input: guint32,
+        resolution: VdoResolution,
+        error: *mut *mut GError,
+    ) -> *mut VdoStream;
+}
+extern "C" {
+    pub fn vdo_stream_nv12_new(
+        settings: *const VdoMap,
+        input: guint32,
+        resolution: VdoResolution,
+        error: *mut *mut GError,
+    ) -> *mut VdoStream;
+}
+extern "C" {
+    pub fn vdo_stream_y800_new(
+        settings: *const VdoMap,
+        input: guint32,
+        resolution: VdoResolution,
+        error: *mut *mut GError,
+    ) -> *mut VdoStream;
+}
 extern "C" {
     pub fn vdo_stream_new(
         settings: *mut VdoMap,

@@ -7,10 +7,6 @@ use crate::DeployOptions;
 // TODO: Consider controlling multiple apps with the same selection options used by build etc.
 #[derive(clap::Parser, Debug, Clone)]
 pub struct ControlCommand {
-    // No other commands currently allow package selection to be controlled with `AXIS_PACKAGE`.
-    // As long as the `Makefile` is important and uses the variable, it makes some sense to have it,
-    // but after that I don't know.
-    // TODO: Implement consistent package selection across commands.
     /// Name of package to control.
     #[clap(long, short, env = "AXIS_PACKAGE")]
     package: Option<String>,
