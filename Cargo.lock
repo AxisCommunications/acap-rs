@@ -718,6 +718,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
+name = "datahub-sys"
+version = "0.0.0"
+dependencies = [
+ "bindgen 0.69.5",
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1783,6 +1792,16 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "object_consumer"
+version = "0.0.0"
+dependencies = [
+ "acap-logging",
+ "datahub-sys",
+ "libc",
+ "log",
 ]
 
 [[package]]
