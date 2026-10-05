@@ -1,4 +1,4 @@
-use std::{env, path};
+use std::{env, fs, path};
 
 fn populated_bindings(dst: &path::PathBuf) {
     let library = pkg_config::Config::new().probe("vdo").unwrap();
@@ -24,9 +24,18 @@ fn populated_bindings(dst: &path::PathBuf) {
 
 fn main() {
     let dst = path::PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs");
-    if env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default() != "x86_64"
+    let bindings = if env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default() != "x86_64"
         && env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() != "macos"
     {
         populated_bindings(&dst);
-    }
+        dst
+    } else {
+        path::PathBuf::from("src/bindings.rs")
+    };
+    // `VDO_ERROR_NO_VIDEO` is not defined by older SDKs, such as 1.15 for AXIS OS 11.
+    // Expose its presence to dependents as `DEP_VDO_HAS_NO_VIDEO`.
+    let has_no_video = fs::read_to_string(bindings)
+        .unwrap()
+        .contains("VDO_ERROR_NO_VIDEO");
+    println!("cargo::metadata=has_no_video={has_no_video}");
 }
