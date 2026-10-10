@@ -431,6 +431,45 @@ impl RunningStream {
             stream: &self.stream,
         })
     }
+
+    /// Asks the encoder to insert a key frame into the stream.
+    ///
+    /// Use this to get a key frame on demand, e.g. right after starting the stream
+    /// or when a new consumer joins, instead of lowering
+    /// [`gop_length`](StreamBuilder::gop_length) for the whole stream. The key frame
+    /// is not necessarily the next buffer returned, since frames already queued are
+    /// delivered first; check [`StreamBuffer::is_key_frame()`] to find it.
+    ///
+    /// Has no effect on streams with a non-video format, such as JPEG or YUV.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use vdo::{StreamBuilder, VdoFormat};
+    ///
+    /// let running = StreamBuilder::new()
+    ///     .format(VdoFormat::VDO_FORMAT_H264)
+    ///     .build()?
+    ///     .start()?;
+    /// running.force_key_frame()?;
+    /// let key_frame = loop {
+    ///     let buffer = running.next_buffer()?;
+    ///     if buffer.is_key_frame() {
+    ///         break buffer;
+    ///     }
+    /// };
+    /// println!("Got key frame: {} bytes", key_frame.size());
+    /// # Ok::<(), vdo::Error>(())
+    /// ```
+    pub fn force_key_frame(&self) -> std::result::Result<(), Error> {
+        // SAFETY: self.stream.raw is a valid, started stream for the lifetime of self.
+        let (success, maybe_error) =
+            unsafe { try_func!(vdo_sys::vdo_stream_force_key_frame, self.stream.raw) };
+        if success == glib_sys::GFALSE {
+            return Err(maybe_error.unwrap_or(Error::MissingVdoError));
+        }
+        Ok(())
+    }
 }
 
 /// A buffer containing a video frame from a running stream.
@@ -493,6 +532,15 @@ impl StreamBuffer<'_> {
 
     pub fn frame_type(&self) -> VdoFrameType {
         unsafe { vdo_sys::vdo_frame_get_frame_type(self.raw) }
+    }
+
+    /// Returns `true` if this frame is an H.264 or H.265 IDR frame, where a decoder
+    /// can start decoding the stream.
+    pub fn is_key_frame(&self) -> bool {
+        matches!(
+            self.frame_type(),
+            VdoFrameType::VDO_FRAME_TYPE_H264_IDR | VdoFrameType::VDO_FRAME_TYPE_H265_IDR
+        )
     }
 
     /// Starts at 0 and increments with each frame. Wrap-around point is undefined.
@@ -860,6 +908,51 @@ mod tests {
         }
 
         assert!(got_i_frame, "Should have captured at least one I-frame");
+
+        drop(running);
+        Ok(())
+    }
+
+    #[test]
+    fn force_key_frame() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        init_logger();
+        let stream = StreamBuilder::new()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_H264)
+            .resolution(Resolution::Exact {
+                width: 640,
+                height: 480,
+            })
+            .gop_length(300)
+            .build()?;
+
+        let running = stream.start()?;
+
+        // Get past the key frame that starts the stream.
+        for _ in 0..10 {
+            running.next_buffer()?;
+        }
+
+        running.force_key_frame()?;
+
+        let mut got_key_frame = false;
+        for _ in 0..10 {
+            let buffer = running.next_buffer()?;
+            log::info!(
+                "H.264 frame after force: type={:?}, seq={}",
+                buffer.frame_type(),
+                buffer.sequence_number()
+            );
+            if buffer.is_key_frame() {
+                got_key_frame = true;
+                break;
+            }
+        }
+
+        assert!(
+            got_key_frame,
+            "Should get a key frame soon after forcing one"
+        );
 
         drop(running);
         Ok(())
