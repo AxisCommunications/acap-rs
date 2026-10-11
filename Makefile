@@ -148,6 +148,7 @@ check_other: check_build check_docs check_format check_lint check_tests
 check_build: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	cargo build \
 		--exclude '*_*' \
+		--features vdo/axis-os-12 \
 		--locked \
 		--workspace
 .PHONY: check_build
@@ -204,6 +205,17 @@ check_lint:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo clippy \
 		--all-targets \
+		--locked \
+		--no-deps \
+		--target aarch64-unknown-linux-gnu \
+		--workspace \
+		-- \
+		-Dwarnings
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
+	cargo clippy \
+		--all-targets \
+		--exclude '*_*' \
+		--features vdo/axis-os-11 \
 		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \

@@ -14,6 +14,9 @@ gobject-sys = { workspace = true }
 thiserror = { workspace = true }
 
 [features]
+# Select the ACAP Native SDK to build against.
+axis-os-11 = []
+axis-os-12 = []
 device-tests = []
 
 [dev-dependencies]

@@ -19,6 +19,17 @@
 //!
 //! For maximum portability, use `VdoFormat::VDO_FORMAT_YUV`.
 //!
+//! # SDK Compatibility
+//!
+//! Enable the feature matching the ACAP Native SDK you build against:
+//!
+//! - `axis-os-11` for SDK 1.15 (AXIS OS 11).
+//! - `axis-os-12` for SDK 12 (AXIS OS 12).
+//!
+//! ```toml
+//! vdo = { version = "...", features = ["axis-os-12"] }
+//! ```
+//!
 //! # Example
 //!
 //! ```no_run
@@ -45,6 +56,9 @@
 //!
 //! - Image rotation may vary between platforms. Check the `rotation` property in stream info.
 //! - Some formats (RGB, PLANAR_RGB) may produce upside-down images on certain platforms.
+
+#[cfg(not(any(feature = "axis-os-11", feature = "axis-os-12")))]
+compile_error!("vdo: enable feature `axis-os-11` or `axis-os-12` to match your SDK");
 
 mod map;
 use std::{
@@ -145,6 +159,7 @@ impl VdoError {
             x if x == vdo_sys::VDO_ERROR_FATAL.0 as i32 => "VDO_ERROR_FATAL",
             x if x == vdo_sys::VDO_ERROR_NOT_CONTROLLED.0 as i32 => "VDO_ERROR_NOT_CONTROLLED",
             x if x == vdo_sys::VDO_ERROR_NO_EVENT.0 as i32 => "VDO_ERROR_NO_EVENT",
+            #[cfg(feature = "axis-os-12")]
             x if x == vdo_sys::VDO_ERROR_NO_VIDEO.0 as i32 => "VDO_ERROR_NO_VIDEO",
             _ => "VDO_ERROR_UNKNOWN",
         }
@@ -552,6 +567,19 @@ mod unit_tests {
     use expect_test::expect;
 
     use super::*;
+
+    #[test]
+    fn error_code_name_no_video() {
+        // `VDO_ERROR_NO_VIDEO` is not declared by SDK 1.15, but AXIS OS 12 may still return it.
+        let err = VdoError {
+            code: 21,
+            message: "test".to_string(),
+        };
+        #[cfg(feature = "axis-os-12")]
+        expect!["VDO_ERROR_NO_VIDEO"].assert_eq(err.code_name());
+        #[cfg(not(feature = "axis-os-12"))]
+        expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
+    }
 
     #[test]
     fn error_code_names() {
