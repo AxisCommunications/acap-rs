@@ -423,9 +423,9 @@ impl Stream {
     /// starting another, and [`Stream::id()`] returns the existing stream's
     /// id. The copy must be exact, buffer settings included; any difference
     /// starts a new encode. Because the buffer strategy is forced to
-    /// INFINITE, a sharable stream using another strategy can't be joined. A joined stream may be non-blocking
-    /// (`socket.blocking` false), which [`RunningStream::next_buffer()`]
-    /// handles.
+    /// INFINITE, a sharable stream using another strategy can't be joined.
+    /// A joined stream may be non-blocking (`socket.blocking` false), which
+    /// [`RunningStream::next_buffer()`] handles.
     ///
     /// ```no_run
     /// let existing = vdo::list_streams()?
@@ -544,7 +544,7 @@ impl RunningStream {
     /// A stream that joined an existing encode can be non-blocking, where
     /// VDO reports `VDO_ERROR_NO_DATA` until a frame is ready; this waits on
     /// the stream's file descriptor and retries, so it blocks either way. It
-    /// returns that error if the descriptor is hung up or in error.
+    /// returns [`Error::StreamClosed`] if the descriptor is hung up or in error.
     pub fn next_buffer(&self) -> std::result::Result<StreamBuffer<'_>, Error> {
         let buffer_ptr = loop {
             let (buffer_ptr, maybe_error) =
@@ -555,7 +555,8 @@ impl RunningStream {
             match maybe_error {
                 Some(Error::Vdo(e)) if e.is_no_data() => {
                     if self.wait_readable(Duration::from_secs(1))? == Readiness::Closed {
-                        return Err(Error::Vdo(e));
+                        log::debug!("stream fd closed while waiting for a frame: {e}");
+                        return Err(Error::StreamClosed);
                     }
                 }
                 other => return Err(other.unwrap_or(Error::MissingVdoError)),
@@ -625,13 +626,12 @@ impl RunningStream {
         // SAFETY: pfd is a valid GPollFD for the duration of the call.
         let ready = unsafe { glib_sys::g_poll(&mut pfd, 1, timeout_ms) };
         if ready < 0 {
-            return Ok(
-                if std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted {
-                    Readiness::TimedOut
-                } else {
-                    Readiness::Closed
-                },
-            );
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                return Ok(Readiness::TimedOut);
+            }
+            log::debug!("polling the stream fd failed: {err}");
+            return Ok(Readiness::Closed);
         }
         let broken = (glib_sys::G_IO_HUP | glib_sys::G_IO_ERR | glib_sys::G_IO_NVAL) as u16;
         Ok(if pfd.revents & broken != 0 {
@@ -1130,6 +1130,76 @@ mod tests {
         }
 
         assert!(got_i_frame, "Should have captured at least one I-frame");
+
+        drop(running);
+        Ok(())
+    }
+
+    /// Joins a sharable stream that is already running, e.g. one the RTSP server
+    /// created, instead of starting an encode of its own. Skips if VDO lists no
+    /// sharable stream.
+    #[test]
+    fn join_sharable_stream() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        init_logger();
+        let Some(existing) = list_streams()?
+            .into_iter()
+            .filter(|s| s.settings.get_bool(c"sharable", false))
+            .min_by_key(|s| {
+                u64::from(s.settings.get_u32(c"width", u32::MAX))
+                    * u64::from(s.settings.get_u32(c"height", u32::MAX))
+            })
+        else {
+            log::info!("No sharable stream listed, skipping");
+            return Ok(());
+        };
+        log::info!("Joining stream {}", existing.id);
+
+        let mut settings = existing.settings.clone();
+        for key in [c"id", c"identity", c"intent"] {
+            settings.remove(key);
+        }
+        let stream = Stream::from_settings(&settings)?;
+        // Checked before starting so that a mismatch never starts a second encode.
+        assert_eq!(stream.id(), existing.id, "Should join the existing encode");
+
+        let running = stream.start()?;
+        assert_eq!(running.id(), existing.id);
+        for _ in 0..10 {
+            let buffer = running.next_buffer()?;
+            assert!(buffer.size() > 0, "Frame size should be > 0");
+        }
+
+        drop(running);
+        Ok(())
+    }
+
+    #[test]
+    fn next_buffer_timeout_returns_promptly() -> std::result::Result<(), Box<dyn std::error::Error>>
+    {
+        init_logger();
+        let stream = StreamBuilder::new()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_YUV)
+            .resolution(Resolution::Exact {
+                width: 640,
+                height: 480,
+            })
+            .build()?;
+
+        let running = stream.start()?;
+
+        let start = Instant::now();
+        let _ = running.next_buffer_timeout(Duration::ZERO)?;
+        assert!(
+            start.elapsed() < Duration::from_millis(500),
+            "A zero timeout should not block"
+        );
+
+        let buffer = running
+            .next_buffer_timeout(Duration::from_secs(5))?
+            .expect("A running stream should produce a frame within 5 s");
+        assert!(buffer.size() > 0, "Frame size should be > 0");
+        drop(buffer);
 
         drop(running);
         Ok(())
