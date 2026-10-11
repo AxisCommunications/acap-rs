@@ -835,21 +835,6 @@ mod unit_tests {
     }
 
     #[test]
-    fn no_data_requires_the_vdo_error_domain() {
-        let foreign = VdoError {
-            domain: 0,
-            code: vdo_sys::VDO_ERROR_NO_DATA.0 as i32,
-            message: "test".to_string(),
-        };
-        assert!(!foreign.is_no_data());
-        let vdo = VdoError {
-            domain: unsafe { vdo_sys::vdo_error_quark() },
-            ..foreign
-        };
-        assert!(vdo.is_no_data());
-    }
-
-    #[test]
     fn error_display() {
         let err = VdoError {
             domain: 0,
@@ -947,6 +932,22 @@ mod tests {
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    // `vdo_error_quark` needs libvdo, so this cannot run on the host.
+    #[test]
+    fn no_data_requires_the_vdo_error_domain() {
+        let foreign = VdoError {
+            domain: 0,
+            code: vdo_sys::VDO_ERROR_NO_DATA.0 as i32,
+            message: "test".to_string(),
+        };
+        assert!(!foreign.is_no_data());
+        let vdo = VdoError {
+            domain: unsafe { vdo_sys::vdo_error_quark() },
+            ..foreign
+        };
+        assert!(vdo.is_no_data());
     }
 
     #[test]
