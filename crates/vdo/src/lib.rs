@@ -61,6 +61,7 @@ mod map;
 use std::{
     fmt::{Debug, Display},
     ptr,
+    time::{Duration, Instant},
 };
 
 use glib_sys::GError;
@@ -92,6 +93,8 @@ pub enum Error {
     NullPointer,
     #[error("Missing error data from VDO library")]
     MissingVdoError,
+    #[error("The stream's file descriptor is hung up or in error")]
+    StreamClosed,
 }
 
 /// Error from the VDO library.
@@ -515,6 +518,14 @@ impl Drop for Stream {
     }
 }
 
+/// What [`RunningStream::wait_readable`] saw on the stream's descriptor.
+#[derive(Debug, PartialEq, Eq)]
+enum Readiness {
+    Ready,
+    TimedOut,
+    Closed,
+}
+
 /// A running video stream that yields frame buffers.
 ///
 /// Created by calling [`Stream::start()`]. Use [`next_buffer()`](RunningStream::next_buffer)
@@ -543,7 +554,7 @@ impl RunningStream {
             }
             match maybe_error {
                 Some(Error::Vdo(e)) if e.is_no_data() => {
-                    if !self.wait_readable()? {
+                    if self.wait_readable(Duration::from_secs(1))? == Readiness::Closed {
                         return Err(Error::Vdo(e));
                     }
                 }
@@ -557,16 +568,50 @@ impl RunningStream {
         })
     }
 
+    /// Waits up to `timeout` for a new frame and returns it, or `Ok(None)`
+    /// if none arrived in time.
+    ///
+    /// Unlike [`next_buffer()`](Self::next_buffer), this never blocks past
+    /// the timeout, even on a blocking stream, so a caller can check for
+    /// shutdown regularly while a stream produces no frames. It waits on
+    /// the stream's file descriptor before reading, and returns
+    /// [`Error::StreamClosed`] if the descriptor is hung up or in error.
+    pub fn next_buffer_timeout(
+        &self,
+        timeout: Duration,
+    ) -> std::result::Result<Option<StreamBuffer<'_>>, Error> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            match self.wait_readable(deadline.saturating_duration_since(Instant::now()))? {
+                Readiness::Ready => {}
+                Readiness::TimedOut => return Ok(None),
+                Readiness::Closed => return Err(Error::StreamClosed),
+            }
+            let (buffer_ptr, maybe_error) =
+                unsafe { try_func!(vdo_sys::vdo_stream_get_buffer, self.stream.raw) };
+            if !buffer_ptr.is_null() {
+                return Ok(Some(StreamBuffer {
+                    raw: buffer_ptr,
+                    stream: &self.stream,
+                }));
+            }
+            match maybe_error {
+                // Readable but no frame yet: wait again until the deadline.
+                Some(Error::Vdo(e)) if e.is_no_data() => {}
+                other => return Err(other.unwrap_or(Error::MissingVdoError)),
+            }
+        }
+    }
+
     /// The stream's VDO id; see [`Stream::id()`].
     pub fn id(&self) -> u32 {
         self.stream.id()
     }
 
-    /// Waits up to a second for the stream's file descriptor to become
-    /// readable. Returns `Ok(false)` if the descriptor is hung up, in error
-    /// or invalid, or the wait fails other than by being interrupted, so the
-    /// caller stops retrying.
-    fn wait_readable(&self) -> std::result::Result<bool, Error> {
+    /// Waits up to `timeout` for the stream's file descriptor to become
+    /// readable. A signal interrupting the wait counts as a timeout, so the
+    /// caller retries or checks its deadline.
+    fn wait_readable(&self, timeout: Duration) -> std::result::Result<Readiness, Error> {
         let (fd, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_get_fd, self.stream.raw) };
         if fd < 0 {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
@@ -576,16 +621,26 @@ impl RunningStream {
             events: glib_sys::G_IO_IN as u16,
             revents: 0,
         };
-        // SAFETY: pfd is a valid GPollFD for the duration of the call. A
-        // bounded wait, so a quiet stream returns to vdo_stream_get_buffer
-        // regularly rather than parking here.
-        let ready = unsafe { glib_sys::g_poll(&mut pfd, 1, 1000) };
+        let timeout_ms = i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX);
+        // SAFETY: pfd is a valid GPollFD for the duration of the call.
+        let ready = unsafe { glib_sys::g_poll(&mut pfd, 1, timeout_ms) };
         if ready < 0 {
-            // A signal interrupting the wait is not a broken stream.
-            return Ok(std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted);
+            return Ok(
+                if std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted {
+                    Readiness::TimedOut
+                } else {
+                    Readiness::Closed
+                },
+            );
         }
         let broken = (glib_sys::G_IO_HUP | glib_sys::G_IO_ERR | glib_sys::G_IO_NVAL) as u16;
-        Ok(pfd.revents & broken == 0)
+        Ok(if pfd.revents & broken != 0 {
+            Readiness::Closed
+        } else if pfd.revents & glib_sys::G_IO_IN as u16 != 0 {
+            Readiness::Ready
+        } else {
+            Readiness::TimedOut
+        })
     }
 
     /// The running stream's information (actual resolution, framerate,
