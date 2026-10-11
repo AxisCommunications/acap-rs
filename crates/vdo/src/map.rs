@@ -123,6 +123,22 @@ impl Map {
         Some(unsafe { CStringPtr::from_ptr(ptr) })
     }
 
+    /// Returns `default` if the key doesn't exist or isn't a double.
+    pub fn get_f64(&self, key: &CStr, default: f64) -> f64 {
+        unsafe { vdo_sys::vdo_map_get_double(self.raw, key.as_ptr(), default) }
+    }
+
+    /// Removes `key`, if present.
+    pub fn remove(&mut self, key: &CStr) {
+        unsafe { vdo_sys::vdo_map_remove(self.raw, key.as_ptr()) }
+    }
+
+    /// Copies every entry of `other` into this map, replacing entries with
+    /// the same key.
+    pub fn merge(&mut self, other: &Map) {
+        unsafe { vdo_sys::vdo_map_merge(self.raw, other.raw) }
+    }
+
     pub fn set_bool(&mut self, key: &CStr, value: bool) {
         unsafe { vdo_sys::vdo_map_set_boolean(self.raw, key.as_ptr(), value.into_glib()) }
     }
@@ -152,6 +168,15 @@ impl Map {
 impl Default for Map {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// A deep copy: a new map holding the same entries.
+impl Clone for Map {
+    fn clone(&self) -> Self {
+        let mut copy = Map::new();
+        copy.merge(self);
+        copy
     }
 }
 
