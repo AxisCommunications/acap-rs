@@ -568,16 +568,27 @@ mod unit_tests {
 
     use super::*;
 
+    // `VDO_ERROR_NO_VIDEO` is 21 in SDK 12. SDK 1.15 does not declare it, but AXIS OS 12 may
+    // still return it to apps built against SDK 1.15.
+    const NO_VIDEO: i32 = 21;
+
+    #[cfg(feature = "axis-os-12")]
     #[test]
-    fn error_code_name_no_video() {
-        // `VDO_ERROR_NO_VIDEO` is not declared by SDK 1.15, but AXIS OS 12 may still return it.
+    fn no_video_error_code_has_a_name() {
         let err = VdoError {
-            code: 21,
+            code: NO_VIDEO,
             message: "test".to_string(),
         };
-        #[cfg(feature = "axis-os-12")]
         expect!["VDO_ERROR_NO_VIDEO"].assert_eq(err.code_name());
-        #[cfg(not(feature = "axis-os-12"))]
+    }
+
+    #[cfg(not(feature = "axis-os-12"))]
+    #[test]
+    fn no_video_error_code_is_unknown() {
+        let err = VdoError {
+            code: NO_VIDEO,
+            message: "test".to_string(),
+        };
         expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
     }
 
