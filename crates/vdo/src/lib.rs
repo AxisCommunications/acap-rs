@@ -21,14 +21,14 @@
 //!
 //! # SDK Compatibility
 //!
-//! Enable the feature matching the ACAP Native SDK you build against:
-//!
-//! - `axis-os-11` for SDK 1.15 (AXIS OS 11).
-//! - `axis-os-12` for SDK 12 (AXIS OS 12).
+//! By default, this crate only uses API that every supported AXIS OS version has. Enable the
+//! `axis-os-12` feature to also use API that needs AXIS OS 12 or newer:
 //!
 //! ```toml
 //! vdo = { version = "...", features = ["axis-os-12"] }
 //! ```
+//!
+//! Building with the feature requires SDK 12 or newer.
 //!
 //! # Example
 //!
@@ -56,9 +56,6 @@
 //!
 //! - Image rotation may vary between platforms. Check the `rotation` property in stream info.
 //! - Some formats (RGB, PLANAR_RGB) may produce upside-down images on certain platforms.
-
-#[cfg(not(any(feature = "axis-os-11", feature = "axis-os-12")))]
-compile_error!("vdo: enable feature `axis-os-11` or `axis-os-12` to match your SDK");
 
 mod map;
 use std::{
