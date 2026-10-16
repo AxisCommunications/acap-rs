@@ -24,5 +24,5 @@ The most recent LTS is the most prioritized target because it strikes a balance 
 
 1. LTS 2024 (11.11.z)
 2. Active (12.y.z)
-3. LTS 2022 (12.12.z)
+3. LTS 2022 (10.12.z)
 4. LTS 2020 (9.80)
