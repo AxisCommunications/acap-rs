@@ -81,6 +81,8 @@ pub enum Error {
     NullPointer,
     #[error("Missing error data from VDO library")]
     MissingVdoError,
+    #[error("Buffer is sparse and cannot be read as one slice")]
+    NotContiguous,
 }
 
 /// Error from the VDO library.
@@ -458,12 +460,18 @@ impl StreamBuffer<'_> {
     /// Returns the frame data as a byte slice of [`capacity()`](StreamBuffer::capacity) bytes.
     ///
     /// Use [`size()`](StreamBuffer::size) to get the actual frame data size.
+    /// Returns [`Error::NotContiguous`] for a sparse buffer, see
+    /// [`is_contiguous()`](StreamBuffer::is_contiguous).
     pub fn as_slice(&self) -> std::result::Result<&[u8], Error> {
+        if !self.is_contiguous() {
+            return Err(Error::NotContiguous);
+        }
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
         }
-        // SAFETY: VDO buffers are backed by mmap'd or allocated regions that are fully
+        // SAFETY: The buffer is contiguous, so its data is one region of capacity()
+        // bytes. VDO buffers are backed by mmap'd or allocated regions that are fully
         // initialized at allocation time. Bytes beyond size() may be stale but are valid.
         let slice = unsafe { std::slice::from_raw_parts(data as *const u8, self.capacity()) };
         Ok(slice)
@@ -472,7 +480,12 @@ impl StreamBuffer<'_> {
     /// Returns a copy of the frame data, excluding the header if one is present.
     ///
     /// Use [`as_slice()`](StreamBuffer::as_slice) for a raw view of the whole buffer.
+    /// Returns [`Error::NotContiguous`] for a sparse buffer, see
+    /// [`is_contiguous()`](StreamBuffer::is_contiguous).
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
+        if !self.is_contiguous() {
+            return Err(Error::NotContiguous);
+        }
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
@@ -484,8 +497,9 @@ impl StreamBuffer<'_> {
             size <= self.capacity(),
             "expect frame size to fit within buffer capacity"
         );
-        // SAFETY: offset..size lies within the mapped region of capacity bytes,
-        // which is fully initialized at allocation time.
+        // SAFETY: The buffer is contiguous, so offset..size lies within its one
+        // mapped region of capacity bytes, which is fully initialized at allocation
+        // time.
         let slice =
             unsafe { std::slice::from_raw_parts((data as *const u8).add(offset), size - offset) };
         Ok(slice.to_vec())
@@ -547,8 +561,8 @@ impl StreamBuffer<'_> {
     /// Sparse buffers are spread over several chunks with gaps between them
     /// and, according to `vdo-buffer.h` in SDK 12.11.0, must be read chunk by
     /// chunk. [`as_slice()`](StreamBuffer::as_slice) and
-    /// [`data_copy()`](StreamBuffer::data_copy) only support the contiguous
-    /// layout. VDO only produces sparse buffers when the stream option
+    /// [`data_copy()`](StreamBuffer::data_copy) return
+    /// [`Error::NotContiguous`] for them. VDO only produces sparse buffers when the stream option
     /// `frame.chunks` is set, which [`StreamBuilder`] does not do.
     pub fn is_contiguous(&self) -> bool {
         unsafe { vdo_sys::vdo_buffer_is_contiguous(self.raw) != glib_sys::GFALSE }
@@ -686,6 +700,8 @@ mod unit_tests {
             .assert_eq(&format!("{}", Error::NullPointer));
         expect!["Missing error data from VDO library"]
             .assert_eq(&format!("{}", Error::MissingVdoError));
+        expect!["Buffer is sparse and cannot be read as one slice"]
+            .assert_eq(&format!("{}", Error::NotContiguous));
         let vdo = Error::Vdo(VdoError {
             code: 1,
             message: "test".to_string(),
@@ -988,7 +1004,7 @@ mod tests {
         let buffer = running.next_buffer()?;
 
         // VDO stamps frames with the same wall clock that SystemTime reads, so a
-        // frame that was just captured is at most a few seconds old.
+        // frame that was just captured is well within 10 s of now.
         let now_us = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_micros() as u64;
@@ -1347,13 +1363,20 @@ mod tests {
         // A deep copy keeps its own entries: changing either map afterwards must
         // not show up in the other one.
         let mut copy = map.clone();
+        assert_eq!(
+            copy.get_quad32u(c"test_quad32u", Quad32u::default()),
+            quad_u
+        );
+
         map.set_u32(c"test_u32", 7);
         copy.set_quad32u(c"test_quad32u", Quad32u([9, 9, 9, 9]));
+        assert_eq!(map.get_u32(c"test_u32", 0), 7);
         assert_eq!(copy.get_u32(c"test_u32", 0), 42);
+        assert_eq!(
+            copy.get_quad32u(c"test_quad32u", Quad32u::default()),
+            Quad32u([9, 9, 9, 9])
+        );
         assert_eq!(map.get_quad32u(c"test_quad32u", Quad32u::default()), quad_u);
-
-        drop(map);
-        assert_eq!(copy.get_u32(c"test_u32", 0), 42);
 
         Ok(())
     }

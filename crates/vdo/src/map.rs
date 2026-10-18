@@ -14,8 +14,8 @@ use vdo_sys::{VdoMap, VdoQuad32i, VdoQuad32u};
 /// Four signed 32-bit integers, stored in a [`Map`] under one key.
 ///
 /// In `vdo-types.h` (SDK 12.11.0) `VdoQuad32i` is a union of a rectangle
-/// (`x`, `y`, `w`, `h`) and a plain `val[4]` array. Which reading applies
-/// depends on the key, so the value is kept as the four raw words.
+/// (`x`, `y`, `w`, `h`) and a plain `val[4]` array. The header does not say
+/// which reading a key uses, so the value is kept as the four raw words.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Quad32i(pub [i32; 4]);
 
@@ -58,8 +58,12 @@ impl Quad32i {
 ///
 /// In `vdo-types.h` (SDK 12.11.0) `VdoQuad32u` is a union of a rectangle
 /// (`x`, `y`, `w`, `h`), a range (`min`, `target`, `max`) in the first three
-/// words, and a plain `val[4]` array. Which reading applies depends on the key,
-/// so the value is kept as the four raw words.
+/// words, and a plain `val[4]` array. The header does not say which reading a
+/// key uses, so the value is kept as the four raw words.
+///
+/// Values written with [`Map::set_quad32u`] always carry all four words. For a
+/// range that VDO itself stores, the header does not say what the fourth word
+/// holds, so treat it as unspecified.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Quad32u(pub [u32; 4]);
 
