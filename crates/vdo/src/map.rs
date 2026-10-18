@@ -13,63 +13,103 @@ use vdo_sys::{VdoMap, VdoQuad32i, VdoQuad32u};
 
 /// Four signed 32-bit integers, stored in a [`Map`] under one key.
 ///
-/// VDO uses this for values such as crop rectangles, where the fields are
-/// interpreted as `x`, `y`, `w`, `h`.
+/// In `vdo-types.h` (SDK 12.11.0) `VdoQuad32i` is a union of a rectangle
+/// (`x`, `y`, `w`, `h`) and a plain `val[4]` array. Which reading applies
+/// depends on the key, so the value is kept as the four raw words.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Quad32i {
-    pub x: i32,
-    pub y: i32,
-    pub w: i32,
-    pub h: i32,
-}
+pub struct Quad32i(pub [i32; 4]);
 
 impl Quad32i {
+    /// The first word, if the value represents a rectangle.
+    pub fn x(&self) -> i32 {
+        self.0[0]
+    }
+
+    /// The second word, if the value represents a rectangle.
+    pub fn y(&self) -> i32 {
+        self.0[1]
+    }
+
+    /// The third word, if the value represents a rectangle.
+    pub fn w(&self) -> i32 {
+        self.0[2]
+    }
+
+    /// The fourth word, if the value represents a rectangle.
+    pub fn h(&self) -> i32 {
+        self.0[3]
+    }
+
     fn into_raw(self) -> VdoQuad32i {
         // The union stores four 32-bit words; `as u32` is bit-preserving.
         VdoQuad32i {
             __bindgen_anon_1: Default::default(),
             val: Default::default(),
-            bindgen_union_field: [self.x as u32, self.y as u32, self.w as u32, self.h as u32],
+            bindgen_union_field: self.0.map(|word| word as u32),
         }
     }
 
     fn from_raw(raw: VdoQuad32i) -> Self {
-        let [x, y, w, h] = raw.bindgen_union_field;
-        Self {
-            x: x as i32,
-            y: y as i32,
-            w: w as i32,
-            h: h as i32,
-        }
+        Self(raw.bindgen_union_field.map(|word| word as i32))
     }
 }
 
 /// Four unsigned 32-bit integers, stored in a [`Map`] under one key.
 ///
-/// VDO interprets the fields either as a rectangle (`x`, `y`, `w`, `h`) or,
-/// for some keys, as a range (`min`, `target`, `max`) occupying the first
-/// three fields.
+/// In `vdo-types.h` (SDK 12.11.0) `VdoQuad32u` is a union of a rectangle
+/// (`x`, `y`, `w`, `h`), a range (`min`, `target`, `max`) in the first three
+/// words, and a plain `val[4]` array. Which reading applies depends on the key,
+/// so the value is kept as the four raw words.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Quad32u {
-    pub x: u32,
-    pub y: u32,
-    pub w: u32,
-    pub h: u32,
-}
+pub struct Quad32u(pub [u32; 4]);
 
 impl Quad32u {
+    /// The first word, if the value represents a rectangle.
+    pub fn x(&self) -> u32 {
+        self.0[0]
+    }
+
+    /// The second word, if the value represents a rectangle.
+    pub fn y(&self) -> u32 {
+        self.0[1]
+    }
+
+    /// The third word, if the value represents a rectangle.
+    pub fn w(&self) -> u32 {
+        self.0[2]
+    }
+
+    /// The fourth word, if the value represents a rectangle.
+    pub fn h(&self) -> u32 {
+        self.0[3]
+    }
+
+    /// The first word, if the value represents a range.
+    pub fn min(&self) -> u32 {
+        self.0[0]
+    }
+
+    /// The second word, if the value represents a range.
+    pub fn target(&self) -> u32 {
+        self.0[1]
+    }
+
+    /// The third word, if the value represents a range.
+    pub fn max(&self) -> u32 {
+        self.0[2]
+    }
+
     fn into_raw(self) -> VdoQuad32u {
         VdoQuad32u {
             __bindgen_anon_1: Default::default(),
             __bindgen_anon_2: Default::default(),
             val: Default::default(),
-            bindgen_union_field: [self.x, self.y, self.w, self.h],
+            bindgen_union_field: self.0,
         }
     }
 
     fn from_raw(raw: VdoQuad32u) -> Self {
-        let [x, y, w, h] = raw.bindgen_union_field;
-        Self { x, y, w, h }
+        Self(raw.bindgen_union_field)
     }
 }
 

@@ -513,7 +513,12 @@ impl StreamBuffer<'_> {
     ///
     /// Unlike [`timestamp()`](StreamBuffer::timestamp) this can jump if the
     /// system time is adjusted, so use it for correlating frames with external
-    /// events rather than for measuring intervals.
+    /// events rather than for measuring intervals.[^clocks]
+    ///
+    /// [^clocks]: `vdo-frame.h` in SDK 12.11.0 describes
+    ///     `vdo_frame_get_utc_timestamp` as equivalent to `gettimeofday` and
+    ///     `vdo_frame_get_timestamp` as equivalent to `clock_gettime` with
+    ///     `CLOCK_MONOTONIC`.
     pub fn utc_timestamp(&self) -> u64 {
         unsafe { vdo_sys::vdo_frame_get_utc_timestamp(self.raw) }
     }
@@ -539,10 +544,12 @@ impl StreamBuffer<'_> {
 
     /// Returns `true` if the frame data is one contiguous region.
     ///
-    /// Sparse buffers are spread over several chunks with gaps between them,
-    /// and only the contiguous layout is exposed by
-    /// [`as_slice()`](StreamBuffer::as_slice) and
-    /// [`data_copy()`](StreamBuffer::data_copy).
+    /// Sparse buffers are spread over several chunks with gaps between them
+    /// and, according to `vdo-buffer.h` in SDK 12.11.0, must be read chunk by
+    /// chunk. [`as_slice()`](StreamBuffer::as_slice) and
+    /// [`data_copy()`](StreamBuffer::data_copy) only support the contiguous
+    /// layout. VDO only produces sparse buffers when the stream option
+    /// `frame.chunks` is set, which [`StreamBuilder`] does not do.
     pub fn is_contiguous(&self) -> bool {
         unsafe { vdo_sys::vdo_buffer_is_contiguous(self.raw) != glib_sys::GFALSE }
     }
@@ -940,11 +947,6 @@ mod tests {
             let buffer = running.next_buffer()?;
             let ts = buffer.timestamp();
             let seq = buffer.sequence_number();
-            assert!(
-                buffer.utc_timestamp() > 0,
-                "UTC timestamp should be populated"
-            );
-            assert!(buffer.is_contiguous(), "YUV frames should be contiguous");
 
             if i > 0 {
                 assert!(
@@ -965,6 +967,42 @@ mod tests {
             prev_seq = seq;
         }
 
+        drop(running);
+        Ok(())
+    }
+
+    #[test]
+    fn buffer_utc_timestamp_and_layout() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        init_logger();
+        let stream = StreamBuilder::new()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_YUV)
+            .resolution(Resolution::Exact {
+                width: 320,
+                height: 240,
+            })
+            .framerate(15)
+            .build()?;
+
+        let running = stream.start()?;
+        let buffer = running.next_buffer()?;
+
+        // VDO stamps frames with the same wall clock that SystemTime reads, so a
+        // frame that was just captured is at most a few seconds old.
+        let now_us = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_micros() as u64;
+        let age_us = now_us.abs_diff(buffer.utc_timestamp());
+        assert!(
+            age_us < 10_000_000,
+            "UTC timestamp should be close to the wall clock, off by {age_us} us"
+        );
+
+        // VDO only produces sparse buffers when the stream option frame.chunks is
+        // set, and StreamBuilder does not set it.
+        assert!(buffer.is_contiguous(), "buffers should be contiguous");
+
+        drop(buffer);
         drop(running);
         Ok(())
     }
@@ -1293,12 +1331,7 @@ mod tests {
         assert_eq!(value.unwrap().as_c_str().to_str().unwrap(), "hello");
         assert!(map.get_string(c"missing_str").is_none());
 
-        let quad_i = Quad32i {
-            x: -1,
-            y: 2,
-            w: -3,
-            h: 4,
-        };
+        let quad_i = Quad32i([-1, 2, -3, 4]);
         map.set_quad32i(c"test_quad32i", quad_i);
         assert_eq!(map.get_quad32i(c"test_quad32i", Quad32i::default()), quad_i);
         assert_eq!(
@@ -1307,22 +1340,20 @@ mod tests {
             "default should be returned for missing key"
         );
 
-        let quad_u = Quad32u {
-            x: 1,
-            y: 2,
-            w: 3,
-            h: u32::MAX,
-        };
+        let quad_u = Quad32u([1, 2, 3, u32::MAX]);
         map.set_quad32u(c"test_quad32u", quad_u);
         assert_eq!(map.get_quad32u(c"test_quad32u", Quad32u::default()), quad_u);
 
-        let copy = map.clone();
+        // A deep copy keeps its own entries: changing either map afterwards must
+        // not show up in the other one.
+        let mut copy = map.clone();
+        map.set_u32(c"test_u32", 7);
+        copy.set_quad32u(c"test_quad32u", Quad32u([9, 9, 9, 9]));
+        assert_eq!(copy.get_u32(c"test_u32", 0), 42);
+        assert_eq!(map.get_quad32u(c"test_quad32u", Quad32u::default()), quad_u);
+
         drop(map);
         assert_eq!(copy.get_u32(c"test_u32", 0), 42);
-        assert_eq!(
-            copy.get_quad32u(c"test_quad32u", Quad32u::default()),
-            quad_u
-        );
 
         Ok(())
     }
