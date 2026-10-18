@@ -25,19 +25,24 @@ impl Device<'_> {
 
     /// Returns the device name (e.g. "cpu-tflite", "artpec8-dlpu-tflite").
     pub fn name(&self) -> Result<&CStr, Error> {
+        // SAFETY: self.raw is a valid device; the connection that owns it outlives
+        // 'conn.
         let (ptr, maybe_error) = unsafe { try_func!(larod_sys::larodGetDeviceName, self.raw) };
         if ptr.is_null() {
             return Err(maybe_error.unwrap_or(Error::NullPointer));
         }
         debug_assert!(maybe_error.is_none());
-        // SAFETY: ptr is non-null and points into the device's internal storage.
-        // Lifetime is tied to the connection via 'conn.
+        // SAFETY: ptr is non-null. larod.h says only that it "must not be
+        // freed"; this assumes it lives as long as the device, i.e. until the
+        // connection closes, which 'conn prevents.
         Ok(unsafe { CStr::from_ptr(ptr) })
     }
 
     /// Returns the device instance number.
     pub fn instance(&self) -> Result<u32, Error> {
         let mut instance: u32 = 0;
+        // SAFETY: self.raw is a valid device; the connection that owns it outlives
+        // 'conn.
         let (success, maybe_error) =
             unsafe { try_func!(larod_sys::larodGetDeviceInstance, self.raw, &mut instance,) };
         if success {

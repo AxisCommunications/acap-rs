@@ -4,15 +4,19 @@ use crate::{connection::Connection, model::Model, tensor::Tensors, Error, Map};
 
 /// A job request that binds a model to input/output tensors for inference.
 ///
-/// The job request holds references to the connection, model, and tensor arrays.
-/// All referenced objects must outlive the job request.
+/// larod copies the tensor and model information into the request (larod.h,
+/// "Create and initialize a job request handle"). The copy refers to the
+/// tensors' fds by number, so the request borrows the tensor arrays to keep
+/// those fds open and unchanged, and the model and connection to run on.
+/// larod.h does not say whether tensors and models from different connections
+/// may be mixed.
 pub struct JobRequest<'a> {
     raw: *mut larod_sys::larodJobRequest,
     conn_raw: *mut larod_sys::larodConnection,
     // 'a is constrained by the constructor to the shortest of conn, model,
     // inputs, and outputs.
     _conn: PhantomData<&'a Connection>,
-    _model: PhantomData<&'a Model>,
+    _model: PhantomData<&'a Model<'a>>,
     _tensors: PhantomData<&'a ()>,
 }
 
@@ -28,7 +32,7 @@ impl<'a> JobRequest<'a> {
     /// * `params` - Optional parameters map
     pub fn try_new(
         conn: &'a Connection,
-        model: &'a Model,
+        model: &'a Model<'_>,
         inputs: &'a Tensors<'_>,
         outputs: &'a Tensors<'_>,
         params: Option<&Map>,
@@ -81,18 +85,6 @@ impl<'a> JobRequest<'a> {
         }
     }
 
-    /// Set the job priority (0 = lowest, 255 = highest).
-    pub fn set_priority(&mut self, priority: u8) -> Result<(), Error> {
-        // SAFETY: self.raw is a valid job request pointer.
-        let (success, maybe_error) =
-            unsafe { try_func!(larod_sys::larodSetJobRequestPriority, self.raw, priority,) };
-        if success {
-            Ok(())
-        } else {
-            Err(maybe_error.unwrap_or(Error::MissingError))
-        }
-    }
-
     /// Set optional parameters for this job request.
     ///
     /// Larod copies the map into the job request, so the map does not need to
@@ -126,7 +118,8 @@ impl std::fmt::Debug for JobRequest<'_> {
 
 impl Drop for JobRequest<'_> {
     fn drop(&mut self) {
-        // larodDestroyJobRequest takes *mut *mut and nulls the pointer.
+        // SAFETY: self.raw came from larodCreateJobRequest and is released exactly
+        // once, here. larodDestroyJobRequest nulls the pointer.
         crate::with_larod(|| unsafe { larod_sys::larodDestroyJobRequest(&mut self.raw) })
     }
 }

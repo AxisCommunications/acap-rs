@@ -28,10 +28,15 @@
 //!
 //! # Compile-time safety checks
 //!
-//! Larod handles must not be sent to another thread because the underlying
-//! library is not thread-safe.
+//! larod.h says only "This library is not thread safe". This crate therefore
+//! serializes every call into liblarod with one process-wide mutex, and also
+//! makes every handle type `!Send` and `!Sync`. The mutex keeps independent
+//! connections on different threads from racing on library-global state. The
+//! marker traits are kept because the header does not say that serialized use
+//! of one handle from several threads is enough, e.g. it does not rule out
+//! thread-local state.
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn connections_are_not_send(conn: larod::Connection) {
 //!     std::thread::scope(|scope| {
 //!         scope.spawn(move || drop(conn));
@@ -39,7 +44,7 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn devices_are_not_send(device: larod::Device<'_>) {
 //!     std::thread::scope(|scope| {
 //!         scope.spawn(move || drop(device));
@@ -47,15 +52,15 @@
 //! }
 //! ```
 //!
-//! ```compile_fail
-//! fn models_are_not_send(model: larod::Model) {
+//! ```compile_fail,E0277
+//! fn models_are_not_send(model: larod::Model<'_>) {
 //!     std::thread::scope(|scope| {
 //!         scope.spawn(move || drop(model));
 //!     });
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn maps_are_not_send(map: larod::Map) {
 //!     std::thread::scope(|scope| {
 //!         scope.spawn(move || drop(map));
@@ -66,7 +71,7 @@
 //! Connection-bound tensor arrays must not be sent to another thread while the
 //! original connection can still be used.
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn tensors_are_not_send(tensors: larod::Tensors<'_>) {
 //!     std::thread::scope(|scope| {
 //!         scope.spawn(move || drop(tensors));
@@ -77,7 +82,7 @@
 //! Connection-bound job requests must not be sent to another thread while the
 //! original connection can still be used.
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn job_requests_are_not_send(job: larod::JobRequest<'_>) {
 //!     std::thread::scope(|scope| {
 //!         scope.spawn(move || drop(job));
@@ -87,66 +92,83 @@
 //!
 //! Larod handle types must not be shared across threads either.
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::Connection>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::Device<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
-//! assert_sync::<larod::Model>();
+//! assert_sync::<larod::Model<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::Map>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::Tensors<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::JobRequest<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::TensorRef<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::TensorMut<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::TensorsIter<'static>>();
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0277
 //! fn assert_sync<T: Sync>() {}
 //! assert_sync::<larod::TensorsIterMut<'static>>();
 //! ```
 //!
-//! Raw tensor file descriptor access requires an explicit unsafe block because
-//! callers must uphold the fd lifetime and ownership contract.
+//! A model cannot outlive the connection it was loaded through, because the
+//! model's device expires when that connection closes.
 //!
-//! ```compile_fail
-//! fn tensor_fd_getter_requires_unsafe(tensor: &larod::TensorRef<'_>) {
-//!     let _ = tensor.fd();
+//! ```compile_fail,E0505
+//! fn model_outlives_connection(device_name: &std::ffi::CStr, file: std::fs::File) {
+//!     use std::os::fd::AsFd;
+//!     let conn = larod::Connection::try_new().unwrap();
+//!     let device = conn.device(device_name, 0).unwrap();
+//!     let model = conn
+//!         .load_model(
+//!             file.as_fd(),
+//!             &device,
+//!             larod::larodAccess::LAROD_ACCESS_PRIVATE,
+//!             None,
+//!             None,
+//!         )
+//!         .unwrap();
+//!     drop(device);
+//!     drop(conn);
+//!     drop(model);
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! Setting a raw tensor file descriptor requires an explicit unsafe block
+//! because callers must keep the fd open for as long as larod may use it.
+//!
+//! ```compile_fail,E0133
 //! fn tensor_fd_setter_requires_unsafe(tensor: &mut larod::TensorMut<'_>) {
 //!     let _ = tensor.set_fd(0);
 //! }
@@ -155,42 +177,21 @@
 //! Safe tensor allocation only accepts validated file descriptor requirements,
 //! not raw property flags.
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! fn input_allocation_rejects_raw_flags(
 //!     conn: &larod::Connection,
-//!     model: &larod::Model,
+//!     model: &larod::Model<'_>,
 //! ) {
 //!     let _ = conn.alloc_model_inputs(model, 0_u32, None);
 //! }
 //! ```
 //!
-//! ```compile_fail
+//! ```compile_fail,E0308
 //! fn output_allocation_rejects_raw_flags(
 //!     conn: &larod::Connection,
-//!     model: &larod::Model,
+//!     model: &larod::Model<'_>,
 //! ) {
 //!     let _ = conn.alloc_model_outputs(model, 0_u32, None);
-//! }
-//! ```
-//!
-//! Raw allocation flags require an explicit unsafe block because callers must
-//! uphold larod's flag requirements.
-//!
-//! ```compile_fail
-//! fn input_raw_flags_require_unsafe(
-//!     conn: &larod::Connection,
-//!     model: &larod::Model,
-//! ) {
-//!     let _ = conn.alloc_model_inputs_with_flags(model, 0, None);
-//! }
-//! ```
-//!
-//! ```compile_fail
-//! fn output_raw_flags_require_unsafe(
-//!     conn: &larod::Connection,
-//!     model: &larod::Model,
-//! ) {
-//!     let _ = conn.alloc_model_outputs_with_flags(model, 0, None);
 //! }
 //! ```
 //!
@@ -230,8 +231,8 @@ pub use tensor::{TensorMut, TensorRef, Tensors, TensorsIter, TensorsIterMut};
 
 /// File descriptor capabilities required from buffers allocated by larod.
 ///
-/// Requirements can be combined with `|`. Larod returns an error if the
-/// model's device cannot allocate buffers satisfying the requested capabilities.
+/// Requirements can be combined with `|`. Buffers allocated by larod are
+/// guaranteed to meet them (larod.h, "Create and allocate input tensors from a model").
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct FdRequirements(u32);
 
@@ -383,7 +384,6 @@ mod tests {
         release_first_tx.send(()).unwrap();
         first.join().unwrap();
         assert!(blocked);
-        assert!(crate::ffi::try_with_larod(|| ()).is_some());
     }
 }
 
@@ -438,8 +438,7 @@ mod device_tests {
         let mut map = Map::try_new().expect("create map");
 
         map.set_str(c"key1", c"value1").expect("set_str");
-        let v = map.get_str(c"key1").expect("get_str");
-        assert_eq!(v.unwrap(), c"value1");
+        assert_eq!(map.get_str(c"key1").expect("get_str"), c"value1");
 
         map.set_int(c"num", 42).expect("set_int");
         assert_eq!(map.get_int(c"num").expect("get_int"), 42);

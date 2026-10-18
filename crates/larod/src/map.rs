@@ -12,6 +12,7 @@ pub struct Map {
 
 impl Map {
     pub fn try_new() -> Result<Self, Error> {
+        // SAFETY: larodCreateMap takes no arguments besides the error pointer.
         let (map, maybe_error) = unsafe { try_func!(larod_sys::larodCreateMap) };
         if map.is_null() {
             Err(maybe_error.unwrap_or(Error::NullPointer))
@@ -22,6 +23,8 @@ impl Map {
     }
 
     pub fn set_str(&mut self, key: &CStr, value: &CStr) -> Result<(), Error> {
+        // SAFETY: self.raw is a valid map, and key and value are NUL-terminated.
+        // larod copies both strings.
         let (success, maybe_error) = unsafe {
             try_func!(
                 larod_sys::larodMapSetStr,
@@ -38,27 +41,30 @@ impl Map {
         }
     }
 
-    /// Returns the string value for `key`, or `None` if the key doesn't exist.
+    /// Returns the string value for `key`.
     ///
-    /// The returned reference borrows from the map's internal storage.
-    pub fn get_str(&self, key: &CStr) -> Result<Option<&CStr>, Error> {
+    /// A missing key, or a key whose value is not a string, is an error:
+    /// `larodMapGetStr` returns NULL only on error (larod.h, "Get string type
+    /// value tied to given key"). The returned reference borrows from the map's
+    /// internal storage.
+    pub fn get_str(&self, key: &CStr) -> Result<&CStr, Error> {
         // larodMapGetStr takes *mut larodMap (not *const) per the C API.
+        // SAFETY: self.raw is a valid map and key is NUL-terminated. larodMapGetStr
+        // takes *mut larodMap even though it does not modify the map.
         let (ptr, maybe_error): (*const c_char, _) =
             unsafe { try_func!(larod_sys::larodMapGetStr, self.raw, key.as_ptr()) };
-        if let Some(err) = maybe_error {
-            return Err(err);
-        }
         if ptr.is_null() {
-            Ok(None)
-        } else {
-            // SAFETY: ptr is non-null and points into the map's internal storage.
-            // The borrow from &self ensures the map (and thus the string) outlives
-            // the returned reference.
-            Ok(Some(unsafe { CStr::from_ptr(ptr) }))
+            return Err(maybe_error.unwrap_or(Error::MissingError));
         }
+        debug_assert!(maybe_error.is_none());
+        // SAFETY: ptr is non-null and points into the map's internal storage.
+        // The borrow from &self ensures the map (and thus the string) outlives
+        // the returned reference.
+        Ok(unsafe { CStr::from_ptr(ptr) })
     }
 
     pub fn set_int(&mut self, key: &CStr, value: i64) -> Result<(), Error> {
+        // SAFETY: self.raw is a valid map and key is NUL-terminated.
         let (success, maybe_error) =
             unsafe { try_func!(larod_sys::larodMapSetInt, self.raw, key.as_ptr(), value) };
         if success {
@@ -71,6 +77,7 @@ impl Map {
 
     pub fn get_int(&self, key: &CStr) -> Result<i64, Error> {
         let mut value: i64 = 0;
+        // SAFETY: self.raw is a valid map and key is NUL-terminated.
         let (success, maybe_error) = unsafe {
             try_func!(
                 larod_sys::larodMapGetInt,
@@ -88,6 +95,7 @@ impl Map {
     }
 
     pub fn set_int_arr2(&mut self, key: &CStr, v0: i64, v1: i64) -> Result<(), Error> {
+        // SAFETY: self.raw is a valid map and key is NUL-terminated.
         let (success, maybe_error) = unsafe {
             try_func!(
                 larod_sys::larodMapSetIntArr2,
@@ -107,6 +115,7 @@ impl Map {
 
     /// Returns a 2-element array, or an error if the key doesn't exist.
     pub fn get_int_arr2(&self, key: &CStr) -> Result<[i64; 2], Error> {
+        // SAFETY: self.raw is a valid map and key is NUL-terminated.
         let (ptr, maybe_error) =
             unsafe { try_func!(larod_sys::larodMapGetIntArr2, self.raw, key.as_ptr()) };
         if let Some(err) = maybe_error {
@@ -127,6 +136,7 @@ impl Map {
         v2: i64,
         v3: i64,
     ) -> Result<(), Error> {
+        // SAFETY: self.raw is a valid map and key is NUL-terminated.
         let (success, maybe_error) = unsafe {
             try_func!(
                 larod_sys::larodMapSetIntArr4,
@@ -148,6 +158,7 @@ impl Map {
 
     /// Returns a 4-element array, or an error if the key doesn't exist.
     pub fn get_int_arr4(&self, key: &CStr) -> Result<[i64; 4], Error> {
+        // SAFETY: self.raw is a valid map and key is NUL-terminated.
         let (ptr, maybe_error) =
             unsafe { try_func!(larod_sys::larodMapGetIntArr4, self.raw, key.as_ptr()) };
         if let Some(err) = maybe_error {
@@ -174,7 +185,8 @@ impl std::fmt::Debug for Map {
 
 impl Drop for Map {
     fn drop(&mut self) {
-        // larodDestroyMap takes *mut *mut larodMap and nulls the pointer.
+        // SAFETY: self.raw came from larodCreateMap and is released exactly once, here.
+        // larodDestroyMap nulls the pointer.
         crate::with_larod(|| unsafe { larod_sys::larodDestroyMap(&mut self.raw) })
     }
 }

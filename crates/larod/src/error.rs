@@ -55,6 +55,8 @@ pub enum Error {
     MissingError,
     #[error("invalid file descriptor returned by larod: {0}")]
     InvalidFd(i32),
+    #[error("larod returned a tensor array that repeats a tensor")]
+    DuplicateTensor,
 }
 
 /// Error from the larod library.
@@ -82,6 +84,8 @@ impl LarodError {
         let message = if larod_err.msg.is_null() {
             String::from("(no message from library)")
         } else {
+            // SAFETY: msg is non-null and NUL-terminated, and is freed only by the
+            // larodClearError call below.
             let cstr = unsafe { CStr::from_ptr(larod_err.msg) };
             String::from_utf8_lossy(cstr.to_bytes()).into_owned()
         };
