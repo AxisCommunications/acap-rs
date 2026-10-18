@@ -116,7 +116,7 @@ impl<'conn> Tensors<'conn> {
     }
 }
 
-impl<'a, 'conn> IntoIterator for &'a Tensors<'conn> {
+impl<'a> IntoIterator for &'a Tensors<'_> {
     type Item = TensorRef<'a>;
     type IntoIter = TensorsIter<'a>;
 
@@ -125,7 +125,7 @@ impl<'a, 'conn> IntoIterator for &'a Tensors<'conn> {
     }
 }
 
-impl<'a, 'conn> IntoIterator for &'a mut Tensors<'conn> {
+impl<'a> IntoIterator for &'a mut Tensors<'_> {
     type Item = TensorMut<'a>;
     type IntoIter = TensorsIterMut<'a>;
 
@@ -246,7 +246,7 @@ pub struct TensorRef<'a> {
     _tensors: PhantomData<&'a ()>,
 }
 
-impl<'a> TensorRef<'a> {
+impl TensorRef<'_> {
     pub fn dims(&self) -> Result<&larodTensorDims, Error> {
         let (ptr, maybe_error) =
             unsafe { try_func!(larod_sys::larodGetTensorDims, self.raw as *const _,) };
@@ -363,7 +363,7 @@ pub struct TensorMut<'a> {
     _tensors: PhantomData<&'a mut ()>,
 }
 
-impl<'a> TensorMut<'a> {
+impl TensorMut<'_> {
     pub fn set_dims(&mut self, dims: &larodTensorDims) -> Result<(), Error> {
         let (success, maybe_error) =
             unsafe { try_func!(larod_sys::larodSetTensorDims, self.raw, dims) };

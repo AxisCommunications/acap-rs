@@ -12,7 +12,7 @@ pub struct Device<'conn> {
     _conn: PhantomData<&'conn *const ()>,
 }
 
-impl<'conn> Device<'conn> {
+impl Device<'_> {
     pub(crate) fn from_raw(raw: *const larod_sys::larodDevice) -> Result<Self, Error> {
         if raw.is_null() {
             return Err(Error::NullPointer);
