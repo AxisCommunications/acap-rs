@@ -17,6 +17,7 @@ type gdouble = core::ffi::c_double;
 
 type gint = core::ffi::c_int;
 type guint = core::ffi::c_uint;
+#[allow(dead_code)] // unused alias on SDKs whose bindings spell the type as u8
 type guint8 = u8;
 type gint16 = i16;
 type guint16 = u16;

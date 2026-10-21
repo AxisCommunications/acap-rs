@@ -95,7 +95,7 @@ pub enum Error {
     MissingVdoError,
     #[error("The stream's file descriptor is hung up or in error")]
     StreamClosed,
-    #[error("Streams with sparse buffers (frame.chunks) are not supported")]
+    #[error("A sparse buffer that can't be viewed as one slice")]
     SparseBuffers,
 }
 
@@ -402,6 +402,7 @@ pub fn list_streams() -> std::result::Result<Vec<StreamInfo>, Error> {
 pub struct Stream {
     raw: *mut VdoStream,
     started: bool,
+    frame_chunks: bool,
 }
 
 // SAFETY: We hold exclusive ownership of the raw pointer and the VDO SDK
@@ -429,9 +430,6 @@ impl Stream {
     /// A joined stream may be non-blocking (`socket.blocking` false), which
     /// [`RunningStream::next_buffer()`] handles.
     ///
-    /// Returns [`Error::SparseBuffers`] if `frame.chunks` is true, because
-    /// [`StreamBuffer::as_slice()`] can only read contiguous buffers.
-    ///
     /// ```no_run
     /// let existing = vdo::list_streams()?
     ///     .into_iter()
@@ -446,9 +444,6 @@ impl Stream {
     /// # Ok::<(), vdo::Error>(())
     /// ```
     pub fn from_settings(settings: &Map) -> std::result::Result<Self, Error> {
-        if settings.get_bool(c"frame.chunks", false) {
-            return Err(Error::SparseBuffers);
-        }
         let mut map = settings.clone();
         map.set_u32(
             c"buffer.strategy",
@@ -473,6 +468,7 @@ impl Stream {
         Ok(Stream {
             raw: stream_raw,
             started: false,
+            frame_chunks: map.get_bool(c"frame.chunks", false),
         })
     }
 
@@ -571,10 +567,7 @@ impl RunningStream {
             }
         };
 
-        Ok(StreamBuffer {
-            raw: buffer_ptr,
-            stream: &self.stream,
-        })
+        StreamBuffer::new(buffer_ptr, &self.stream)
     }
 
     /// Waits up to `timeout` for a new frame and returns it, or `Ok(None)`
@@ -599,10 +592,7 @@ impl RunningStream {
             let (buffer_ptr, maybe_error) =
                 unsafe { try_func!(vdo_sys::vdo_stream_get_buffer, self.stream.raw) };
             if !buffer_ptr.is_null() {
-                return Ok(Some(StreamBuffer {
-                    raw: buffer_ptr,
-                    stream: &self.stream,
-                }));
+                return Ok(Some(StreamBuffer::new(buffer_ptr, &self.stream)?));
             }
             match maybe_error {
                 // Readable but no frame yet: wait again until the deadline.
@@ -678,33 +668,126 @@ impl RunningStream {
 pub struct StreamBuffer<'a> {
     raw: *mut VdoBuffer,
     stream: &'a Stream,
+    chunks: Option<Vec<vdo_sys::VdoChunk>>,
+}
+
+/// Reads the data pointer from a [`vdo_sys::VdoChunk`].
+///
+/// The pointer is the first field of the struct in every supported SDK (a plain
+/// `data` field on SDK 1.3/1.15, a `__bindgen_anon_1` union on SDK 12), so
+/// reading the first pointer-sized word is portable.
+fn chunk_data(chunk: &vdo_sys::VdoChunk) -> *mut std::ffi::c_void {
+    // SAFETY: VdoChunk is a C struct whose first field is a pointer-sized
+    // data pointer in all supported SDKs.
+    unsafe { *(chunk as *const vdo_sys::VdoChunk as *const *mut std::ffi::c_void) }
 }
 
 impl StreamBuffer<'_> {
+    fn new<'a>(
+        raw: *mut VdoBuffer,
+        stream: &'a Stream,
+    ) -> std::result::Result<StreamBuffer<'a>, Error> {
+        let mut buffer: StreamBuffer<'a> = StreamBuffer {
+            raw,
+            stream,
+            chunks: None,
+        };
+        if stream.frame_chunks {
+            let mut chunks = Vec::new();
+            loop {
+                let mut error: *mut GError = ptr::null_mut();
+                let chunk = unsafe { vdo_sys::vdo_frame_take_chunk(raw, &mut error) };
+                if !error.is_null() {
+                    // `buffer` owns `raw` and releases it through `Drop` when this
+                    // function returns the error, so do not unref it here.
+                    return Err(Error::Vdo(VdoError::from_gerror(error)));
+                }
+                if chunk.size == 0 {
+                    break;
+                }
+                chunks.push(chunk);
+            }
+            buffer.chunks = Some(chunks);
+        }
+        Ok(buffer)
+    }
+
     pub fn capacity(&self) -> usize {
         unsafe { vdo_sys::vdo_buffer_get_capacity(self.raw) }
     }
 
+    /// The chunks walked for this buffer, if the stream had `frame.chunks` set.
+    pub fn chunks(&self) -> Option<&[vdo_sys::VdoChunk]> {
+        self.chunks.as_deref()
+    }
+
     /// Returns the frame data as a byte slice of [`capacity()`](StreamBuffer::capacity) bytes.
+    ///
+    /// For streams with `frame.chunks`, this only succeeds when the buffer is a
+    /// single chunk that starts at `vdo_buffer_get_data()`; sparse buffers return
+    /// [`Error::SparseBuffers`]. Use [`data_copy()`](Self::data_copy) to read
+    /// sparse buffers.
     ///
     /// Use [`size()`](StreamBuffer::size) to get the actual frame data size.
     pub fn as_slice(&self) -> std::result::Result<&[u8], Error> {
+        if let Some(chunks) = &self.chunks {
+            if chunks.len() == 1 {
+                let base = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
+                let data = chunk_data(&chunks[0]);
+                if !base.is_null() && data == base {
+                    let slice =
+                        unsafe { std::slice::from_raw_parts(base as *const u8, self.capacity()) };
+                    return Ok(slice);
+                }
+            }
+            return Err(Error::SparseBuffers);
+        }
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
         }
         // SAFETY: VDO buffers are backed by mmap'd or allocated regions that are fully
         // initialized at allocation time. Bytes beyond size() may be stale but are valid.
-        // The buffer is one contiguous region, because this crate never creates a stream
-        // with `frame.chunks` set (see Stream::from_settings).
+        // Non-chunked streams are contiguous by construction.
         let slice = unsafe { std::slice::from_raw_parts(data as *const u8, self.capacity()) };
         Ok(slice)
     }
 
     /// Returns a copy of the frame data, excluding the header if one is present.
     ///
+    /// For streams with `frame.chunks`, the chunks are concatenated, so this works
+    /// for sparse buffers too.
+    ///
     /// Use [`as_slice()`](StreamBuffer::as_slice) for a raw view of the whole buffer.
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
+        if let Some(chunks) = &self.chunks {
+            let header = self.header_size().unwrap_or(0);
+            let size = self.size();
+            assert!(header <= size, "expect header to fit within frame size");
+            let mut out = Vec::with_capacity(size.saturating_sub(header));
+            let mut consumed = 0usize;
+            for chunk in chunks {
+                let data = chunk_data(chunk);
+                if data.is_null() {
+                    return Err(Error::NullPointer);
+                }
+                let chunk_size = chunk.size;
+                let chunk_start = consumed;
+                let chunk_end = consumed.saturating_add(chunk_size);
+                let data_start = header.max(chunk_start).min(size);
+                let data_end = size.min(chunk_end);
+                if data_end > data_start {
+                    let in_chunk = data_start - chunk_start;
+                    let len = data_end - data_start;
+                    let slice = unsafe {
+                        std::slice::from_raw_parts((data as *const u8).add(in_chunk), len)
+                    };
+                    out.extend_from_slice(slice);
+                }
+                consumed = chunk_end;
+            }
+            return Ok(out);
+        }
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
@@ -924,7 +1007,7 @@ mod unit_tests {
             .assert_eq(&format!("{}", Error::NullPointer));
         expect!["Missing error data from VDO library"]
             .assert_eq(&format!("{}", Error::MissingVdoError));
-        expect!["Streams with sparse buffers (frame.chunks) are not supported"]
+        expect!["A sparse buffer that can't be viewed as one slice"]
             .assert_eq(&format!("{}", Error::SparseBuffers));
         let vdo = Error::Vdo(VdoError {
             domain: 0,
@@ -1150,16 +1233,59 @@ mod tests {
 
     /// Joins a sharable stream that is already running, e.g. one the RTSP server
     /// created, instead of starting an encode of its own. Skips if VDO lists no
-    /// sharable stream.
+    /// sharable stream. Reads several buffers and checks that `data_copy()`
+    /// yields `size() - header` bytes that agree with `as_slice()` whenever the
+    /// buffer can be viewed as a single slice.
     #[test]
-    fn from_settings_refuses_sparse_buffers() {
+    fn join_sharable_stream_reads_chunks() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
-        let mut settings = Map::new();
-        settings.set_bool(c"frame.chunks", true);
-        assert!(matches!(
-            Stream::from_settings(&settings),
-            Err(Error::SparseBuffers)
-        ));
+        let Some(existing) = list_streams()?
+            .into_iter()
+            .filter(|s| s.settings.get_bool(c"sharable", false))
+            .min_by_key(|s| {
+                u64::from(s.settings.get_u32(c"width", u32::MAX))
+                    * u64::from(s.settings.get_u32(c"height", u32::MAX))
+            })
+        else {
+            log::info!("No sharable stream listed, skipping");
+            return Ok(());
+        };
+        log::info!("Joining stream {}", existing.id);
+
+        let mut settings = existing.settings.clone();
+        for key in [c"id", c"identity", c"intent"] {
+            settings.remove(key);
+        }
+        let stream = Stream::from_settings(&settings)?;
+        assert_eq!(stream.id(), existing.id, "Should join the existing encode");
+
+        let running = stream.start()?;
+        assert_eq!(running.id(), existing.id);
+        for i in 0..5 {
+            let buffer = running.next_buffer()?;
+            assert!(buffer.size() > 0, "Frame size should be > 0");
+            let header = buffer.header_size().unwrap_or(0);
+            let chunk_count = buffer.chunks().map_or(0, |c| c.len());
+            let as_slice_ok = buffer.as_slice().is_ok();
+            log::info!("buffer {i}: chunks={chunk_count}, as_slice_ok={as_slice_ok}");
+            let copy = buffer.data_copy()?;
+            assert_eq!(
+                copy.len(),
+                buffer.size().saturating_sub(header),
+                "data_copy() length should be size() minus header"
+            );
+            if let Ok(slice) = buffer.as_slice() {
+                assert_eq!(
+                    copy.as_slice(),
+                    &slice[header..buffer.size()],
+                    "data_copy() bytes should match as_slice() range"
+                );
+            }
+            drop(buffer);
+        }
+
+        drop(running);
+        Ok(())
     }
 
     #[test]
