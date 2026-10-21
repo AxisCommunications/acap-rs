@@ -146,8 +146,8 @@ Each crate has a corresponding `*-sys`, which is omitted for brevity.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/bbox/src/lib.rs)
 - `larod`: Bindings for the Machine Learning API.
-  - Status: 💡 Started
-  - Documentation: [Pull request](https://github.com/AxisCommunications/acap-rs/pull/230)
+  - Status: ⚠️ Alpha
+  - Documentation: [Source code](crates/larod/src/lib.rs)
 - `licensekey`: Bindings for the License Key API.
   - Status: ⚠️ Alpha
   - Documentation: [Source code](crates/licensekey/src/lib.rs)
