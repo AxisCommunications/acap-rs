@@ -59,8 +59,21 @@ impl Connection {
                 false => Some(Deferred::new(raw_on_error)),
                 true => None,
             };
+            // SAFETY: SDK 1.15 declares `mdb_on_error_t` with a mutable error pointer while
+            // SDK 12 declares it as `const`; `*mut T` and `*const T` have identical ABI and the
+            // callback never writes through the pointer, so the transmute is sound. Transmuting
+            // the function pointer directly to `mdb_sys::mdb_on_error_t` (an
+            // `Option<unsafe extern "C" fn(..)>` with the same size and niche) compiles against
+            // both bindings.
+            let on_error_cb: mdb_sys::mdb_on_error_t = std::mem::transmute::<
+                unsafe extern "C" fn(*const mdb_sys::mdb_error_t, *mut libc::c_void),
+                mdb_sys::mdb_on_error_t,
+            >(
+                Self::on_error::<F>
+                    as unsafe extern "C" fn(*const mdb_sys::mdb_error_t, *mut libc::c_void),
+            );
             let ptr = mdb_sys::mdb_connection_create(
-                Some(Self::on_error::<F>),
+                on_error_cb,
                 raw_on_error as *mut c_void,
                 &mut error,
             );
