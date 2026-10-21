@@ -64,7 +64,7 @@ fn generate_html(out_dir: &Path) {
 fn generate_manifest(out_dir: &Path) {
     let manifest_out = out_dir.join("manifest.json");
     let content = json!({
-        "schemaVersion": "1.2",
+        "schemaVersion": "1.11.0",
         "acapPackageConf": {
             "setup": {
                 "appName": env!("CARGO_PKG_NAME"),

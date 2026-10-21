@@ -442,17 +442,21 @@ impl<'a> AppBuilder<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Architecture {
     Aarch64,
     Armv7hf,
 }
 
 impl Architecture {
-    pub fn triple(&self) -> &'static str {
+    pub const ALL: [Architecture; 2] = [Architecture::Aarch64, Architecture::Armv7hf];
+
+    /// The [`Target`] to build for this architecture when the caller has not asked for a specific
+    /// one.
+    pub fn default_target(&self) -> Target {
         match self {
-            Architecture::Aarch64 => "aarch64-unknown-linux-gnu",
-            Architecture::Armv7hf => "thumbv7neon-unknown-linux-gnueabihf",
+            Architecture::Aarch64 => Target::Aarch64UnknownLinuxGnu,
+            Architecture::Armv7hf => Target::Thumbv7neonUnknownLinuxGnueabihf,
         }
     }
 
@@ -460,6 +464,16 @@ impl Architecture {
         match self {
             Self::Aarch64 => "aarch64",
             Self::Armv7hf => "armv7hf",
+        }
+    }
+}
+
+impl From<Target> for Architecture {
+    fn from(value: Target) -> Self {
+        match value {
+            Target::Aarch64UnknownLinuxGnu => Self::Aarch64,
+            Target::Thumbv7neonUnknownLinuxGnueabihf => Self::Armv7hf,
+            Target::Armv7UnknownLinuxGnueabihf => Self::Armv7hf,
         }
     }
 }
@@ -472,6 +486,75 @@ impl FromStr for Architecture {
             "aarch64" => Ok(Self::Aarch64),
             "arm" => Ok(Self::Armv7hf),
             _ => Err(anyhow::anyhow!("Unrecognized variant {s}")),
+        }
+    }
+}
+
+/// A cargo target triple this crate knows how to package as an ACAP.
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Hash, clap::ValueEnum, serde::Deserialize, serde::Serialize,
+)]
+#[serde(rename_all = "kebab-case")]
+pub enum Target {
+    Aarch64UnknownLinuxGnu,
+    Thumbv7neonUnknownLinuxGnueabihf,
+    Armv7UnknownLinuxGnueabihf,
+}
+
+impl Target {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Aarch64UnknownLinuxGnu => "aarch64-unknown-linux-gnu",
+            Self::Thumbv7neonUnknownLinuxGnueabihf => "thumbv7neon-unknown-linux-gnueabihf",
+            Self::Armv7UnknownLinuxGnueabihf => "armv7-unknown-linux-gnueabihf",
+        }
+    }
+}
+
+impl FromStr for Target {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aarch64-unknown-linux-gnu" => Ok(Self::Aarch64UnknownLinuxGnu),
+            "thumbv7neon-unknown-linux-gnueabihf" => Ok(Self::Thumbv7neonUnknownLinuxGnueabihf),
+            "armv7-unknown-linux-gnueabihf" => Ok(Self::Armv7UnknownLinuxGnueabihf),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TARGET_ALL: [Target; 3] = [
+        Target::Aarch64UnknownLinuxGnu,
+        Target::Thumbv7neonUnknownLinuxGnueabihf,
+        Target::Armv7UnknownLinuxGnueabihf,
+    ];
+
+    #[test]
+    fn serde_roundtrip() {
+        for target in TARGET_ALL {
+            let json = serde_json::to_string(&target).unwrap();
+            assert_eq!(json, format!("{:?}", target.to_string()));
+            let deserialized: Target = serde_json::from_str(&json).unwrap();
+            assert_eq!(deserialized, target);
+        }
+    }
+
+    #[test]
+    fn from_str_display_roundtrip() {
+        for target in TARGET_ALL {
+            let parsed = Target::from_str(&target.to_string()).unwrap();
+            assert_eq!(parsed, target);
         }
     }
 }

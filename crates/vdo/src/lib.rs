@@ -19,6 +19,17 @@
 //!
 //! For maximum portability, use `VdoFormat::VDO_FORMAT_YUV`.
 //!
+//! # SDK Compatibility
+//!
+//! By default, this crate only uses API that every supported AXIS OS version has. Enable the
+//! `axis-os-12` feature to also use API that needs AXIS OS 12 or newer:
+//!
+//! ```toml
+//! vdo = { version = "...", features = ["axis-os-12"] }
+//! ```
+//!
+//! Building with the feature requires SDK 12 or newer.
+//!
 //! # Example
 //!
 //! ```no_run
@@ -145,6 +156,7 @@ impl VdoError {
             x if x == vdo_sys::VDO_ERROR_FATAL.0 as i32 => "VDO_ERROR_FATAL",
             x if x == vdo_sys::VDO_ERROR_NOT_CONTROLLED.0 as i32 => "VDO_ERROR_NOT_CONTROLLED",
             x if x == vdo_sys::VDO_ERROR_NO_EVENT.0 as i32 => "VDO_ERROR_NO_EVENT",
+            #[cfg(feature = "axis-os-12")]
             x if x == vdo_sys::VDO_ERROR_NO_VIDEO.0 as i32 => "VDO_ERROR_NO_VIDEO",
             _ => "VDO_ERROR_UNKNOWN",
         }
@@ -210,6 +222,7 @@ pub struct StreamBuilder {
     channel: u32,
     resolution: Resolution,
     framerate: u32,
+    gop_length: u32,
 }
 
 impl Default for StreamBuilder {
@@ -220,6 +233,7 @@ impl Default for StreamBuilder {
             channel: 0,
             resolution: Resolution::Native,
             framerate: 0,
+            gop_length: 0,
         }
     }
 }
@@ -255,6 +269,17 @@ impl StreamBuilder {
         self
     }
 
+    /// GOP length — the number of frames between key frames. If 0 (default),
+    /// the camera's configured GOP is used, which on cameras with dynamic-GOP
+    /// / Zipstream can make key frames (and the SPS/PPS parameter sets VDO
+    /// emits ahead of each key frame) very sparse. Set a small fixed value to
+    /// force key frames to recur at a predictable interval. Passed to
+    /// `vdo_stream_new` as the `gop_length` setting.
+    pub fn gop_length(mut self, gop_length: u32) -> Self {
+        self.gop_length = gop_length;
+        self
+    }
+
     /// Default: 3. For YUV/RGB formats, controls frame buffer count.
     /// For compressed formats (H.264, H.265, JPEG), typically ignored.
     pub fn buffers(mut self, count: u32) -> Self {
@@ -276,6 +301,9 @@ impl StreamBuilder {
         }
         if self.framerate > 0 {
             map.set_u32(c"framerate", self.framerate);
+        }
+        if self.gop_length > 0 {
+            map.set_u32(c"gop_length", self.gop_length);
         }
         map.set_u32(c"buffer.count", self.buffer_count);
         // Always use INFINITE strategy; EXPLICIT is not exposed because it
@@ -573,6 +601,30 @@ mod unit_tests {
     use expect_test::expect;
 
     use super::*;
+
+    // `VDO_ERROR_NO_VIDEO` is 21 in SDK 12. SDK 1.15 does not declare it, but AXIS OS 12 may
+    // still return it to apps built against SDK 1.15.
+    const NO_VIDEO: i32 = 21;
+
+    #[cfg(feature = "axis-os-12")]
+    #[test]
+    fn no_video_error_code_has_a_name() {
+        let err = VdoError {
+            code: NO_VIDEO,
+            message: "test".to_string(),
+        };
+        expect!["VDO_ERROR_NO_VIDEO"].assert_eq(err.code_name());
+    }
+
+    #[cfg(not(feature = "axis-os-12"))]
+    #[test]
+    fn no_video_error_code_is_unknown() {
+        let err = VdoError {
+            code: NO_VIDEO,
+            message: "test".to_string(),
+        };
+        expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
+    }
 
     #[test]
     fn error_code_names() {

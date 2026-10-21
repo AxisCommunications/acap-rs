@@ -8,7 +8,8 @@ Arguments:
   [ARGS]...  Pass additional arguments to `cargo build`
 
 Options:
-      --target <TARGET>  If given, build only for the given architecture(s) [possible values: aarch64, armv7hf]
+      --target <TARGET>  If given, build only for the given target(s) [possible values: aarch64-unknown-linux-gnu, thumbv7neon-unknown-linux-gnueabihf, armv7-unknown-linux-gnueabihf]
+      --arch <ARCH>      If given, build only for the given architecture(s) [possible values: aarch64, armv7hf]
   -h, --help             Print help (see more with '--help')
   -V, --version          Print version
 ```
