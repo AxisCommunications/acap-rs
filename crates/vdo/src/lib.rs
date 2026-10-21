@@ -61,6 +61,7 @@ mod map;
 use std::{
     fmt::{Debug, Display},
     ptr,
+    time::{Duration, Instant},
 };
 
 use glib_sys::GError;
@@ -92,10 +93,15 @@ pub enum Error {
     NullPointer,
     #[error("Missing error data from VDO library")]
     MissingVdoError,
+    #[error("The stream's file descriptor is hung up or in error")]
+    StreamClosed,
+    #[error("A sparse buffer that can't be viewed as one slice")]
+    SparseBuffers,
 }
 
 /// Error from the VDO library.
 pub struct VdoError {
+    domain: u32,
     code: i32,
     message: String,
 }
@@ -104,6 +110,7 @@ impl VdoError {
     fn from_gerror(gerror: *mut GError) -> Self {
         if gerror.is_null() {
             return VdoError {
+                domain: 0,
                 code: 0,
                 message: String::new(),
             };
@@ -125,9 +132,17 @@ impl VdoError {
         unsafe { glib_sys::g_error_free(gerror) };
 
         VdoError {
+            domain: g_error.domain,
             code: g_error.code,
             message,
         }
+    }
+
+    /// Whether this is `VDO_ERROR_NO_DATA` from the VDO error domain.
+    fn is_no_data(&self) -> bool {
+        // SAFETY: vdo_error_quark only registers/returns a GQuark.
+        self.domain == unsafe { vdo_sys::vdo_error_quark() }
+            && self.code == vdo_sys::VDO_ERROR_NO_DATA.0 as i32
     }
 
     /// Returns a human-readable name for the VDO error code.
@@ -313,23 +328,50 @@ impl StreamBuilder {
             VdoBufferStrategy::VDO_BUFFER_STRATEGY_INFINITE.0,
         );
 
-        let (stream_raw, maybe_error) =
-            unsafe { try_func!(vdo_sys::vdo_stream_new, map.as_ptr(), None) };
-
-        if stream_raw.is_null() {
-            return Err(maybe_error.unwrap_or(Error::MissingVdoError));
-        }
-
-        debug_assert!(
-            maybe_error.is_none(),
-            "vdo_stream_new returned a stream pointer AND an error"
-        );
-
-        Ok(Stream {
-            raw: stream_raw,
-            started: false,
-        })
+        Stream::create(&map)
     }
+}
+
+/// An existing VDO stream, from [`list_streams()`].
+#[derive(Debug, Clone)]
+pub struct StreamInfo {
+    /// The stream's id, as [`Stream::id()`] reports it.
+    pub id: u32,
+    /// The stream's settings (`vdo_stream_get_settings`).
+    pub settings: Map,
+}
+
+/// Every stream VDO currently has, from any client, with its settings.
+/// Streams whose settings can't be read are left out.
+pub fn list_streams() -> std::result::Result<Vec<StreamInfo>, Error> {
+    let mut error: *mut GError = ptr::null_mut();
+    let list = unsafe { vdo_sys::vdo_stream_get_all(&mut error) };
+    if !error.is_null() {
+        return Err(Error::Vdo(VdoError::from_gerror(error)));
+    }
+    let mut streams = Vec::new();
+    let mut node = list;
+    while !node.is_null() {
+        // SAFETY: node is a live element of the list VDO returned; its data
+        // is a VdoStream we own a reference to and release below.
+        let raw = unsafe { (*node).data } as *mut VdoStream;
+        if !raw.is_null() {
+            let id = unsafe { vdo_sys::vdo_stream_get_id(raw) };
+            let (map_raw, maybe_error) =
+                unsafe { try_func!(vdo_sys::vdo_stream_get_settings, raw) };
+            if !map_raw.is_null() {
+                // SAFETY: non-null and owned by us, per vdo_stream_get_settings.
+                let settings = unsafe { Map::from_raw(map_raw) };
+                streams.push(StreamInfo { id, settings });
+            } else {
+                log::debug!("skipping VDO stream {id}: settings unreadable: {maybe_error:?}");
+            }
+            unsafe { g_object_unref(raw as *mut GObject) };
+        }
+        node = unsafe { (*node).next };
+    }
+    unsafe { glib_sys::g_list_free(list) };
+    Ok(streams)
 }
 
 /// A video stream from a camera channel.
@@ -360,6 +402,7 @@ impl StreamBuilder {
 pub struct Stream {
     raw: *mut VdoStream,
     started: bool,
+    frame_chunks: bool,
 }
 
 // SAFETY: We hold exclusive ownership of the raw pointer and the VDO SDK
@@ -370,6 +413,69 @@ impl Stream {
     /// Equivalent to `StreamBuilder::new().build()` (H.264 format, native resolution).
     pub fn new() -> std::result::Result<Self, Error> {
         StreamBuilder::new().build()
+    }
+
+    /// Creates a stream from exactly `settings`, except that the buffer
+    /// strategy is always INFINITE (the only one this crate supports, as in
+    /// [`StreamBuilder::build()`]).
+    ///
+    /// Use this to join an encode that is already running: when `settings`
+    /// is an exact copy of a stream whose `sharable` setting is true (from
+    /// [`list_streams()`], with the `id`, `identity` and `intent` entries
+    /// removed), VDO gives the new stream the *same* encode instead of
+    /// starting another, and [`Stream::id()`] returns the existing stream's
+    /// id. The copy must be exact, buffer settings included; any difference
+    /// starts a new encode. Because the buffer strategy is forced to
+    /// INFINITE, a sharable stream using another strategy can't be joined.
+    /// A joined stream may be non-blocking (`socket.blocking` false), which
+    /// [`RunningStream::next_buffer()`] handles.
+    ///
+    /// ```no_run
+    /// let existing = vdo::list_streams()?
+    ///     .into_iter()
+    ///     .find(|s| s.settings.get_bool(c"sharable", false))
+    ///     .expect("a sharable stream");
+    /// let mut settings = existing.settings.clone();
+    /// for key in [c"id", c"identity", c"intent"] {
+    ///     settings.remove(key);
+    /// }
+    /// let stream = vdo::Stream::from_settings(&settings)?;
+    /// assert_eq!(stream.id(), existing.id);
+    /// # Ok::<(), vdo::Error>(())
+    /// ```
+    pub fn from_settings(settings: &Map) -> std::result::Result<Self, Error> {
+        let mut map = settings.clone();
+        map.set_u32(
+            c"buffer.strategy",
+            VdoBufferStrategy::VDO_BUFFER_STRATEGY_INFINITE.0,
+        );
+        Self::create(&map)
+    }
+
+    fn create(map: &Map) -> std::result::Result<Self, Error> {
+        let (stream_raw, maybe_error) =
+            unsafe { try_func!(vdo_sys::vdo_stream_new, map.as_ptr(), None) };
+
+        if stream_raw.is_null() {
+            return Err(maybe_error.unwrap_or(Error::MissingVdoError));
+        }
+
+        debug_assert!(
+            maybe_error.is_none(),
+            "vdo_stream_new returned a stream pointer AND an error"
+        );
+
+        Ok(Stream {
+            raw: stream_raw,
+            started: false,
+            frame_chunks: map.get_bool(c"frame.chunks", false),
+        })
+    }
+
+    /// The stream's VDO id. For a stream that joined an existing encode (see
+    /// [`Stream::from_settings()`]) this is the existing stream's id.
+    pub fn id(&self) -> u32 {
+        unsafe { vdo_sys::vdo_stream_get_id(self.raw) }
     }
 
     /// Returns stream information (actual resolution, format, etc.) as a map.
@@ -416,6 +522,14 @@ impl Drop for Stream {
     }
 }
 
+/// What [`RunningStream::wait_readable`] saw on the stream's descriptor.
+#[derive(Debug, PartialEq, Eq)]
+enum Readiness {
+    Ready,
+    TimedOut,
+    Closed,
+}
+
 /// A running video stream that yields frame buffers.
 ///
 /// Created by calling [`Stream::start()`]. Use [`next_buffer()`](RunningStream::next_buffer)
@@ -430,18 +544,112 @@ unsafe impl Send for RunningStream {}
 
 impl RunningStream {
     /// Blocks until a new frame is available and returns it.
+    ///
+    /// A stream that joined an existing encode can be non-blocking, where
+    /// VDO reports `VDO_ERROR_NO_DATA` until a frame is ready; this waits on
+    /// the stream's file descriptor and retries, so it blocks either way. It
+    /// returns [`Error::StreamClosed`] if the descriptor is hung up or in error.
     pub fn next_buffer(&self) -> std::result::Result<StreamBuffer<'_>, Error> {
-        let (buffer_ptr, maybe_error) =
-            unsafe { try_func!(vdo_sys::vdo_stream_get_buffer, self.stream.raw) };
+        let buffer_ptr = loop {
+            let (buffer_ptr, maybe_error) =
+                unsafe { try_func!(vdo_sys::vdo_stream_get_buffer, self.stream.raw) };
+            if !buffer_ptr.is_null() {
+                break buffer_ptr;
+            }
+            match maybe_error {
+                Some(Error::Vdo(e)) if e.is_no_data() => {
+                    if self.wait_readable(Duration::from_secs(1))? == Readiness::Closed {
+                        log::debug!("stream fd closed while waiting for a frame: {e}");
+                        return Err(Error::StreamClosed);
+                    }
+                }
+                other => return Err(other.unwrap_or(Error::MissingVdoError)),
+            }
+        };
 
-        if buffer_ptr.is_null() {
+        StreamBuffer::new(buffer_ptr, &self.stream)
+    }
+
+    /// Waits up to `timeout` for a new frame and returns it, or `Ok(None)`
+    /// if none arrived in time.
+    ///
+    /// Unlike [`next_buffer()`](Self::next_buffer), this never blocks past
+    /// the timeout, even on a blocking stream, so a caller can check for
+    /// shutdown regularly while a stream produces no frames. It waits on
+    /// the stream's file descriptor before reading, and returns
+    /// [`Error::StreamClosed`] if the descriptor is hung up or in error.
+    pub fn next_buffer_timeout(
+        &self,
+        timeout: Duration,
+    ) -> std::result::Result<Option<StreamBuffer<'_>>, Error> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            match self.wait_readable(deadline.saturating_duration_since(Instant::now()))? {
+                Readiness::Ready => {}
+                Readiness::TimedOut => return Ok(None),
+                Readiness::Closed => return Err(Error::StreamClosed),
+            }
+            let (buffer_ptr, maybe_error) =
+                unsafe { try_func!(vdo_sys::vdo_stream_get_buffer, self.stream.raw) };
+            if !buffer_ptr.is_null() {
+                return Ok(Some(StreamBuffer::new(buffer_ptr, &self.stream)?));
+            }
+            match maybe_error {
+                // Readable but no frame yet: wait again until the deadline.
+                Some(Error::Vdo(e)) if e.is_no_data() => {}
+                other => return Err(other.unwrap_or(Error::MissingVdoError)),
+            }
+        }
+    }
+
+    /// The stream's VDO id; see [`Stream::id()`].
+    pub fn id(&self) -> u32 {
+        self.stream.id()
+    }
+
+    /// Waits up to `timeout` for the stream's file descriptor to become
+    /// readable. A signal interrupting the wait counts as a timeout, so the
+    /// caller retries or checks its deadline.
+    fn wait_readable(&self, timeout: Duration) -> std::result::Result<Readiness, Error> {
+        let (fd, maybe_error) = unsafe { try_func!(vdo_sys::vdo_stream_get_fd, self.stream.raw) };
+        if fd < 0 {
             return Err(maybe_error.unwrap_or(Error::MissingVdoError));
         }
-
-        Ok(StreamBuffer {
-            raw: buffer_ptr,
-            stream: &self.stream,
+        let mut pfd = glib_sys::GPollFD {
+            fd,
+            events: glib_sys::G_IO_IN as u16,
+            revents: 0,
+        };
+        let timeout_ms = i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX);
+        // SAFETY: pfd is a valid GPollFD for the duration of the call.
+        let ready = unsafe { glib_sys::g_poll(&mut pfd, 1, timeout_ms) };
+        if ready < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                return Ok(Readiness::TimedOut);
+            }
+            log::debug!("polling the stream fd failed: {err}");
+            return Ok(Readiness::Closed);
+        }
+        let broken = (glib_sys::G_IO_HUP | glib_sys::G_IO_ERR | glib_sys::G_IO_NVAL) as u16;
+        Ok(if pfd.revents & broken != 0 {
+            Readiness::Closed
+        } else if pfd.revents & glib_sys::G_IO_IN as u16 != 0 {
+            Readiness::Ready
+        } else {
+            Readiness::TimedOut
         })
+    }
+
+    /// The running stream's information (actual resolution, framerate,
+    /// `peers`, statistics, …); see [`Stream::info()`].
+    pub fn info(&self) -> std::result::Result<Map, Error> {
+        self.stream.info()
+    }
+
+    /// The running stream's settings; see [`Stream::settings()`].
+    pub fn settings(&self) -> std::result::Result<Map, Error> {
+        self.stream.settings()
     }
 }
 
@@ -460,31 +668,126 @@ impl RunningStream {
 pub struct StreamBuffer<'a> {
     raw: *mut VdoBuffer,
     stream: &'a Stream,
+    chunks: Option<Vec<vdo_sys::VdoChunk>>,
+}
+
+/// Reads the data pointer from a [`vdo_sys::VdoChunk`].
+///
+/// The pointer is the first field of the struct in every supported SDK (a plain
+/// `data` field on SDK 1.3/1.15, a `__bindgen_anon_1` union on SDK 12), so
+/// reading the first pointer-sized word is portable.
+fn chunk_data(chunk: &vdo_sys::VdoChunk) -> *mut std::ffi::c_void {
+    // SAFETY: VdoChunk is a C struct whose first field is a pointer-sized
+    // data pointer in all supported SDKs.
+    unsafe { *(chunk as *const vdo_sys::VdoChunk as *const *mut std::ffi::c_void) }
 }
 
 impl StreamBuffer<'_> {
+    fn new<'a>(
+        raw: *mut VdoBuffer,
+        stream: &'a Stream,
+    ) -> std::result::Result<StreamBuffer<'a>, Error> {
+        let mut buffer: StreamBuffer<'a> = StreamBuffer {
+            raw,
+            stream,
+            chunks: None,
+        };
+        if stream.frame_chunks {
+            let mut chunks = Vec::new();
+            loop {
+                let mut error: *mut GError = ptr::null_mut();
+                let chunk = unsafe { vdo_sys::vdo_frame_take_chunk(raw, &mut error) };
+                if !error.is_null() {
+                    // `buffer` owns `raw` and releases it through `Drop` when this
+                    // function returns the error, so do not unref it here.
+                    return Err(Error::Vdo(VdoError::from_gerror(error)));
+                }
+                if chunk.size == 0 {
+                    break;
+                }
+                chunks.push(chunk);
+            }
+            buffer.chunks = Some(chunks);
+        }
+        Ok(buffer)
+    }
+
     pub fn capacity(&self) -> usize {
         unsafe { vdo_sys::vdo_buffer_get_capacity(self.raw) }
     }
 
+    /// The chunks walked for this buffer, if the stream had `frame.chunks` set.
+    pub fn chunks(&self) -> Option<&[vdo_sys::VdoChunk]> {
+        self.chunks.as_deref()
+    }
+
     /// Returns the frame data as a byte slice of [`capacity()`](StreamBuffer::capacity) bytes.
+    ///
+    /// For streams with `frame.chunks`, this only succeeds when the buffer is a
+    /// single chunk that starts at `vdo_buffer_get_data()`; sparse buffers return
+    /// [`Error::SparseBuffers`]. Use [`data_copy()`](Self::data_copy) to read
+    /// sparse buffers.
     ///
     /// Use [`size()`](StreamBuffer::size) to get the actual frame data size.
     pub fn as_slice(&self) -> std::result::Result<&[u8], Error> {
+        if let Some(chunks) = &self.chunks {
+            if chunks.len() == 1 {
+                let base = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
+                let data = chunk_data(&chunks[0]);
+                if !base.is_null() && data == base {
+                    let slice =
+                        unsafe { std::slice::from_raw_parts(base as *const u8, self.capacity()) };
+                    return Ok(slice);
+                }
+            }
+            return Err(Error::SparseBuffers);
+        }
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
         }
         // SAFETY: VDO buffers are backed by mmap'd or allocated regions that are fully
         // initialized at allocation time. Bytes beyond size() may be stale but are valid.
+        // Non-chunked streams are contiguous by construction.
         let slice = unsafe { std::slice::from_raw_parts(data as *const u8, self.capacity()) };
         Ok(slice)
     }
 
     /// Returns a copy of the frame data, excluding the header if one is present.
     ///
+    /// For streams with `frame.chunks`, the chunks are concatenated, so this works
+    /// for sparse buffers too.
+    ///
     /// Use [`as_slice()`](StreamBuffer::as_slice) for a raw view of the whole buffer.
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
+        if let Some(chunks) = &self.chunks {
+            let header = self.header_size().unwrap_or(0);
+            let size = self.size();
+            assert!(header <= size, "expect header to fit within frame size");
+            let mut out = Vec::with_capacity(size.saturating_sub(header));
+            let mut consumed = 0usize;
+            for chunk in chunks {
+                let data = chunk_data(chunk);
+                if data.is_null() {
+                    return Err(Error::NullPointer);
+                }
+                let chunk_size = chunk.size;
+                let chunk_start = consumed;
+                let chunk_end = consumed.saturating_add(chunk_size);
+                let data_start = header.max(chunk_start).min(size);
+                let data_end = size.min(chunk_end);
+                if data_end > data_start {
+                    let in_chunk = data_start - chunk_start;
+                    let len = data_end - data_start;
+                    let slice = unsafe {
+                        std::slice::from_raw_parts((data as *const u8).add(in_chunk), len)
+                    };
+                    out.extend_from_slice(slice);
+                }
+                consumed = chunk_end;
+            }
+            return Ok(out);
+        }
         let data = unsafe { vdo_sys::vdo_buffer_get_data(self.raw) };
         if data.is_null() {
             return Err(Error::NullPointer);
@@ -573,6 +876,7 @@ mod unit_tests {
     #[test]
     fn no_video_error_code_has_a_name() {
         let err = VdoError {
+            domain: 0,
             code: NO_VIDEO,
             message: "test".to_string(),
         };
@@ -583,6 +887,7 @@ mod unit_tests {
     #[test]
     fn no_video_error_code_is_unknown() {
         let err = VdoError {
+            domain: 0,
             code: NO_VIDEO,
             message: "test".to_string(),
         };
@@ -592,18 +897,21 @@ mod unit_tests {
     #[test]
     fn error_code_names() {
         let err = VdoError {
+            domain: 0,
             code: vdo_sys::VDO_ERROR_NOT_FOUND.0 as i32,
             message: "test".to_string(),
         };
         expect!["VDO_ERROR_NOT_FOUND"].assert_eq(err.code_name());
 
         let err = VdoError {
+            domain: 0,
             code: vdo_sys::VDO_ERROR_NOT_SUPPORTED.0 as i32,
             message: "test".to_string(),
         };
         expect!["VDO_ERROR_NOT_SUPPORTED"].assert_eq(err.code_name());
 
         let err = VdoError {
+            domain: 0,
             code: 9999,
             message: "test".to_string(),
         };
@@ -612,6 +920,7 @@ mod unit_tests {
         // Negative codes (from non-VDO GError domains) should map to UNKNOWN,
         // not wrap to a matching VDO constant.
         let err = VdoError {
+            domain: 0,
             code: -1,
             message: "test".to_string(),
         };
@@ -621,6 +930,7 @@ mod unit_tests {
     #[test]
     fn error_display() {
         let err = VdoError {
+            domain: 0,
             code: vdo_sys::VDO_ERROR_BUSY.0 as i32,
             message: "Resource is busy".to_string(),
         };
@@ -677,6 +987,7 @@ mod unit_tests {
     #[test]
     fn error_from_vdo_error() {
         let vdo_err = VdoError {
+            domain: 0,
             code: 1,
             message: "test".to_string(),
         };
@@ -696,7 +1007,10 @@ mod unit_tests {
             .assert_eq(&format!("{}", Error::NullPointer));
         expect!["Missing error data from VDO library"]
             .assert_eq(&format!("{}", Error::MissingVdoError));
+        expect!["A sparse buffer that can't be viewed as one slice"]
+            .assert_eq(&format!("{}", Error::SparseBuffers));
         let vdo = Error::Vdo(VdoError {
+            domain: 0,
             code: 1,
             message: "test".to_string(),
         });
@@ -713,6 +1027,22 @@ mod tests {
 
     fn init_logger() {
         let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    // `vdo_error_quark` needs libvdo, so this cannot run on the host.
+    #[test]
+    fn no_data_requires_the_vdo_error_domain() {
+        let foreign = VdoError {
+            domain: 0,
+            code: vdo_sys::VDO_ERROR_NO_DATA.0 as i32,
+            message: "test".to_string(),
+        };
+        assert!(!foreign.is_no_data());
+        let vdo = VdoError {
+            domain: unsafe { vdo_sys::vdo_error_quark() },
+            ..foreign
+        };
+        assert!(vdo.is_no_data());
     }
 
     #[test]
@@ -896,6 +1226,130 @@ mod tests {
         }
 
         assert!(got_i_frame, "Should have captured at least one I-frame");
+
+        drop(running);
+        Ok(())
+    }
+
+    /// Joins a sharable stream that is already running, e.g. one the RTSP server
+    /// created, instead of starting an encode of its own. Skips if VDO lists no
+    /// sharable stream. Reads several buffers and checks that `data_copy()`
+    /// yields `size() - header` bytes that agree with `as_slice()` whenever the
+    /// buffer can be viewed as a single slice.
+    #[test]
+    fn join_sharable_stream_reads_chunks() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        init_logger();
+        let Some(existing) = list_streams()?
+            .into_iter()
+            .filter(|s| s.settings.get_bool(c"sharable", false))
+            .min_by_key(|s| {
+                u64::from(s.settings.get_u32(c"width", u32::MAX))
+                    * u64::from(s.settings.get_u32(c"height", u32::MAX))
+            })
+        else {
+            log::info!("No sharable stream listed, skipping");
+            return Ok(());
+        };
+        log::info!("Joining stream {}", existing.id);
+
+        let mut settings = existing.settings.clone();
+        for key in [c"id", c"identity", c"intent"] {
+            settings.remove(key);
+        }
+        let stream = Stream::from_settings(&settings)?;
+        assert_eq!(stream.id(), existing.id, "Should join the existing encode");
+
+        let running = stream.start()?;
+        assert_eq!(running.id(), existing.id);
+        for i in 0..5 {
+            let buffer = running.next_buffer()?;
+            assert!(buffer.size() > 0, "Frame size should be > 0");
+            let header = buffer.header_size().unwrap_or(0);
+            let chunk_count = buffer.chunks().map_or(0, |c| c.len());
+            let as_slice_ok = buffer.as_slice().is_ok();
+            log::info!("buffer {i}: chunks={chunk_count}, as_slice_ok={as_slice_ok}");
+            let copy = buffer.data_copy()?;
+            assert_eq!(
+                copy.len(),
+                buffer.size().saturating_sub(header),
+                "data_copy() length should be size() minus header"
+            );
+            if let Ok(slice) = buffer.as_slice() {
+                assert_eq!(
+                    copy.as_slice(),
+                    &slice[header..buffer.size()],
+                    "data_copy() bytes should match as_slice() range"
+                );
+            }
+            drop(buffer);
+        }
+
+        drop(running);
+        Ok(())
+    }
+
+    #[test]
+    fn join_sharable_stream() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        init_logger();
+        let Some(existing) = list_streams()?
+            .into_iter()
+            .filter(|s| s.settings.get_bool(c"sharable", false))
+            .min_by_key(|s| {
+                u64::from(s.settings.get_u32(c"width", u32::MAX))
+                    * u64::from(s.settings.get_u32(c"height", u32::MAX))
+            })
+        else {
+            log::info!("No sharable stream listed, skipping");
+            return Ok(());
+        };
+        log::info!("Joining stream {}", existing.id);
+
+        let mut settings = existing.settings.clone();
+        for key in [c"id", c"identity", c"intent"] {
+            settings.remove(key);
+        }
+        let stream = Stream::from_settings(&settings)?;
+        // Checked before starting so that a mismatch never starts a second encode.
+        assert_eq!(stream.id(), existing.id, "Should join the existing encode");
+
+        let running = stream.start()?;
+        assert_eq!(running.id(), existing.id);
+        for _ in 0..10 {
+            let buffer = running.next_buffer()?;
+            assert!(buffer.size() > 0, "Frame size should be > 0");
+        }
+
+        drop(running);
+        Ok(())
+    }
+
+    #[test]
+    fn next_buffer_timeout_returns_promptly() -> std::result::Result<(), Box<dyn std::error::Error>>
+    {
+        init_logger();
+        let stream = StreamBuilder::new()
+            .channel(0)
+            .format(VdoFormat::VDO_FORMAT_YUV)
+            .resolution(Resolution::Exact {
+                width: 640,
+                height: 480,
+            })
+            .build()?;
+
+        let running = stream.start()?;
+
+        let start = Instant::now();
+        let _ = running.next_buffer_timeout(Duration::ZERO)?;
+        assert!(
+            start.elapsed() < Duration::from_millis(500),
+            "A zero timeout should not block"
+        );
+
+        let buffer = running
+            .next_buffer_timeout(Duration::from_secs(5))?
+            .expect("A running stream should produce a frame within 5 s");
+        assert!(buffer.size() > 0, "Frame size should be > 0");
+        drop(buffer);
 
         drop(running);
         Ok(())
