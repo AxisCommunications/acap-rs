@@ -2,7 +2,7 @@ ARG REPO=axisecp
 ARG SDK=acap-native-sdk
 # Keep in sync with `install-sdk.sh` and `on-host-workflow.yml`.
 ARG UBUNTU_VERSION=24.04
-# Keep in sync with `install-sdk.sh`.
+# Keep in sync with `install-sdk.sh` and `AXIS_OS_VERSION` below.
 ARG VERSION=12.11.0
 ARG BASE_IMAGE=debian:trixie-20260223
 
@@ -22,6 +22,7 @@ ENV \
     SYSROOT_ARMV7HF=/opt/axis/acapsdk/sysroots/armv7hf
 # The above makes the below easier to read
 ENV \
+    AXIS_OS_VERSION=12.11 \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gnu-gcc" \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=--sysroot=${SYSROOT_AARCH64}" \
     CC_aarch64_unknown_linux_gnu="aarch64-linux-gnu-gcc" \
