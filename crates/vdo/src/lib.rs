@@ -95,6 +95,8 @@ pub enum Error {
     MissingVdoError,
     #[error("The stream's file descriptor is hung up or in error")]
     StreamClosed,
+    #[error("Streams with sparse buffers (frame.chunks) are not supported")]
+    SparseBuffers,
 }
 
 /// Error from the VDO library.
@@ -427,6 +429,9 @@ impl Stream {
     /// A joined stream may be non-blocking (`socket.blocking` false), which
     /// [`RunningStream::next_buffer()`] handles.
     ///
+    /// Returns [`Error::SparseBuffers`] if `frame.chunks` is true, because
+    /// [`StreamBuffer::as_slice()`] can only read contiguous buffers.
+    ///
     /// ```no_run
     /// let existing = vdo::list_streams()?
     ///     .into_iter()
@@ -441,6 +446,9 @@ impl Stream {
     /// # Ok::<(), vdo::Error>(())
     /// ```
     pub fn from_settings(settings: &Map) -> std::result::Result<Self, Error> {
+        if settings.get_bool(c"frame.chunks", false) {
+            return Err(Error::SparseBuffers);
+        }
         let mut map = settings.clone();
         map.set_u32(
             c"buffer.strategy",
@@ -687,6 +695,8 @@ impl StreamBuffer<'_> {
         }
         // SAFETY: VDO buffers are backed by mmap'd or allocated regions that are fully
         // initialized at allocation time. Bytes beyond size() may be stale but are valid.
+        // The buffer is one contiguous region, because this crate never creates a stream
+        // with `frame.chunks` set (see Stream::from_settings).
         let slice = unsafe { std::slice::from_raw_parts(data as *const u8, self.capacity()) };
         Ok(slice)
     }
@@ -914,6 +924,8 @@ mod unit_tests {
             .assert_eq(&format!("{}", Error::NullPointer));
         expect!["Missing error data from VDO library"]
             .assert_eq(&format!("{}", Error::MissingVdoError));
+        expect!["Streams with sparse buffers (frame.chunks) are not supported"]
+            .assert_eq(&format!("{}", Error::SparseBuffers));
         let vdo = Error::Vdo(VdoError {
             domain: 0,
             code: 1,
@@ -1139,6 +1151,17 @@ mod tests {
     /// Joins a sharable stream that is already running, e.g. one the RTSP server
     /// created, instead of starting an encode of its own. Skips if VDO lists no
     /// sharable stream.
+    #[test]
+    fn from_settings_refuses_sparse_buffers() {
+        init_logger();
+        let mut settings = Map::new();
+        settings.set_bool(c"frame.chunks", true);
+        assert!(matches!(
+            Stream::from_settings(&settings),
+            Err(Error::SparseBuffers)
+        ));
+    }
+
     #[test]
     fn join_sharable_stream() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
