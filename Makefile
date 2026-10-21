@@ -214,7 +214,7 @@ check_lint:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo clippy \
 		--all-targets \
-		--features vdo/axis-os-12 \
+		--features vdo/axis-os-12,axoverlay/axis-os-12 \
 		--locked \
 		--no-deps \
 		--target aarch64-unknown-linux-gnu \

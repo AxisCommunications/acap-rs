@@ -10,7 +10,12 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_type("^(_?axoverlay_.*)$")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .layout_tests(false);
-    for path in library.include_paths {
+    // Older SDKs, such as 1.3 for AXIS OS 10.12, don't declare the glib dependency in axoverlay.pc.
+    let glib = pkg_config::Config::new()
+        .cargo_metadata(false)
+        .probe("glib-2.0")
+        .unwrap();
+    for path in library.include_paths.iter().chain(&glib.include_paths) {
         bindings = bindings.clang_args(&["-I", path.to_str().unwrap()]);
     }
     bindings.generate().unwrap().write_to_file(dst).unwrap();
