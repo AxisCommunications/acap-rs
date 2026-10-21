@@ -19,6 +19,17 @@
 //!
 //! For maximum portability, use `VdoFormat::VDO_FORMAT_YUV`.
 //!
+//! # SDK Compatibility
+//!
+//! By default, this crate only uses API that every supported AXIS OS version has. Enable the
+//! `axis-os-12` feature to also use API that needs AXIS OS 12 or newer:
+//!
+//! ```toml
+//! vdo = { version = "...", features = ["axis-os-12"] }
+//! ```
+//!
+//! Building with the feature requires SDK 12 or newer.
+//!
 //! # Example
 //!
 //! ```no_run
@@ -147,6 +158,7 @@ impl VdoError {
             x if x == vdo_sys::VDO_ERROR_FATAL.0 as i32 => "VDO_ERROR_FATAL",
             x if x == vdo_sys::VDO_ERROR_NOT_CONTROLLED.0 as i32 => "VDO_ERROR_NOT_CONTROLLED",
             x if x == vdo_sys::VDO_ERROR_NO_EVENT.0 as i32 => "VDO_ERROR_NO_EVENT",
+            #[cfg(feature = "axis-os-12")]
             x if x == vdo_sys::VDO_ERROR_NO_VIDEO.0 as i32 => "VDO_ERROR_NO_VIDEO",
             _ => "VDO_ERROR_UNKNOWN",
         }
@@ -592,6 +604,30 @@ mod unit_tests {
     use expect_test::expect;
 
     use super::*;
+
+    // `VDO_ERROR_NO_VIDEO` is 21 in SDK 12. SDK 1.15 does not declare it, but AXIS OS 12 may
+    // still return it to apps built against SDK 1.15.
+    const NO_VIDEO: i32 = 21;
+
+    #[cfg(feature = "axis-os-12")]
+    #[test]
+    fn no_video_error_code_has_a_name() {
+        let err = VdoError {
+            code: NO_VIDEO,
+            message: "test".to_string(),
+        };
+        expect!["VDO_ERROR_NO_VIDEO"].assert_eq(err.code_name());
+    }
+
+    #[cfg(not(feature = "axis-os-12"))]
+    #[test]
+    fn no_video_error_code_is_unknown() {
+        let err = VdoError {
+            code: NO_VIDEO,
+            message: "test".to_string(),
+        };
+        expect!["VDO_ERROR_UNKNOWN"].assert_eq(err.code_name());
+    }
 
     #[test]
     fn error_code_names() {
