@@ -210,6 +210,17 @@ check_lint:
 		--workspace \
 		-- \
 		-Dwarnings
+	# Also lint code that needs a newer AXIS OS.
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
+	cargo clippy \
+		--all-targets \
+		--features vdo/axis-os-12 \
+		--locked \
+		--no-deps \
+		--target aarch64-unknown-linux-gnu \
+		--workspace \
+		-- \
+		-Dwarnings
 .PHONY: check_lint
 
 ## Check that risky FFI patterns are sound using miri
