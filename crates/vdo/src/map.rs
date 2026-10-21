@@ -9,16 +9,20 @@ use std::{
 
 use glib::translate::{from_glib, IntoGlib};
 use gobject_sys::{g_object_unref, GObject};
-use vdo_sys::{VdoMap, VdoQuad32i, VdoQuad32u};
+use vdo_sys::VdoMap;
+#[cfg(feature = "axis-os-12")]
+use vdo_sys::{VdoQuad32i, VdoQuad32u};
 
 /// Four signed 32-bit integers, stored in a [`Map`] under one key.
 ///
 /// In `vdo-types.h` (SDK 12.11.0) `VdoQuad32i` is a union of a rectangle
 /// (`x`, `y`, `w`, `h`) and a plain `val[4]` array. The header does not say
 /// which reading a key uses, so the value is kept as the four raw words.
+#[cfg(feature = "axis-os-12")]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Quad32i(pub [i32; 4]);
 
+#[cfg(feature = "axis-os-12")]
 impl Quad32i {
     /// The first word, if the value represents a rectangle.
     pub fn x(&self) -> i32 {
@@ -64,9 +68,11 @@ impl Quad32i {
 /// Values written with [`Map::set_quad32u`] always carry all four words. For a
 /// range that VDO itself stores, the header does not say what the fourth word
 /// holds, so treat it as unspecified.
+#[cfg(feature = "axis-os-12")]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Quad32u(pub [u32; 4]);
 
+#[cfg(feature = "axis-os-12")]
 impl Quad32u {
     /// The first word, if the value represents a rectangle.
     pub fn x(&self) -> u32 {
@@ -243,20 +249,24 @@ impl Map {
         }
     }
 
+    #[cfg(feature = "axis-os-12")]
     pub fn set_quad32i(&mut self, key: &CStr, value: Quad32i) {
         unsafe { vdo_sys::vdo_map_set_quad32i(self.raw, key.as_ptr(), value.into_raw()) }
     }
 
+    #[cfg(feature = "axis-os-12")]
     pub fn get_quad32i(&self, key: &CStr, default: Quad32i) -> Quad32i {
         Quad32i::from_raw(unsafe {
             vdo_sys::vdo_map_get_quad32i(self.raw, key.as_ptr(), default.into_raw())
         })
     }
 
+    #[cfg(feature = "axis-os-12")]
     pub fn set_quad32u(&mut self, key: &CStr, value: Quad32u) {
         unsafe { vdo_sys::vdo_map_set_quad32u(self.raw, key.as_ptr(), value.into_raw()) }
     }
 
+    #[cfg(feature = "axis-os-12")]
     pub fn get_quad32u(&self, key: &CStr, default: Quad32u) -> Quad32u {
         Quad32u::from_raw(unsafe {
             vdo_sys::vdo_map_get_quad32u(self.raw, key.as_ptr(), default.into_raw())
@@ -275,6 +285,7 @@ impl Map {
     }
 }
 
+#[cfg(feature = "axis-os-12")]
 impl Clone for Map {
     /// Creates a deep copy of the map.
     fn clone(&self) -> Self {

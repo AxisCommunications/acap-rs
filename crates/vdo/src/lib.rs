@@ -65,7 +65,9 @@ use std::{
 
 use glib_sys::GError;
 use gobject_sys::{g_object_unref, GObject};
-pub use map::{CStringPtr, Map, Quad32i, Quad32u};
+pub use map::{CStringPtr, Map};
+#[cfg(feature = "axis-os-12")]
+pub use map::{Quad32i, Quad32u};
 use vdo_sys::{VdoBuffer, VdoBufferStrategy, VdoStream};
 pub use vdo_sys::{VdoFormat, VdoFrameType, VdoRateControlMode, VdoRateControlPriority};
 
@@ -92,6 +94,7 @@ pub enum Error {
     NullPointer,
     #[error("Missing error data from VDO library")]
     MissingVdoError,
+    // Not gated behind `axis-os-12`, so that enabling the feature does not add a variant.
     #[error("Buffer is sparse and cannot be read as one slice")]
     NotContiguous,
 }
@@ -472,9 +475,10 @@ impl StreamBuffer<'_> {
     /// Returns the frame data as a byte slice of [`capacity()`](StreamBuffer::capacity) bytes.
     ///
     /// Use [`size()`](StreamBuffer::size) to get the actual frame data size.
-    /// Returns [`Error::NotContiguous`] for a sparse buffer, see
-    /// [`is_contiguous()`](StreamBuffer::is_contiguous).
+    /// With the `axis-os-12` feature, returns [`Error::NotContiguous`] for a sparse buffer,
+    /// see `is_contiguous()`.
     pub fn as_slice(&self) -> std::result::Result<&[u8], Error> {
+        #[cfg(feature = "axis-os-12")]
         if !self.is_contiguous() {
             return Err(Error::NotContiguous);
         }
@@ -482,8 +486,12 @@ impl StreamBuffer<'_> {
         if data.is_null() {
             return Err(Error::NullPointer);
         }
-        // SAFETY: The buffer is contiguous, so its data is one region of capacity()
-        // bytes. VDO buffers are backed by mmap'd or allocated regions that are fully
+        // SAFETY: The buffer is contiguous, so its data is one region of capacity() bytes.
+        // Buffers are contiguous unless the stream option `frame.chunks` is set
+        // (vdo-buffer.h in SDK 12.11.0, "Indicates whether the buffer is contiguous or
+        // sparse"), which StreamBuilder does not do. With `axis-os-12` this is also
+        // checked above.
+        // VDO buffers are backed by mmap'd or allocated regions that are fully
         // initialized at allocation time. Bytes beyond size() may be stale but are valid.
         let slice = unsafe { std::slice::from_raw_parts(data as *const u8, self.capacity()) };
         Ok(slice)
@@ -492,9 +500,10 @@ impl StreamBuffer<'_> {
     /// Returns a copy of the frame data, excluding the header if one is present.
     ///
     /// Use [`as_slice()`](StreamBuffer::as_slice) for a raw view of the whole buffer.
-    /// Returns [`Error::NotContiguous`] for a sparse buffer, see
-    /// [`is_contiguous()`](StreamBuffer::is_contiguous).
+    /// With the `axis-os-12` feature, returns [`Error::NotContiguous`] for a sparse buffer,
+    /// see `is_contiguous()`.
     pub fn data_copy(&self) -> std::result::Result<Vec<u8>, Error> {
+        #[cfg(feature = "axis-os-12")]
         if !self.is_contiguous() {
             return Err(Error::NotContiguous);
         }
@@ -509,9 +518,9 @@ impl StreamBuffer<'_> {
             size <= self.capacity(),
             "expect frame size to fit within buffer capacity"
         );
-        // SAFETY: The buffer is contiguous, so offset..size lies within its one
-        // mapped region of capacity bytes, which is fully initialized at allocation
-        // time.
+        // SAFETY: The buffer is contiguous (see as_slice), so offset..size lies within
+        // its one mapped region of capacity bytes, which is fully initialized at
+        // allocation time.
         let slice =
             unsafe { std::slice::from_raw_parts((data as *const u8).add(offset), size - offset) };
         Ok(slice.to_vec())
@@ -545,6 +554,7 @@ impl StreamBuffer<'_> {
     ///     `vdo_frame_get_utc_timestamp` as equivalent to `gettimeofday` and
     ///     `vdo_frame_get_timestamp` as equivalent to `clock_gettime` with
     ///     `CLOCK_MONOTONIC`.
+    #[cfg(feature = "axis-os-12")]
     pub fn utc_timestamp(&self) -> u64 {
         unsafe { vdo_sys::vdo_frame_get_utc_timestamp(self.raw) }
     }
@@ -576,6 +586,7 @@ impl StreamBuffer<'_> {
     /// [`data_copy()`](StreamBuffer::data_copy) return
     /// [`Error::NotContiguous`] for them. VDO only produces sparse buffers when the stream option
     /// `frame.chunks` is set, which [`StreamBuilder`] does not do.
+    #[cfg(feature = "axis-os-12")]
     pub fn is_contiguous(&self) -> bool {
         unsafe { vdo_sys::vdo_buffer_is_contiguous(self.raw) != glib_sys::GFALSE }
     }
@@ -1023,6 +1034,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "axis-os-12")]
     #[test]
     fn buffer_utc_timestamp_and_layout() -> std::result::Result<(), Box<dyn std::error::Error>> {
         init_logger();
@@ -1382,6 +1394,17 @@ mod tests {
         assert!(value.is_some());
         assert_eq!(value.unwrap().as_c_str().to_str().unwrap(), "hello");
         assert!(map.get_string(c"missing_str").is_none());
+
+        Ok(())
+    }
+
+    #[cfg(feature = "axis-os-12")]
+    #[test]
+    fn map_quad32_and_clone() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        init_logger();
+
+        let mut map = Map::new();
+        map.set_u32(c"test_u32", 42);
 
         let quad_i = Quad32i([-1, 2, -3, 4]);
         map.set_quad32i(c"test_quad32i", quad_i);
