@@ -11,3 +11,7 @@ log = { workspace = true }
 cairo-rs = { workspace = true }
 
 axoverlay-sys = { workspace = true }
+
+[features]
+# Use API that needs AXIS OS 12 or newer, and SDK 12 or newer to build.
+axis-os-12 = []

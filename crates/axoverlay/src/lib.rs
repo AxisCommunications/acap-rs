@@ -1,4 +1,15 @@
 //! Bindings for the [Overlay API](https://developer.axis.com/acap/api/src/api/axoverlay/html/index.html).
+//!
+//! # SDK Compatibility
+//!
+//! By default, this crate only uses API that every supported AXIS OS version has. Enable the
+//! `axis-os-12` feature to also use API that needs AXIS OS 12 or newer:
+//!
+//! ```toml
+//! axoverlay = { version = "...", features = ["axis-os-12"] }
+//! ```
+//!
+//! Building with the feature requires SDK 12 or newer.
 
 use std::{
     ffi::{c_float, c_int},
@@ -23,10 +34,13 @@ use axoverlay_sys::{
     axoverlay_position_type_AXOVERLAY_CUSTOM_SOURCE, axoverlay_position_type_AXOVERLAY_TOP_LEFT,
     axoverlay_position_type_AXOVERLAY_TOP_RIGHT, axoverlay_redraw, axoverlay_set_palette_color,
     axoverlay_settings, axoverlay_stream_data, axoverlay_stream_type,
-    axoverlay_stream_type_AXOVERLAY_STREAM_AV1, axoverlay_stream_type_AXOVERLAY_STREAM_H264,
-    axoverlay_stream_type_AXOVERLAY_STREAM_H265, axoverlay_stream_type_AXOVERLAY_STREAM_JPEG,
-    axoverlay_stream_type_AXOVERLAY_STREAM_RGB, axoverlay_stream_type_AXOVERLAY_STREAM_VOUT,
+    axoverlay_stream_type_AXOVERLAY_STREAM_H264, axoverlay_stream_type_AXOVERLAY_STREAM_H265,
+    axoverlay_stream_type_AXOVERLAY_STREAM_JPEG, axoverlay_stream_type_AXOVERLAY_STREAM_VOUT,
     axoverlay_stream_type_AXOVERLAY_STREAM_YCBCR,
+};
+#[cfg(feature = "axis-os-12")]
+use axoverlay_sys::{
+    axoverlay_stream_type_AXOVERLAY_STREAM_AV1, axoverlay_stream_type_AXOVERLAY_STREAM_RGB,
 };
 pub use glib::Error;
 use glib::{translate::from_glib_full, MainLoop};
@@ -487,7 +501,9 @@ pub enum StreamType {
     YCbCr,
     VOut,
     Other,
+    #[cfg(feature = "axis-os-12")]
     RGB,
+    #[cfg(feature = "axis-os-12")]
     AV1,
 }
 
@@ -499,7 +515,9 @@ impl StreamType {
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_H265 => Self::H265,
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_YCBCR => Self::YCbCr,
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_VOUT => Self::VOut,
+            #[cfg(feature = "axis-os-12")]
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_RGB => Self::RGB,
+            #[cfg(feature = "axis-os-12")]
             i if i == axoverlay_stream_type_AXOVERLAY_STREAM_AV1 => Self::AV1,
             _ => Self::Other,
         }

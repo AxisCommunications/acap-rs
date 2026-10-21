@@ -4,6 +4,7 @@
 #![allow(improper_ctypes)]
 
 use glib_sys::*;
+#[allow(unused_imports)]
 use libc::timeval;
 
 type guchar = ::std::os::raw::c_uchar;
