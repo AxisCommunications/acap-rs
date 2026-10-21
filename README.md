@@ -8,7 +8,7 @@ _Easy and safe [ACAP] apps using [Rust]_
 > unmaintained in the future.
 > Your contributions are appreciated, and feel free to fork and continue the journey if needed.
 
-This repository provides the developer tools, libraries, and documentation that form ACAP for Rust platform.
+This repository provides the libraries and documentation that form ACAP for the Rust platform.
 To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCommunications/acap-rs-app-template).
 
 ## Table of Contents
@@ -17,9 +17,6 @@ To quickly start a new app, see [acap-rs-app-template](https://github.com/AxisCo
   - [Dev container](#dev-container)
   - [Non-dev container](#non-dev-container)
   - [Without container](#without-container)
-- [**Developer tools**](#developer-tools)
-  - [Porcelain programs](#porcelain-programs)
-  - [Plumbing programs](#plumbing-programs)
 - [**Libraries**](#libraries)
   - [ACAP Native API bindings](#acap-native-api-bindings)
   - [VAPIX API bindings](#vapix-api-bindings)
@@ -79,41 +76,6 @@ docker run \
 Development environments outside containers are more difficult to reproduce and maintain.
 Should it nonetheless be of interest, one procedure is documented
 in [this workflow](.github/workflows/on-host-workflow.yml).
-
-## Developer tools
-
-Tools for developing ACAP apps are provided primarily as binary crates.
-The tools can be roughly divided into low level _plumbing_ and high level _porcelain_.
-
-All of these tools are installed in the dev container of this project.
-To install them in another project before they are released, use the `--git` option e.g. like:
-
-```sh
-cargo install --locked --git https://github.com/AxisCommunications/acap-rs.git cargo-acap-sdk
-```
-
-### Porcelain programs
-
-The focus of these tools are to make common things easy.
-
-- `cargo-acap-sdk` - Automation of common development workflows.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/cargo-acap-sdk/README.md)
-
-### Plumbing programs
-
-The focus of these tools are to make less common things possible.
-
-- `acap-ssh-utils` - Utilities for interacting with Axis devices over SSH.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/acap-ssh-utils/README.md)
-- `cargo-acap-build`: Build utilities for ACAP apps and other executables deployed to Axis devices.
-  - Status: ⚠️ Alpha
-  - Documentation: [README](crates/cargo-acap-build/README.md)
-
-These can be installed independently and are provided as library crates too for developers who want
-to write their own,
-tailored tools.
 
 ## Libraries
 
@@ -234,7 +196,6 @@ by this project.
 ### Articles
 
 - [awesome-acap](https://github.com/apljungquist/awesome-acap) - a list of free resources related to ACAP development.
-- [Related projects](docs/related-projects.md)
 - [Running apps and tests on device](docs/running-apps-and-tests-on-device.md)
 - [Managing the size of Rust binaries](https://github.com/apljungquist/managing-the-size-of-rust-binaries)
 

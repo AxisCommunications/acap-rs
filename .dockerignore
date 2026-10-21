@@ -1,10 +1,3 @@
 *
 !/.devhost/
-!/.git/
-!/Cargo.lock
-!/Cargo.toml
-!/about.hbs
-!/about.toml
-!/apps/
-!/crates/
 !/rust-toolchain.toml

@@ -19,9 +19,8 @@ PIP_CONSTRAINT=constraints.txt pip install --requirement requirements.txt
 # Install rust programs
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target cargo-about@0.6.2
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target mkhelp@0.2.3
-cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/acap-ssh-utils
-cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-build
-cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --path ../crates/cargo-acap-sdk
+# Keep in sync with `on-host-workflow.yml`.
+cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --git https://github.com/apljungquist/acap-cargo.git --rev 5418aacfa87210c7aba1d251a21eafb65af5838f acap-ssh-utils cargo-acap-build cargo-acap-sdk
 cargo install --locked --root ${VIRTUAL_ENV} --target-dir /tmp/target --git https://github.com/apljungquist/rs4a.git --rev ae4e133555b5918da7f0984f30f1461726c142c2
 
 rm -r /tmp/target

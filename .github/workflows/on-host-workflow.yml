@@ -45,6 +45,7 @@ jobs:
           sudo ./install-system-packages.sh
           ./install-rust.sh
       - name: Local setup
+        # TODO: Consider caching this step
         # This step typically needs to be done once per repository clone.
         working-directory: .devhost
         run: |
@@ -72,9 +73,11 @@ jobs:
       - name: Install Rust toolchain
         run: rustup show
       - name: Install Cargo package
+        # TODO: Consider caching this step
         run: |
           cargo install --locked cargo-about@0.6.2
-          cargo install --locked --path crates/cargo-acap-build
+          # Keep in sync with `install-venv.sh`.
+          cargo install --locked --git https://github.com/apljungquist/acap-cargo.git --rev 5418aacfa87210c7aba1d251a21eafb65af5838f cargo-acap-build
       - name: Build the app
         run: |
           cargo-acap-build -- --package hello_world
