@@ -10,6 +10,7 @@ fn populated_bindings(dst: &path::PathBuf) {
         .allowlist_type("^(mdb_.*)$")
         .allowlist_var("^(mdb_.*)$")
         .allowlist_recursively(false)
+        .blocklist_type("mdb_on_error_t")
         .layout_tests(false);
     for path in library.include_paths {
         bindings = bindings.clang_args(&["-I", path.to_str().unwrap()]);

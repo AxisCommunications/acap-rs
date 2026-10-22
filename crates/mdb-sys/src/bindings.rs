@@ -16,9 +16,6 @@ pub struct mdb_error_t {
     pub code: mdb_error_code_t,
     pub message: *mut ::std::os::raw::c_char,
 }
-pub type mdb_on_error_t = ::std::option::Option<
-    unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut ::std::os::raw::c_void),
->;
 extern "C" {
     pub fn mdb_error_destroy(error: *mut *mut mdb_error_t);
 }
