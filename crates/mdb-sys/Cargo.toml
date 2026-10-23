@@ -6,6 +6,10 @@ version = "0.0.0"
 edition.workspace = true
 license = "MIT"
 
+[features]
+# Use the AXIS OS 11 (SDK 1.15) host bindings instead of the default (AXIS OS 12).
+axis-os-11 = []
+
 [build-dependencies]
 bindgen = { workspace = true }
 pkg-config = { workspace = true }
