@@ -22,14 +22,14 @@ use crate::acap::Manifest;
 // have to install.
 fn sshpass(pass: &str, program: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("sshpass");
-    // TODO: Consider not passing the password as an argument
-    cmd.arg(format!("-p{pass}"))
+    cmd.arg("-e")
         .arg(program)
         // The ssh client will try keys until it finds one that works.
         // If it tries to many keys that fail it will be disconnected by the server.
         .args(["-o", "PubkeyAuthentication=no"])
         // TODO: Consider not disabling this as aggressively
         .args(["-o", "StrictHostKeyChecking=no"]);
+    cmd.env("SSHPASS", pass);
     cmd
 }
 
@@ -62,6 +62,15 @@ fn ssh(user: &str, pass: &str, host: &Host, port: Option<u16>) -> std::process::
     cmd.arg(format!("{user}@{host}"));
     cmd
 }
+// `Command`'s `Debug` includes the environment, which holds `SSHPASS`.
+fn without_env(cmd: &std::process::Command) -> String {
+    format!(
+        "{:?} {:?}",
+        cmd.get_program(),
+        cmd.get_args().collect::<Vec<_>>()
+    )
+}
+
 fn spawn(mut cmd: std::process::Command) -> anyhow::Result<std::process::Child> {
     match cmd.spawn() {
         Ok(t) => Ok(t),
@@ -84,7 +93,7 @@ trait RunWith {
 impl RunWith for std::process::Command {
     fn run_with_captured_stdout(mut self) -> anyhow::Result<String> {
         self.stdout(Stdio::piped());
-        debug!("Spawning child {self:#?}...");
+        debug!("Spawning child {}...", without_env(&self));
         let mut child = spawn(self)?;
         let mut stdout = child.stdout.take().unwrap();
         debug!("Waiting for child...");
@@ -99,7 +108,7 @@ impl RunWith for std::process::Command {
 
     fn run_with_logged_stdout(mut self: std::process::Command) -> anyhow::Result<()> {
         self.stdout(Stdio::piped());
-        debug!("Spawning child {self:#?}...");
+        debug!("Spawning child {}...", without_env(&self));
         let mut child = spawn(self)?;
         let stdout = child.stdout.take().unwrap();
 
@@ -120,7 +129,7 @@ impl RunWith for std::process::Command {
     }
 
     fn run_with_inherited_stdout(mut self: std::process::Command) -> anyhow::Result<()> {
-        debug!("Running command {self:#?}...");
+        debug!("Running command {}...", without_env(&self));
         let status = self.status()?;
         if !status.success() {
             bail!("Child failed: {status}");
@@ -298,7 +307,7 @@ pub fn patch_package(
 
     ssh_tar.stdin(Stdio::piped());
     ssh_tar.stdout(Stdio::piped());
-    debug!("Spawning {ssh_tar:#?}");
+    debug!("Spawning {}", without_env(&ssh_tar));
     let mut child = spawn(ssh_tar)?;
 
     child
