@@ -16,10 +16,15 @@ struct Key<'a> {
     config: &'a str,
     template: &'a str,
     manifest: &'a str,
+    lock: Option<&'a str>,
     version: &'a str,
 }
 
-pub(crate) fn generate(manifest_file: &Path, cache: &Path) -> anyhow::Result<PathBuf> {
+pub(crate) fn generate(
+    manifest_file: &Path,
+    cache: &Path,
+    workspace_root: &Path,
+) -> anyhow::Result<PathBuf> {
     let mut config_file = NamedTempFile::new()?;
     config_file.write_all(CONFIG.as_bytes())?;
 
@@ -27,6 +32,7 @@ pub(crate) fn generate(manifest_file: &Path, cache: &Path) -> anyhow::Result<Pat
     template_file.write_all(TEMPLATE.as_bytes())?;
 
     let manifest = fs::read_to_string(manifest_file)?;
+    let lock = fs::read_to_string(workspace_root.join("Cargo.lock")).ok();
 
     // TODO: Consider installing cargo about locally.
     let version = String::from_utf8(
@@ -40,8 +46,8 @@ pub(crate) fn generate(manifest_file: &Path, cache: &Path) -> anyhow::Result<Pat
     Key {
         config: CONFIG,
         template: TEMPLATE,
-        // TODO: Use lock file as well or instead.
         manifest: manifest.as_str(),
+        lock: lock.as_deref(),
         version: version.as_str(),
     }
     .hash(&mut hasher);
