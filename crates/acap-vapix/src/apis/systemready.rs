@@ -125,8 +125,9 @@ pub fn systemready() -> SystemreadyRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ajr::ResponseEnvelope, systemready::Data};
     use std::time::Duration;
+
+    use crate::{ajr::ResponseEnvelope, systemready::Data};
 
     #[test]
     fn preview_mode_returns_previewmode_not_uptime() {
