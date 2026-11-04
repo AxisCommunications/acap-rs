@@ -177,7 +177,7 @@ check_format:
 .PHONY: check_format
 
 ## Check that generated files are up to date
-check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/)) crates/mdb-sys/src/bindings_axis_os_11.rs
+check_generated_files: Cargo.lock $(patsubst %/,%/src/bindings.rs,$(wildcard crates/*-sys/))
 	git update-index -q --refresh
 	git --no-pager diff --exit-code HEAD -- $^
 .PHONY: check_generated_files
