@@ -141,7 +141,7 @@ test_all:
 ## ------
 
 ## Run all checks except generated files
-check_other: check_build check_docs check_format check_lint check_tests
+check_other: check_build check_docs check_format check_lint check_tests check_mdb_axis_os_11
 .PHONY: check_other
 
 ## Check that all crates can be built
@@ -223,6 +223,14 @@ check_lint:
 		-Dwarnings
 .PHONY: check_lint
 
+## Check mdb against the AXIS OS 11 (SDK 1.15) host bindings
+check_mdb_axis_os_11:
+	cargo check \
+		--locked \
+		--package mdb \
+		--features mdb-sys/axis-os-11
+.PHONY: check_mdb_axis_os_11
+
 ## Check that risky FFI patterns are sound using miri
 check_miri:
 	rustup +nightly-2025-04-18 component add miri
@@ -286,6 +294,12 @@ apps-$(AXIS_DEVICE_ARCH).filesize: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 
 crates/%-sys/src/bindings.rs: target-$(AXIS_DEVICE_ARCH)/acap/_envoy
 	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/$*-sys-*/out/bindings.rs)) $@
+
+## Regenerate the AXIS OS 11 mdb-sys bindings (run in the acaprs-dev:1.15.1 container)
+crates/mdb-sys/src/bindings_axis_os_11.rs:
+	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
+	cargo build --locked --package mdb-sys --target aarch64-unknown-linux-gnu
+	cp --archive $(firstword $(wildcard target-$(AXIS_DEVICE_ARCH)/*/*/build/mdb-sys-*/out/bindings.rs)) $@
 
 target-$(AXIS_DEVICE_ARCH)/acap/_envoy:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
