@@ -6,6 +6,8 @@
 pub use libc::timespec;
 
 // SDK 1.15 declares the error pointer mutable; the ABI is the same.
+// Don't copy this pattern: a hand-written signature can drift from what the library provides.
+// It is acceptable here only because MDB is deprecated and will be removed.
 pub type mdb_on_error_t =
     Option<unsafe extern "C" fn(error: *const mdb_error_t, user_data: *mut libc::c_void)>;
 
