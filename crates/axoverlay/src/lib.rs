@@ -400,6 +400,7 @@ pub fn redraw() -> Result<()> {
 impl Drop for Api {
     fn drop(&mut self) {
         ADJUSTMENT_CALLBACK.lock().unwrap().take();
+        RENDER_CALLBACK.lock().unwrap().take();
         // TODO: Safety
         unsafe { axoverlay_cleanup() }
     }
