@@ -28,8 +28,7 @@ pub fn build_and_pack(
     // If user supplies a target we lose track of which target is currently being built
     assert!(!args.contains(&"--target"));
 
-    let mut cargo = cargo_command(manifest_path);
-    cargo.arg("build");
+    let mut cargo = cargo_command("build", manifest_path);
     cargo.args(["--target", target.as_str()]);
 
     cargo.args(["--message-format", "json-render-diagnostics"]);
