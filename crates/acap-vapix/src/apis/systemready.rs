@@ -11,6 +11,24 @@ use serde_json::json;
 
 use crate::ajr_http;
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(try_from = "String", into = "String")]
+struct Seconds(Duration);
+
+impl TryFrom<String> for Seconds {
+    type Error = std::num::ParseIntError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Ok(Self(Duration::from_secs(value.parse()?)))
+    }
+}
+
+impl From<Seconds> for String {
+    fn from(value: Seconds) -> Self {
+        value.0.as_secs().to_string()
+    }
+}
+
 const PATH: &str = "axis-cgi/systemready.cgi";
 const API_VERSION: &str = "1";
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -23,9 +41,9 @@ enum Data {
 pub struct SystemreadyData {
     systemready: EnglishBool,
     needsetup: EnglishBool,
-    uptime: Option<String>,
+    uptime: Option<Seconds>,
     bootid: Option<String>,
-    previewmode: Option<String>,
+    previewmode: Option<Seconds>,
 }
 
 impl SystemreadyData {
@@ -41,10 +59,7 @@ impl SystemreadyData {
 
     /// Elapsed since device started?
     pub fn uptime(&self) -> Option<Duration> {
-        // TODO: Ensure at parsing
-        self.uptime
-            .as_ref()
-            .map(|t| Duration::from_secs(t.parse().unwrap()))
+        self.uptime.map(|s| s.0)
     }
 
     // A unique id generated at each boot?
@@ -54,10 +69,7 @@ impl SystemreadyData {
 
     /// Total or remaining?
     pub fn preview_mode(&self) -> Option<Duration> {
-        // TODO: Ensure at parsing
-        self.uptime
-            .as_ref()
-            .map(|t| Duration::from_secs(t.parse().unwrap()))
+        self.previewmode.map(|s| s.0)
     }
 }
 
@@ -99,7 +111,7 @@ impl SystemreadyRequest {
         let params = if let Some(timeout) = self.timeout {
             json!({"timeout":timeout})
         } else {
-            json!("{}")
+            json!({})
         };
         let Data::Systemready(data) =
             ajr_http::execute_params(PATH, API_VERSION, "systemready", params, client).await?;
@@ -113,7 +125,18 @@ pub fn systemready() -> SystemreadyRequest {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crate::{ajr::ResponseEnvelope, systemready::Data};
+
+    #[test]
+    fn preview_mode_returns_previewmode_not_uptime() {
+        let text = include_str!("systemready/11_11_initial_response.json");
+        let envelope: ResponseEnvelope<Data> = serde_json::from_str(text).unwrap();
+        let Data::Systemready(data) = envelope.data().unwrap();
+        assert_eq!(data.preview_mode(), Some(Duration::from_secs(7200)));
+        assert_eq!(data.uptime(), Some(Duration::from_secs(65)));
+    }
 
     #[test]
     fn data_serialization_roundtrip() {
