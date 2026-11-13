@@ -94,7 +94,7 @@ stop:
 run:
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --arch $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev
-	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
+	acap-ssh-utils patch target-$(AXIS_DEVICE_ARCH)/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
@@ -109,11 +109,11 @@ run:
 ## * The app is stopped.
 ## * The device has SSH enabled the ssh user root configured.
 test:
-	# The `scp` command below needs the wildcard to match exactly one file.
-	rm -r target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/$(AXIS_PACKAGE) ||:
+	# The `patch` command below needs the wildcard to match exactly one file.
+	rm -rf target-$(AXIS_DEVICE_ARCH)/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*
 	CARGO_TARGET_DIR=target-$(AXIS_DEVICE_ARCH) \
 	cargo-acap-build --arch $(AXIS_DEVICE_ARCH) -- -p $(AXIS_PACKAGE) --profile dev --tests
-	acap-ssh-utils patch target/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
+	acap-ssh-utils patch target-$(AXIS_DEVICE_ARCH)/$(AXIS_DEVICE_ARCH)/$(AXIS_PACKAGE)-*/*.eap
 	acap-ssh-utils run-app \
 		--environment RUST_LOG=debug \
 		--environment RUST_LOG_STYLE=always \
